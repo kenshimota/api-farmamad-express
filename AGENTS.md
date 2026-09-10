@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Project state
-Express 5 API (CommonJS, Node 24) that talks to Postgres through Sequelize 6 (`pg`), never raw `pg` queries. `README.md` is still the untouched GitLab template — ignore it; trust `package.json`, `src/app.js`, and `.opencode/agents/`.
+Express 5 API (CommonJS, Node 24) that talks to Postgres through Sequelize 6 (`pg`), never raw `pg` queries. `README.md` is the user-facing guide for consuming the API — keep it updated; trust `package.json`, `src/app.js`, and `.opencode/agents/`.
 
 ## Commands
 - `npm start` runs the API (`node src/index.js`); `npm run dev` uses `node --watch`.
@@ -25,6 +25,7 @@ Express 5 API (CommonJS, Node 24) that talks to Postgres through Sequelize 6 (`p
 
 ## Rules
 - Every endpoint/example must be documented in Swagger: add or update the `@openapi` JSDoc block in the module router so users can consume it at `/docs`.
+- Every new or changed endpoint must also be documented in `README.md`: explain how to use the API (method, path, auth, request/response examples) so a user can consume it without reading the code.
 - Always run `npm test` after any change to prove the new feature doesn't break existing behavior.
 - Format every changed `*.js` file with Prettier (`npx prettier --write <archivo>`) before finishing.
 - No file may exceed 300 lines; split it into smaller modules when it approaches that limit.
