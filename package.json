@@ -1,0 +1,21 @@
+{
+  "name": "api-bread-king",
+  "version": "1.0.0",
+  "description": "To make it easy for you to get started with GitLab, here's a list of recommended next steps.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://kenshimota:glpat-REDACTED@gitlab.com/kenshimota/api-bread-king.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://gitlab.com/kenshimota/api-bread-king/issues"
+  },
+  "homepage": "https://gitlab.com/kenshimota/api-bread-king#readme"
+}
