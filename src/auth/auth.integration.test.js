@@ -7,22 +7,41 @@ const { UniqueConstraintError } = require("sequelize");
 const app = require("../app");
 const sequelize = require("../database");
 const User = require("../models/user");
+const Role = require("../models/role");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 
 const PASSWORD = "secret123";
 
 /**
+ * Resolves a role id from the seeded roles table.
+ * @param {string} name - Role name.
+ * @returns {Promise<number>} The role primary key.
+ */
+async function getRoleId(name) {
+  const role = await Role.findOne({ where: { name } });
+
+  if (!role) {
+    throw new Error(`Role "${name}" is not seeded`);
+  }
+
+  return role.id;
+}
+
+/**
  * Creates a user with sensible defaults.
- * @param {object} [overrides] - Attribute overrides.
+ * @param {object} [overrides] - Attribute overrides; `role` accepts a role name.
  * @returns {Promise<object>} The created Sequelize instance.
  */
 async function createUser(overrides = {}) {
+  const { role = "customer", ...attributes } = overrides;
+
   return User.create({
     username: "juan",
     email: "juan@example.com",
     name: "Juan",
     password: PASSWORD,
-    ...overrides,
+    roleId: await getRoleId(role),
+    ...attributes,
   });
 }
 
@@ -71,6 +90,15 @@ describe("User model with a real database", () => {
     ).resolves.toBe(true);
   });
 
+  it("persists the assigned role", async () => {
+    const created = await createUser({ role: "seller" });
+    const stored = await User.findByPk(created.id, {
+      include: { model: Role, as: "role" },
+    });
+
+    expect(stored.role.name).toBe("seller");
+  });
+
   it("enforces unique usernames", async () => {
     await createUser();
 
@@ -89,7 +117,7 @@ describe("User model with a real database", () => {
 });
 
 describe("POST /auth/login with a real database", () => {
-  it("logs in with an email and returns a valid JWT", async () => {
+  it("logs in with an email and returns a valid JWT with the role", async () => {
     const user = await createUser();
 
     const response = await login({
@@ -103,6 +131,7 @@ describe("POST /auth/login with a real database", () => {
       username: "juan",
       email: "juan@example.com",
       name: "Juan",
+      role: "customer",
     });
     expect(response.body.user).not.toHaveProperty("password");
 
@@ -112,6 +141,7 @@ describe("POST /auth/login with a real database", () => {
     expect(decoded.sub).toBe(user.id);
     expect(decoded.username).toBe("juan");
     expect(decoded.email).toBe("juan@example.com");
+    expect(decoded.role).toBe("customer");
   });
 
   it("logs in with a username", async () => {
@@ -147,7 +177,7 @@ describe("POST /auth/login with a real database", () => {
 });
 
 describe("GET /auth/me with a real database", () => {
-  it("returns the authenticated user stored in the database", async () => {
+  it("returns the authenticated user with its role", async () => {
     const user = await createUser();
     const { body } = await login({ identifier: "juan", password: PASSWORD });
 
@@ -161,6 +191,7 @@ describe("GET /auth/me with a real database", () => {
       username: "juan",
       email: "juan@example.com",
       name: "Juan",
+      role: "customer",
     });
     expect(response.body).not.toHaveProperty("password");
   });
@@ -176,5 +207,73 @@ describe("GET /auth/me with a real database", () => {
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Unauthorized" });
+  });
+});
+
+describe("GET /auth/setup-status with a real database", () => {
+  it("responds hasAdmin false when there are no administrators", async () => {
+    await createUser({ role: "seller" });
+
+    const response = await request(app).get("/auth/setup-status");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ hasAdmin: false });
+  });
+
+  it("responds hasAdmin true when an administrator exists", async () => {
+    await createUser({
+      username: "admin",
+      email: "admin@example.com",
+      role: "admin",
+    });
+
+    const response = await request(app).get("/auth/setup-status");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ hasAdmin: true });
+  });
+});
+
+describe("POST /auth/register-admin with a real database", () => {
+  const body = {
+    username: "admin",
+    email: "admin@breadking.com",
+    password: PASSWORD,
+    name: "Administrador",
+  };
+
+  it("registers the initial administrator with the administrator role", async () => {
+    const response = await request(app).post("/auth/register-admin").send(body);
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      id: expect.any(Number),
+      username: "admin",
+      email: "admin@breadking.com",
+      name: "Administrador",
+      role: "admin",
+    });
+    expect(response.body).not.toHaveProperty("password");
+
+    const stored = await User.findByPk(response.body.id, {
+      include: { model: Role, as: "role" },
+    });
+    expect(stored.role.name).toBe("admin");
+    await expect(
+      bcrypt.compare(PASSWORD, stored.getDataValue("password")),
+    ).resolves.toBe(true);
+  });
+
+  it("responds 409 when an administrator already exists", async () => {
+    await createUser({
+      username: "admin",
+      email: "admin@example.com",
+      role: "admin",
+    });
+
+    const response = await request(app).post("/auth/register-admin").send(body);
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ message: "Admin already exists" });
   });
 });

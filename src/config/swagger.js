@@ -30,6 +30,18 @@ const swaggerSpec = swaggerJsdoc({
               example: "juan@example.com",
             },
             name: { type: "string", nullable: true, example: "Juan" },
+            role: {
+              type: "string",
+              description: "Name of the role stored in the roles table",
+              example: "admin",
+            },
+          },
+        },
+        Role: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            name: { type: "string", example: "admin" },
           },
         },
         ErrorMessage: {

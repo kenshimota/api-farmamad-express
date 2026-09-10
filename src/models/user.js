@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
 const { hashPassword } = require("../auth/password");
+const Role = require("./role");
 
 /**
  * Sequelize model that represents an application user.
@@ -28,6 +29,10 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    roleId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     tableName: "users",
@@ -44,13 +49,25 @@ const User = sequelize.define(
   },
 );
 
+User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
+Role.hasMany(User, { foreignKey: "roleId", as: "users" });
+
 /**
- * Serializes the user without the password hash.
- * @returns {object} The user values without the password.
+ * Serializes the user without the password hash or the internal role id,
+ * exposing the role name instead.
+ * @returns {object} The user values without the password and roleId.
  */
 User.prototype.toJSON = function toJSON() {
   const values = { ...this.get() };
+  const role = this.get("role");
+
   delete values.password;
+  delete values.roleId;
+
+  if (role) {
+    values.role = role.name;
+  }
+
   return values;
 };
 
