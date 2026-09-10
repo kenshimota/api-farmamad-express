@@ -9,6 +9,9 @@ describe("swagger spec", () => {
         "/health",
         "/auth/login",
         "/auth/me",
+        "/auth/setup-status",
+        "/auth/register-admin",
+        "/users",
       ]),
     );
   });
@@ -19,5 +22,16 @@ describe("swagger spec", () => {
       scheme: "bearer",
       bearerFormat: "JWT",
     });
+  });
+
+  it("documents the Role schema and the role field in User", () => {
+    expect(swaggerSpec.components.schemas.Role).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        name: { type: "string" },
+      },
+    });
+    expect(swaggerSpec.components.schemas.User.properties.role).toBeDefined();
   });
 });

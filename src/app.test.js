@@ -1,10 +1,17 @@
 jest.mock("./database", () => ({
   authenticate: jest.fn().mockResolvedValue(),
+  transaction: jest.fn(),
 }));
 
 jest.mock("./models/user", () => ({
   findOne: jest.fn(),
   findByPk: jest.fn(),
+  count: jest.fn(),
+  create: jest.fn(),
+}));
+
+jest.mock("./models/role", () => ({
+  findOne: jest.fn(),
 }));
 
 const request = require("supertest");
@@ -32,6 +39,20 @@ describe("app", () => {
     expect(response.body).toEqual({
       message: "identifier and password are required",
     });
+  });
+
+  it("exposes GET /auth/setup-status", async () => {
+    const response = await request(app).get("/auth/setup-status");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ hasAdmin: false });
+  });
+
+  it("exposes POST /users behind authentication", async () => {
+    const response = await request(app).post("/users").send({});
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: "Unauthorized" });
   });
 
   it("serves the swagger docs", async () => {
