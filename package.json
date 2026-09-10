@@ -2,13 +2,17 @@
   "name": "api-bread-king",
   "version": "1.0.0",
   "description": "To make it easy for you to get started with GitLab, here's a list of recommended next steps.",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "format": "prettier --write ."
   },
   "repository": {
     "type": "git",
-    "url": "git+https://kenshimota:glpat-REDACTED@gitlab.com/kenshimota/api-bread-king.git"
+    "url": "git+https://gitlab.com/kenshimota/api-bread-king.git"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +26,17 @@
     "express": "^5.2.1",
     "pg": "^8.23.0",
     "sequelize": "^6.37.8",
-    "sequelize-cli": "^6.6.5"
+    "sequelize-cli": "^6.6.5",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "jest": "^30.5.1",
+    "prettier": "^3.9.6",
+    "supertest": "^7.2.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "clearMocks": true
   }
 }
