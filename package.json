@@ -17,5 +17,11 @@
   "bugs": {
     "url": "https://gitlab.com/kenshimota/api-bread-king/issues"
   },
-  "homepage": "https://gitlab.com/kenshimota/api-bread-king#readme"
+  "homepage": "https://gitlab.com/kenshimota/api-bread-king#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "pg": "^8.23.0",
+    "sequelize": "^6.37.8",
+    "sequelize-cli": "^6.6.5"
+  }
 }
