@@ -19,4 +19,11 @@ describe("app", () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: "ok", database: "up" });
   });
+
+  it("serves the swagger docs", async () => {
+    const response = await request(app).get("/docs/");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toMatch(/text\/html/);
+  });
 });
