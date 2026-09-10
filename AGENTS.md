@@ -5,10 +5,12 @@ Express 5 API (CommonJS, Node 24) that talks to Postgres through Sequelize 6 (`p
 
 ## Commands
 - `npm start` runs the API (`node src/index.js`); `npm run dev` uses `node --watch`.
-- `npm test` runs Jest; single module: `npm test -- <nombre_modulo>` (e.g. `npm test -- health`). `npm run test:coverage` for coverage.
+- `npm test` runs the unit suite; single module: `npm test -- <nombre_modulo>` (e.g. `npm test -- health`). `npm run test:coverage` for coverage. Unit tests never need Postgres.
+- `npm run test:integration` runs `jest.integration.config.js` against a real Postgres database whose name must end in `_test` (default `bread_king_test`, override with `DB_NAME_TEST`); it creates the DB and applies the migrations automatically. Requires `docker-compose up -d db`. `npm run test:all` runs unit + integration.
+- `npm run db:create`, `npm run db:migrate` and `npm run db:rollback` use `sequelize-cli` through `.sequelizerc` (CLI config in `src/config/sequelize-cli.js`, migrations in `migrations/`).
 - Prettier is installed: `npx prettier --write <archivo>` or `npm run format`. No lint or typecheck tooling exists.
 - `docker-compose up` builds `api` + `postgres:17-alpine` (`db`). Only standalone `docker-compose` v1 is installed on this machine; the `docker compose` plugin is not.
-- Env vars: `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (see `.env.example`); Sequelize defaults to `bread_king` on `localhost:5432`.
+- Env vars: `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_NAME_TEST`, `DB_HOST_TEST`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRES_IN` (see `.env.example`); Sequelize defaults to `bread_king` on `localhost:5432`, and integration tests connect to `localhost` unless `DB_HOST_TEST` is set.
 
 ## Structure
 - All source lives under `src/`: `src/index.js` boots the server, `src/app.js` builds the Express app (tested with supertest).

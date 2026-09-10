@@ -8,6 +8,8 @@
     "dev": "node --watch src/index.js",
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "test:integration": "jest --config jest.integration.config.js",
+    "test:all": "npm test && npm run test:integration",
     "format": "prettier --write .",
     "db:create": "sequelize-cli db:create",
     "db:migrate": "sequelize-cli db:migrate",
