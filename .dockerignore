@@ -1,0 +1,11 @@
+/.opencode
+node_modules
+coverage
+.git
+.gitignore
+.env
+*.md
+**/*.test.js
+docker-compose.yml
+Dockerfile
+.dockerignore
