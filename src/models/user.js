@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
 const { hashPassword } = require("../auth/password");
 const Role = require("./role");
+const PasswordResetCode = require("./password-reset-code");
 
 /**
  * Sequelize model that represents an application user.
@@ -51,6 +52,12 @@ const User = sequelize.define(
 
 User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
 Role.hasMany(User, { foreignKey: "roleId", as: "users" });
+
+User.hasMany(PasswordResetCode, {
+  foreignKey: "userId",
+  as: "passwordResetCodes",
+});
+PasswordResetCode.belongsTo(User, { foreignKey: "userId", as: "user" });
 
 /**
  * Serializes the user without the password hash or the internal role id,
