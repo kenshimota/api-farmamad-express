@@ -46,6 +46,18 @@ describe("getTransport", () => {
     expect(getTransport()).toBe(transport);
     expect(nodemailer.createTransport).not.toHaveBeenCalled();
   });
+
+  it("discards the injected transport when it is reset", () => {
+    const injected = { sendMail: jest.fn() };
+    const created = { sendMail: jest.fn() };
+    setTransport(injected);
+    nodemailer.createTransport.mockReturnValue(created);
+
+    resetTransport();
+
+    expect(getTransport()).toBe(created);
+    expect(nodemailer.createTransport).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("MailDeliveryError", () => {
@@ -54,6 +66,13 @@ describe("MailDeliveryError", () => {
 
     expect(error.name).toBe("MailDeliveryError");
     expect(error.cause).toBeUndefined();
+  });
+
+  it("keeps the original error as the cause", () => {
+    const cause = new Error("smtp down");
+    const error = new MailDeliveryError("boom", cause);
+
+    expect(error.cause).toBe(cause);
   });
 });
 
@@ -69,8 +88,19 @@ describe("sendRecoveryCode", () => {
     expect(message.from).toBe(USERNAME);
     expect(message.to).toBe("juan@example.com");
     expect(message.subject).toMatch(/recuperación/i);
-    expect(message.text).toContain(CODE);
-    expect(message.text).toMatch(/5 minutos/);
+    expect(message.text).toBe(
+      [
+        "Hola,",
+        "",
+        "Recibimos una solicitud para restablecer tu contraseña en Bread King.",
+        `Tu código de recuperación es: ${CODE}`,
+        "",
+        "El código es válido durante 5 minutos. Si no solicitaste este cambio, " +
+          "ignora este correo.",
+        "",
+        "Equipo Bread King",
+      ].join("\n"),
+    );
   });
 
   it("wraps delivery failures in a MailDeliveryError", async () => {

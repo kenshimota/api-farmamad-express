@@ -39,6 +39,27 @@ function generateCode() {
 }
 
 /**
+ * Finds the most recent code of a user, optionally restricting the search to
+ * codes that have not been consumed, and locks the row for update.
+ * @param {number} userId - User primary key.
+ * @param {object} options - Query options.
+ * @param {import("sequelize").Transaction} options.transaction - Transaction.
+ * @param {boolean} [options.pendingOnly] - Restrict to pending codes.
+ * @returns {Promise<object|null>} The latest matching code, if any.
+ */
+function findLatestCode(userId, { transaction, pendingOnly = false }) {
+  return PasswordResetCode.findOne({
+    where: pendingOnly ? { userId, consumedAt: null } : { userId },
+    order: [
+      ["createdAt", "DESC"],
+      ["id", "DESC"],
+    ],
+    lock: transaction.LOCK.UPDATE,
+    transaction,
+  });
+}
+
+/**
  * Marks every pending code of a user as consumed.
  * @param {number} userId - User primary key.
  * @param {object} [options] - Sequelize options.
@@ -70,15 +91,7 @@ async function invalidateCodes(
  */
 async function issueCode(userId, { sendCode, now = clock.now() } = {}) {
   return sequelize.transaction(async (transaction) => {
-    const lastCode = await PasswordResetCode.findOne({
-      where: { userId },
-      order: [
-        ["createdAt", "DESC"],
-        ["id", "DESC"],
-      ],
-      lock: transaction.LOCK.UPDATE,
-      transaction,
-    });
+    const lastCode = await findLatestCode(userId, { transaction });
 
     if (
       lastCode &&
@@ -123,14 +136,9 @@ async function issueCode(userId, { sendCode, now = clock.now() } = {}) {
  */
 async function consumeCode(userId, code, { now = clock.now() } = {}) {
   return sequelize.transaction(async (transaction) => {
-    const resetCode = await PasswordResetCode.findOne({
-      where: { userId, consumedAt: null },
-      order: [
-        ["createdAt", "DESC"],
-        ["id", "DESC"],
-      ],
-      lock: transaction.LOCK.UPDATE,
+    const resetCode = await findLatestCode(userId, {
       transaction,
+      pendingOnly: true,
     });
 
     if (!resetCode || resetCode.expiresAt.getTime() <= now.getTime()) {

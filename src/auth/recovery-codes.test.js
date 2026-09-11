@@ -44,6 +44,11 @@ describe("recovery code configuration", () => {
     expect(CODE_TTL_MINUTES).toBe(5);
     expect(RESEND_COOLDOWN_MINUTES).toBe(2);
   });
+
+  it("exposes the documented status values", () => {
+    expect(ISSUE_STATUS).toEqual({ ISSUED: "issued", COOLDOWN: "cooldown" });
+    expect(CONSUME_STATUS).toEqual({ VALID: "valid", INVALID: "invalid" });
+  });
 });
 
 describe("generateCode", () => {

@@ -21,6 +21,7 @@ describe("clock", () => {
     expect(clock.now()).toBe(FIXED);
 
     clock.resetClock();
+    expect(clock.now()).toBeInstanceOf(Date);
     expect(clock.now()).not.toBe(FIXED);
   });
 });
