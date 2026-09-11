@@ -147,6 +147,16 @@ describe("issueCode", () => {
     expect(result.status).toBe(ISSUE_STATUS.ISSUED);
     expect(PasswordResetCode.create).toHaveBeenCalledTimes(1);
   });
+
+  it("issues a new code when exactly the cooldown has elapsed", async () => {
+    PasswordResetCode.findOne.mockResolvedValue({
+      createdAt: new Date(NOW.getTime() - 2 * 60 * 1000),
+    });
+
+    const result = await issueCode(1);
+
+    expect(result.status).toBe(ISSUE_STATUS.ISSUED);
+  });
 });
 
 describe("consumeCode", () => {
@@ -177,6 +187,16 @@ describe("consumeCode", () => {
 
   it("responds invalid and keeps the code pending when it is expired", async () => {
     const record = storedCode({ expiresAt: new Date(NOW.getTime() - 1) });
+    PasswordResetCode.findOne.mockResolvedValue(record);
+
+    const result = await consumeCode(1, CODE);
+
+    expect(result.status).toBe(CONSUME_STATUS.INVALID);
+    expect(record.save).not.toHaveBeenCalled();
+  });
+
+  it("responds invalid when the code expires exactly now", async () => {
+    const record = storedCode({ expiresAt: NOW });
     PasswordResetCode.findOne.mockResolvedValue(record);
 
     const result = await consumeCode(1, CODE);
