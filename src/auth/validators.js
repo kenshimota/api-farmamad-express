@@ -34,6 +34,41 @@ const registerAdminSchema = yup.object({
   name: yup.string().trim().nullable(),
 });
 
+const INVALID_EMAIL_MESSAGE = "Email inválido";
+const INVALID_CODE_MESSAGE = "El código debe tener 8 dígitos";
+
+/**
+ * Builds the email schema shared by the recovery endpoints.
+ * @returns {import("yup").StringSchema} The email schema.
+ */
+function emailField() {
+  return yup
+    .string()
+    .trim()
+    .typeError(INVALID_EMAIL_MESSAGE)
+    .email(INVALID_EMAIL_MESSAGE);
+}
+
+const forgotPasswordSchema = yup.object({
+  email: emailField(),
+});
+
+const verifyResetCodeSchema = yup.object({
+  email: emailField(),
+  code: yup
+    .string()
+    .typeError(INVALID_CODE_MESSAGE)
+    .matches(/^\d{8}$/, INVALID_CODE_MESSAGE),
+});
+
+const resetPasswordSchema = yup.object({
+  password: passwordField(),
+  passwordConfirmation: yup
+    .string()
+    .typeError("Passwords do not match")
+    .oneOf([yup.ref("password")], "Passwords do not match"),
+});
+
 /**
  * Flattens a yup validation error into the API error map.
  * @param {import("yup").ValidationError} error - The yup validation error.
@@ -104,6 +139,9 @@ module.exports = {
   PASSWORD_MIN_LENGTH,
   loginSchema,
   registerAdminSchema,
+  forgotPasswordSchema,
+  verifyResetCodeSchema,
+  resetPasswordSchema,
   formatValidationErrors,
   formatLoginErrors,
   missingFields,

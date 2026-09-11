@@ -14,6 +14,12 @@ jest.mock("./models/role", () => ({
   findOne: jest.fn(),
 }));
 
+jest.mock("./models/password-reset-code", () => ({
+  findOne: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+}));
+
 const request = require("supertest");
 const app = require("./app");
 

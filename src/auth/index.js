@@ -1,39 +1,16 @@
 const { Router } = require("express");
-const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
 const User = require("../models/user");
 const Role = require("../models/role");
 const { verifyPassword } = require("./password");
 const { loginSchema, formatLoginErrors } = require("./validators");
-const { authenticate, getJwtSecret } = require("./middleware");
-const { getRoleName, toPublicUser } = require("./serializers");
+const { authenticate } = require("./middleware");
+const { signToken } = require("./tokens");
+const { toPublicUser } = require("./serializers");
 const bootstrapRouter = require("./bootstrap");
+const passwordResetRouter = require("./password-reset");
 
 const router = Router();
-
-const JWT_ALGORITHM = "HS256";
-const DEFAULT_EXPIRES_IN = "1h";
-
-/**
- * Signs a JWT for the given user, including the role name.
- * @param {object} user - Authenticated user.
- * @returns {string} The signed JWT.
- */
-function signToken(user) {
-  return jwt.sign(
-    {
-      sub: user.id,
-      username: user.username,
-      email: user.email,
-      role: getRoleName(user),
-    },
-    getJwtSecret(),
-    {
-      algorithm: JWT_ALGORITHM,
-      expiresIn: process.env.JWT_EXPIRES_IN || DEFAULT_EXPIRES_IN,
-    },
-  );
-}
 
 /**
  * @openapi
@@ -171,6 +148,7 @@ router.get("/me", authenticate, async (req, res) => {
   return res.json(toPublicUser(user));
 });
 
+router.use(passwordResetRouter);
 router.use(bootstrapRouter);
 
 module.exports = router;
