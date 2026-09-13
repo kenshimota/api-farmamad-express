@@ -7,6 +7,12 @@ jest.mock("../models/user", () => ({
 
 jest.mock("../models/role", () => ({ findOne: jest.fn() }));
 
+jest.mock("../models/password-reset-code", () => ({
+  findOne: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+}));
+
 jest.mock("../database", () => ({ transaction: jest.fn() }));
 
 const express = require("express");

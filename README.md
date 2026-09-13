@@ -16,7 +16,8 @@ La documentación interactiva (Swagger UI) está disponible en
 `http://localhost:3000/docs`.
 
 Variables de entorno relevantes: `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`,
-`DB_USER`, `DB_PASSWORD`, `JWT_SECRET` y `JWT_EXPIRES_IN` (ver `.env.example`).
+`DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `GMAIL_USERNAME` y
+`GMAIL_TOKEN` (ver `.env.example`).
 
 ## Autenticación
 
@@ -155,6 +156,105 @@ Protegido. Devuelve los datos públicos del usuario autenticado, incluido su
 ```bash
 curl http://localhost:3000/auth/me -H "Authorization: Bearer <jwt>"
 ```
+
+### `POST /auth/forgot-password`
+
+Público. Envía un código de recuperación de 8 dígitos al email si la cuenta
+existe. La respuesta es siempre la misma para no revelar qué emails están
+registrados; si el email no existe no se envía correo. Solo se puede pedir un
+código nuevo cada 2 minutos (si no, responde `429`).
+
+```bash
+curl -X POST http://localhost:3000/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"juan@example.com"}'
+```
+
+Respuesta `200` (exista o no el email):
+
+```json
+{ "message": "If the email exists, a recovery code was sent" }
+```
+
+Errores:
+
+| Código | Cuerpo                                                      |
+| ------ | ----------------------------------------------------------- |
+| `400`  | `{ "message": "email is required" }`                        |
+| `422`  | `{ "errors": { "email": "Email inválido" } }`               |
+| `429`  | `{ "message": "Please wait before requesting a new code" }` |
+| `502`  | `{ "message": "Could not send the recovery email" }`        |
+
+### `POST /auth/verify-reset-code`
+
+Público. Valida el código de 8 dígitos (válido 5 minutos, un solo uso) y
+devuelve un JWT con los datos públicos del usuario, de modo que la sesión queda
+iniciada.
+
+```bash
+curl -X POST http://localhost:3000/auth/verify-reset-code \
+  -H "Content-Type: application/json" \
+  -d '{"email":"juan@example.com","code":"00427193"}'
+```
+
+Respuesta `200`:
+
+```json
+{
+  "token": "<jwt>",
+  "user": {
+    "id": 1,
+    "username": "juan",
+    "email": "juan@example.com",
+    "name": "Juan",
+    "role": "customer"
+  }
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                       |
+| ------ | ------------------------------------------------------------ |
+| `400`  | `{ "message": "email and code are required" }`               |
+| `401`  | `{ "message": "Invalid or expired code" }`                   |
+| `422`  | `{ "errors": { "code": "El código debe tener 8 dígitos" } }` |
+
+### `POST /auth/reset-password`
+
+Protegido: requiere `Authorization: Bearer <jwt>` (el de
+`POST /auth/verify-reset-code` o el de `POST /auth/login`). Cambia la
+contraseña del usuario autenticado e invalida todos los códigos de recuperación
+pendientes. La contraseña nunca viaja en la respuesta: se guarda como hash
+bcrypt.
+
+Campos: `password` (mínimo 8 caracteres) y `passwordConfirmation`, ambos
+requeridos y con el mismo valor.
+
+```bash
+curl -X POST http://localhost:3000/auth/reset-password \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"nuevaClave123","passwordConfirmation":"nuevaClave123"}'
+```
+
+Respuesta `200`:
+
+```json
+{ "message": "Password updated" }
+```
+
+Errores:
+
+| Código | Cuerpo                                                               |
+| ------ | -------------------------------------------------------------------- |
+| `400`  | `{ "message": "password and passwordConfirmation are required" }`    |
+| `401`  | `{ "message": "Unauthorized" }`                                      |
+| `422`  | `{ "errors": { "passwordConfirmation": "Passwords do not match" } }` |
+
+Los correos se envían con Nodemailer a través de Gmail: configura
+`GMAIL_USERNAME` (cuenta remitente) y `GMAIL_TOKEN` (App Password de 16
+caracteres, nunca la contraseña normal de la cuenta).
 
 ### `POST /users`
 
