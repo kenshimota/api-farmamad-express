@@ -13,7 +13,7 @@ npm start
 ```
 
 La documentación interactiva (Swagger UI) está disponible en
-`http://localhost:3000/docs`.
+`http://localhost:3001/docs`.
 
 Variables de entorno relevantes: `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`,
 `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `GMAIL_USERNAME` y
@@ -46,7 +46,7 @@ con el seeder idempotente `seeders/20260910000001-roles.js`:
 Público. Devuelve un mensaje de saludo de prueba.
 
 ```bash
-curl http://localhost:3000/hello-world
+curl http://localhost:3001/hello-world
 ```
 
 Respuesta `200`:
@@ -60,7 +60,7 @@ Respuesta `200`:
 Público. Reporta la salud de la API y de la base de datos.
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 ```
 
 Respuesta `200`:
@@ -81,7 +81,7 @@ Público. Indica si el sistema ya tiene al menos un admin, para decidir
 si se debe mostrar el formulario de registro inicial.
 
 ```bash
-curl http://localhost:3000/auth/setup-status
+curl http://localhost:3001/auth/setup-status
 ```
 
 ```json
@@ -98,7 +98,7 @@ Campos: `username`, `email`, `password` (mínimo 8 caracteres, requeridos) y
 `name` (opcional).
 
 ```bash
-curl -X POST http://localhost:3000/auth/register-admin \
+curl -X POST http://localhost:3001/auth/register-admin \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","email":"admin@breadking.com","password":"secreto123","name":"Administrador"}'
 ```
@@ -128,7 +128,7 @@ Errores:
 Público. Autentica con `identifier` (email o username) y `password`.
 
 ```bash
-curl -X POST http://localhost:3000/auth/login \
+curl -X POST http://localhost:3001/auth/login \
   -H "Content-Type: application/json" \
   -d '{"identifier":"admin@breadking.com","password":"secreto123"}'
 ```
@@ -154,7 +154,7 @@ Protegido. Devuelve los datos públicos del usuario autenticado, incluido su
 `role`.
 
 ```bash
-curl http://localhost:3000/auth/me -H "Authorization: Bearer <jwt>"
+curl http://localhost:3001/auth/me -H "Authorization: Bearer <jwt>"
 ```
 
 ### `POST /auth/forgot-password`
@@ -165,7 +165,7 @@ registrados; si el email no existe no se envía correo. Solo se puede pedir un
 código nuevo cada 2 minutos (si no, responde `429`).
 
 ```bash
-curl -X POST http://localhost:3000/auth/forgot-password \
+curl -X POST http://localhost:3001/auth/forgot-password \
   -H "Content-Type: application/json" \
   -d '{"email":"juan@example.com"}'
 ```
@@ -192,7 +192,7 @@ devuelve un JWT con los datos públicos del usuario, de modo que la sesión qued
 iniciada.
 
 ```bash
-curl -X POST http://localhost:3000/auth/verify-reset-code \
+curl -X POST http://localhost:3001/auth/verify-reset-code \
   -H "Content-Type: application/json" \
   -d '{"email":"juan@example.com","code":"00427193"}'
 ```
@@ -232,7 +232,7 @@ Campos: `password` (mínimo 8 caracteres) y `passwordConfirmation`, ambos
 requeridos y con el mismo valor.
 
 ```bash
-curl -X POST http://localhost:3000/auth/reset-password \
+curl -X POST http://localhost:3001/auth/reset-password \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
   -d '{"password":"nuevaClave123","passwordConfirmation":"nuevaClave123"}'
@@ -266,7 +266,7 @@ Campos: `username`, `email`, `password` (mínimo 8 caracteres) y `role`
 `409`; si el rol no existe responde `422`.
 
 ```bash
-curl -X POST http://localhost:3000/users \
+curl -X POST http://localhost:3001/users \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
   -d '{"username":"maria","email":"maria@breadking.com","password":"secreto123","name":"María","role":"seller"}'
