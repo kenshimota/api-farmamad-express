@@ -57,6 +57,8 @@ beforeEach(() => {
     role: { name: "customer" },
     save: jest.fn(),
   };
+  User.findByPk.mockReset();
+  User.findByPk.mockResolvedValue(user);
   token = jwt.sign({ sub: 1, username: "juan", role: "customer" }, SECRET, {
     expiresIn: "1h",
   });

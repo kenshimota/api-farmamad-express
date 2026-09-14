@@ -63,6 +63,7 @@ beforeEach(() => {
     name: "Juan",
     password: bcrypt.hashSync(PASSWORD, 10),
     role: { name: "customer" },
+    isBlocked: false,
     save: jest.fn(),
   };
 });
@@ -278,6 +279,7 @@ describe("POST /auth/verify-reset-code", () => {
       email: "juan@example.com",
       name: "Juan",
       role: "customer",
+      isBlocked: false,
     });
     expect(response.body.user).not.toHaveProperty("password");
     expect(save).toHaveBeenCalledWith({ transaction: TRANSACTION });

@@ -22,6 +22,7 @@ const INVALID_CODE_MESSAGE = "Invalid or expired code";
 const COOLDOWN_MESSAGE = "Please wait before requesting a new code";
 const MAIL_ERROR_MESSAGE = "Could not send the recovery email";
 const UNAUTHORIZED_MESSAGE = "Unauthorized";
+const BLOCKED_MESSAGE = "User is blocked";
 const FORGOT_FIELDS = ["email"];
 const VERIFY_FIELDS = ["email", "code"];
 const RESET_FIELDS = ["password", "passwordConfirmation"];
@@ -133,6 +134,12 @@ router.post(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorMessage' }
  *             example: { message: Invalid or expired code }
+ *       403:
+ *         description: The account is blocked; the code is not consumed
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorMessage' }
+ *             example: { message: User is blocked }
  *       422:
  *         description: Invalid email or code format
  *         content:
@@ -152,6 +159,10 @@ router.post(
       req.validated.email,
       req.validated.code,
     );
+
+    if (result.blocked) {
+      return res.status(403).json({ message: BLOCKED_MESSAGE });
+    }
 
     if (!result.valid) {
       return res.status(401).json({ message: INVALID_CODE_MESSAGE });

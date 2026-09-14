@@ -222,6 +222,7 @@ describe("POST /auth/verify-reset-code with a real database", () => {
       email: EMAIL,
       name: "Juan",
       role: "customer",
+      isBlocked: false,
     });
     expect(response.body).not.toHaveProperty("password");
 
