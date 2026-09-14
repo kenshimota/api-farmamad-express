@@ -1,0 +1,7 @@
+# Archivo: hello.http
+# Módulo: hello  ->  GET /hello-world
+# Público. Devuelve un mensaje de saludo de prueba.
+
+### GET /hello-world — mensaje de saludo (200)
+GET {{baseUrl}}/hello-world
+Accept: application/json

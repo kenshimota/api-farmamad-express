@@ -9,6 +9,9 @@ describe("swagger spec", () => {
         "/health",
         "/auth/login",
         "/auth/me",
+        "/auth/setup-status",
+        "/auth/register-admin",
+        "/users",
       ]),
     );
   });
@@ -19,5 +22,40 @@ describe("swagger spec", () => {
       scheme: "bearer",
       bearerFormat: "JWT",
     });
+  });
+
+  it("documents the Role schema and the role field in User", () => {
+    expect(swaggerSpec.components.schemas.Role).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        name: { type: "string" },
+      },
+    });
+    expect(swaggerSpec.components.schemas.User.properties.role).toBeDefined();
+  });
+
+  it("documents the generic 500 and 404 schemas and responses", () => {
+    expect(swaggerSpec.components.schemas.InternalServerError).toMatchObject({
+      type: "object",
+      properties: {
+        message: { type: "string", example: "Internal server error" },
+      },
+    });
+    expect(swaggerSpec.components.schemas.NotFound).toMatchObject({
+      type: "object",
+      properties: { message: { type: "string", example: "Not found" } },
+    });
+    expect(swaggerSpec.components.responses.InternalServerError).toBeDefined();
+    expect(swaggerSpec.components.responses.NotFound).toBeDefined();
+  });
+
+  it("references the generic 500 and 404 responses in every endpoint", () => {
+    for (const path of Object.values(swaggerSpec.paths)) {
+      for (const operation of Object.values(path)) {
+        expect(operation.responses["500"]).toBeDefined();
+        expect(operation.responses["404"]).toBeDefined();
+      }
+    }
   });
 });

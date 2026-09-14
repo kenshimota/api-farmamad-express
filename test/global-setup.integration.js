@@ -34,7 +34,25 @@ async function createDatabaseIfMissing(database) {
 }
 
 /**
- * Jest global setup: ensures the test database exists and runs the migrations.
+ * Runs a sequelize-cli command against the test environment.
+ * @param {string} command - sequelize-cli command, e.g. "db:migrate".
+ * @returns {void}
+ */
+function runSequelizeCli(command) {
+  execFileSync(
+    process.execPath,
+    [require.resolve("sequelize-cli/lib/sequelize"), command, "--env", "test"],
+    {
+      cwd: PROJECT_ROOT,
+      env: { ...process.env, NODE_ENV: "test" },
+      stdio: "inherit",
+    },
+  );
+}
+
+/**
+ * Jest global setup: ensures the test database exists, runs the migrations and
+ * seeds the role catalog.
  * @returns {Promise<void>}
  */
 module.exports = async () => {
@@ -42,18 +60,6 @@ module.exports = async () => {
 
   await createDatabaseIfMissing(testDatabase);
 
-  execFileSync(
-    process.execPath,
-    [
-      require.resolve("sequelize-cli/lib/sequelize"),
-      "db:migrate",
-      "--env",
-      "test",
-    ],
-    {
-      cwd: PROJECT_ROOT,
-      env: { ...process.env, NODE_ENV: "test" },
-      stdio: "inherit",
-    },
-  );
+  runSequelizeCli("db:migrate");
+  runSequelizeCli("db:seed:all");
 };

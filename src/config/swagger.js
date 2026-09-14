@@ -18,6 +18,25 @@ const swaggerSpec = swaggerJsdoc({
           bearerFormat: "JWT",
         },
       },
+      responses: {
+        InternalServerError: {
+          description:
+            "Unexpected internal error; the client only receives a generic message",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/InternalServerError" },
+            },
+          },
+        },
+        NotFound: {
+          description: "The requested route does not exist",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/NotFound" },
+            },
+          },
+        },
+      },
       schemas: {
         User: {
           type: "object",
@@ -30,11 +49,64 @@ const swaggerSpec = swaggerJsdoc({
               example: "juan@example.com",
             },
             name: { type: "string", nullable: true, example: "Juan" },
+            role: {
+              type: "string",
+              description: "Name of the role stored in the roles table",
+              example: "admin",
+            },
+          },
+        },
+        Role: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            name: { type: "string", example: "admin" },
           },
         },
         ErrorMessage: {
           type: "object",
           properties: { message: { type: "string" } },
+        },
+        InternalServerError: {
+          type: "object",
+          description: "Generic error body that never leaks the real cause",
+          properties: {
+            message: { type: "string", example: "Internal server error" },
+          },
+        },
+        NotFound: {
+          type: "object",
+          description: "Body returned for unknown routes",
+          properties: {
+            message: { type: "string", example: "Not found" },
+          },
+        },
+        TokenResponse: {
+          type: "object",
+          properties: {
+            token: {
+              type: "string",
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            },
+            user: { $ref: "#/components/schemas/User" },
+          },
+        },
+        PasswordResetCode: {
+          type: "object",
+          description:
+            "One-time recovery code; only the bcrypt hash is persisted",
+          properties: {
+            id: { type: "integer", example: 1 },
+            userId: { type: "integer", example: 1 },
+            codeHash: {
+              type: "string",
+              description: "bcrypt hash of the 8-digit code, never the code",
+            },
+            expiresAt: { type: "string", format: "date-time" },
+            consumedAt: { type: "string", format: "date-time", nullable: true },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
         },
         ValidationErrors: {
           type: "object",

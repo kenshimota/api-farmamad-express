@@ -1,0 +1,50 @@
+# Archivo: users.http
+# Módulo: users  ->  POST /users
+# Protegido: requiere un JWT con rol admin.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /users — crea un usuario (201)
+# Roles válidos (tabla roles): admin, seller, delivery, freelance_delivery, customer.
+POST {{baseUrl}}/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "{{newUserUsername}}",
+  "email": "{{newUserEmail}}",
+  "password": "{{newUserPassword}}",
+  "name": "{{newUserName}}",
+  "role": "{{newUserRole}}"
+}
+
+### POST /users — sin token (401 Unauthorized)
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "username": "{{newUserUsername}}",
+  "email": "{{newUserEmail}}",
+  "password": "{{newUserPassword}}",
+  "role": "{{newUserRole}}"
+}
+
+### POST /users — rol inválido (422)
+POST {{baseUrl}}/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "pedro",
+  "email": "pedro@breadking.com",
+  "password": "secreto123",
+  "role": "no-existe"
+}
+
+### POST /users — faltan campos (400)
+POST {{baseUrl}}/users
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "username": "incompleto"
+}

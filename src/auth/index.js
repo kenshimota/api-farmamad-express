@@ -1,46 +1,16 @@
 const { Router } = require("express");
-const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
 const User = require("../models/user");
+const Role = require("../models/role");
 const { verifyPassword } = require("./password");
 const { loginSchema, formatLoginErrors } = require("./validators");
-const { authenticate, getJwtSecret } = require("./middleware");
+const { authenticate } = require("./middleware");
+const { signToken } = require("./tokens");
+const { toPublicUser } = require("./serializers");
+const bootstrapRouter = require("./bootstrap");
+const passwordResetRouter = require("./password-reset");
 
 const router = Router();
-
-const JWT_ALGORITHM = "HS256";
-const DEFAULT_EXPIRES_IN = "1h";
-
-/**
- * Builds the public representation of a user, excluding the password hash.
- * @param {object} user - User instance or plain object.
- * @returns {{ id: number, username: string, email: string, name: string|null }}
- *   The public user data.
- */
-function toPublicUser(user) {
-  return {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    name: user.name,
-  };
-}
-
-/**
- * Signs a JWT for the given user.
- * @param {object} user - Authenticated user.
- * @returns {string} The signed JWT.
- */
-function signToken(user) {
-  return jwt.sign(
-    { sub: user.id, username: user.username, email: user.email },
-    getJwtSecret(),
-    {
-      algorithm: JWT_ALGORITHM,
-      expiresIn: process.env.JWT_EXPIRES_IN || DEFAULT_EXPIRES_IN,
-    },
-  );
-}
 
 /**
  * @openapi
@@ -102,6 +72,10 @@ function signToken(user) {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationErrors'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.post("/login", async (req, res) => {
   const { identifier, password } = req.body ?? {};
@@ -131,6 +105,7 @@ router.post("/login", async (req, res) => {
         { username: credentials.identifier },
       ],
     },
+    include: { model: Role, as: "role" },
   });
 
   if (!user || !(await verifyPassword(credentials.password, user.password))) {
@@ -164,9 +139,15 @@ router.post("/login", async (req, res) => {
  *               $ref: '#/components/schemas/ErrorMessage'
  *             example:
  *               message: Unauthorized
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/me", authenticate, async (req, res) => {
-  const user = await User.findByPk(req.user.sub);
+  const user = await User.findByPk(req.user.sub, {
+    include: { model: Role, as: "role" },
+  });
 
   if (!user) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -174,5 +155,8 @@ router.get("/me", authenticate, async (req, res) => {
 
   return res.json(toPublicUser(user));
 });
+
+router.use(passwordResetRouter);
+router.use(bootstrapRouter);
 
 module.exports = router;

@@ -1,0 +1,90 @@
+# Archivo: auth.http
+# Módulo: auth
+# Orden recomendado de ejecución:
+#   1. setup-status
+#   2. register-admin  (solo si hasAdmin == false)
+#   3. login           (guarda {{token}} automáticamente)
+#   4. me
+#   5. forgot-password -> copia el código del correo en @resetCode
+#   6. verify-reset-code
+#   7. reset-password
+
+# Código de 8 dígitos que llega al correo en forgot-password.
+@resetCode = 00000000
+
+### GET /auth/setup-status — ¿ya existe un admin? (200)
+# Público. Si devuelve { "hasAdmin": false }, ejecuta register-admin.
+GET {{baseUrl}}/auth/setup-status
+Accept: application/json
+
+### POST /auth/register-admin — registra el admin inicial (201)
+# Público. Solo funciona si no existe ningún admin; si ya existe devuelve 409.
+POST {{baseUrl}}/auth/register-admin
+Content-Type: application/json
+
+{
+  "username": "{{adminUsername}}",
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}",
+  "name": "{{adminName}}"
+}
+
+### POST /auth/login — autentica y guarda el token (200)
+# identifier acepta email o username. La respuesta se captura en {{token}}.
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+  client.global.set("token", response.body.token);
+%}
+
+### GET /auth/me — datos del usuario autenticado (200)
+# Requiere Authorization: Bearer <jwt>. Usa el {{token}} capturado en login.
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### GET /auth/me — sin token (401 Unauthorized)
+GET {{baseUrl}}/auth/me
+Accept: application/json
+
+### POST /auth/forgot-password — pide código de recuperación (200)
+# Público. Siempre responde lo mismo exista o no el email. Cooldown de 2 min (429).
+# Revisa el correo y pega el código de 8 dígitos en @resetCode.
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}"
+}
+
+### POST /auth/verify-reset-code — valida el código y devuelve JWT (200)
+# Público. El código dura 5 minutos y es de un solo uso.
+POST {{baseUrl}}/auth/verify-reset-code
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "code": "{{resetCode}}"
+}
+
+> {%
+  client.global.set("token", response.body.token);
+%}
+
+### POST /auth/reset-password — cambia la contraseña (200)
+# Requiere Authorization: Bearer <jwt> (login o verify-reset-code).
+POST {{baseUrl}}/auth/reset-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "password": "{{resetPassword}}",
+  "passwordConfirmation": "{{resetPassword}}"
+}

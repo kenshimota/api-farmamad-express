@@ -5,12 +5,23 @@ jest.mock("../models/user", () => ({
   findByPk: jest.fn(),
 }));
 
+jest.mock("../models/role", () => ({ findOne: jest.fn() }));
+
+jest.mock("../models/password-reset-code", () => ({
+  findOne: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+}));
+
+jest.mock("../database", () => ({ transaction: jest.fn() }));
+
 const express = require("express");
 const request = require("supertest");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
 const User = require("../models/user");
+const Role = require("../models/role");
 const authRouter = require("./index");
 const { getJwtSecret } = require("./middleware");
 const { loginSchema, formatLoginErrors } = require("./validators");
@@ -28,6 +39,14 @@ const user = {
   email: "juan@example.com",
   name: "Juan",
   password: passwordHash,
+  role: { name: "customer" },
+};
+const publicUser = {
+  id: 1,
+  username: "juan",
+  email: "juan@example.com",
+  name: "Juan",
+  role: "customer",
 };
 
 const login = (body) => request(app).post("/auth/login").send(body);
@@ -48,12 +67,7 @@ describe("POST /auth/login", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.user).toEqual({
-      id: 1,
-      username: "juan",
-      email: "juan@example.com",
-      name: "Juan",
-    });
+    expect(response.body.user).toEqual(publicUser);
     expect(response.body.user).not.toHaveProperty("password");
     expect(User.findOne).toHaveBeenCalledWith({
       where: {
@@ -62,6 +76,7 @@ describe("POST /auth/login", () => {
           { username: "juan@example.com" },
         ],
       },
+      include: { model: Role, as: "role" },
     });
 
     const decoded = jwt.verify(response.body.token, SECRET, {
@@ -70,6 +85,7 @@ describe("POST /auth/login", () => {
     expect(decoded.sub).toBe(1);
     expect(decoded.username).toBe("juan");
     expect(decoded.email).toBe("juan@example.com");
+    expect(decoded.role).toBe("customer");
     expect(decoded.iat).toEqual(expect.any(Number));
     expect(decoded.exp).toEqual(expect.any(Number));
     expect(decoded.exp - decoded.iat).toBe(3600);
@@ -83,6 +99,7 @@ describe("POST /auth/login", () => {
     expect(response.status).toBe(200);
     expect(User.findOne).toHaveBeenCalledWith({
       where: { [Op.or]: [{ email: "juan" }, { username: "juan" }] },
+      include: { model: Role, as: "role" },
     });
     const decoded = jwt.verify(response.body.token, SECRET, {
       algorithms: ["HS256"],
@@ -175,11 +192,11 @@ describe("POST /auth/login", () => {
 
 describe("GET /auth/me", () => {
   const token = signToken(
-    { sub: 1, username: "juan", email: "juan@example.com" },
+    { sub: 1, username: "juan", email: "juan@example.com", role: "customer" },
     { expiresIn: "1h" },
   );
 
-  it("returns the authenticated user without the password", async () => {
+  it("returns the authenticated user with the role and without the password", async () => {
     User.findByPk.mockResolvedValue(user);
 
     const response = await request(app)
@@ -187,14 +204,12 @@ describe("GET /auth/me", () => {
       .set("Authorization", `Bearer ${token}`);
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
-      id: 1,
-      username: "juan",
-      email: "juan@example.com",
-      name: "Juan",
-    });
+    expect(response.body).toEqual(publicUser);
     expect(response.body).not.toHaveProperty("password");
-    expect(User.findByPk).toHaveBeenCalledWith(1);
+    expect(response.body).not.toHaveProperty("roleId");
+    expect(User.findByPk).toHaveBeenCalledWith(1, {
+      include: { model: Role, as: "role" },
+    });
   });
 
   it("responds 401 without an authorization header", async () => {

@@ -20,6 +20,10 @@ const router = Router();
  *                 message:
  *                   type: string
  *                   example: Hello World
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", (req, res) => {
   res.json({ message: "Hello World" });

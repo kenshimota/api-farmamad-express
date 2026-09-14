@@ -4,3 +4,4 @@
 /.opencode/package-lock.json
 /.env
 /coverage
+/http/http-client.private.env.json
