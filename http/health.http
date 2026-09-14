@@ -1,0 +1,13 @@
+# Archivo: health.http
+# Módulo: health  ->  GET /health
+# Público. Reporta la salud de la API y de la base de datos.
+# Ejecutar en Neovim/Kulala con:  <leader>rr  (o :lua require("kulala").run())
+
+### GET /health — API y base de datos arriba (200)
+GET {{baseUrl}}/health
+Accept: application/json
+
+### GET /health — base de datos caída (503)
+# Detén Postgres (docker-compose stop db) y vuelve a ejecutar para ver el 503.
+GET {{baseUrl}}/health
+Accept: application/json

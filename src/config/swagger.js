@@ -18,6 +18,25 @@ const swaggerSpec = swaggerJsdoc({
           bearerFormat: "JWT",
         },
       },
+      responses: {
+        InternalServerError: {
+          description:
+            "Unexpected internal error; the client only receives a generic message",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/InternalServerError" },
+            },
+          },
+        },
+        NotFound: {
+          description: "The requested route does not exist",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/NotFound" },
+            },
+          },
+        },
+      },
       schemas: {
         User: {
           type: "object",
@@ -47,6 +66,20 @@ const swaggerSpec = swaggerJsdoc({
         ErrorMessage: {
           type: "object",
           properties: { message: { type: "string" } },
+        },
+        InternalServerError: {
+          type: "object",
+          description: "Generic error body that never leaks the real cause",
+          properties: {
+            message: { type: "string", example: "Internal server error" },
+          },
+        },
+        NotFound: {
+          type: "object",
+          description: "Body returned for unknown routes",
+          properties: {
+            message: { type: "string", example: "Not found" },
+          },
         },
         TokenResponse: {
           type: "object",

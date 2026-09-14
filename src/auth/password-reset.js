@@ -72,6 +72,10 @@ const RESET_FIELDS = ["password", "passwordConfirmation"];
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorMessage' }
  *             example: { message: Could not send the recovery email }
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.post(
   "/forgot-password",
@@ -135,6 +139,10 @@ router.post(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ValidationErrors' }
  *             example: { errors: { code: El código debe tener 8 dígitos } }
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.post(
   "/verify-reset-code",
@@ -199,6 +207,10 @@ router.post(
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ValidationErrors' }
  *             example: { errors: { passwordConfirmation: Passwords do not match } }
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.post(
   "/reset-password",

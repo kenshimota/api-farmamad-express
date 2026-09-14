@@ -103,6 +103,10 @@ const router = Router();
  *             example:
  *               errors:
  *                 role: Invalid role
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.post("/", authenticate, authorize("admin"), async (req, res) => {
   const body = req.body ?? {};

@@ -72,6 +72,10 @@ const router = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationErrors'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.post("/login", async (req, res) => {
   const { identifier, password } = req.body ?? {};
@@ -135,6 +139,10 @@ router.post("/login", async (req, res) => {
  *               $ref: '#/components/schemas/ErrorMessage'
  *             example:
  *               message: Unauthorized
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/me", authenticate, async (req, res) => {
   const user = await User.findByPk(req.user.sub, {
