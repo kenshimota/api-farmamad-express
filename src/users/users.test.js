@@ -1,7 +1,13 @@
 process.env.JWT_SECRET = "test-secret";
 
-jest.mock("../models/user", () => ({ create: jest.fn() }));
+jest.mock("../models/user", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  count: jest.fn(),
+}));
 jest.mock("../models/role", () => ({ findOne: jest.fn() }));
+jest.mock("../database", () => ({ transaction: jest.fn() }));
 
 const express = require("express");
 const request = require("supertest");
@@ -9,6 +15,7 @@ const jwt = require("jsonwebtoken");
 const { UniqueConstraintError } = require("sequelize");
 const User = require("../models/user");
 const Role = require("../models/role");
+const sequelize = require("../database");
 const usersRouter = require("./index");
 
 const app = express();
@@ -19,6 +26,8 @@ app.use((error, req, res, next) => {
 });
 
 const SECRET = "test-secret";
+const TRANSACTION = { LOCK: { UPDATE: "UPDATE" } };
+const AUTH_USER = { id: 1, username: "admin", isBlocked: false };
 const SELLER_ROLE = { id: 2, name: "seller" };
 const validBody = {
   username: "maria",
@@ -33,6 +42,7 @@ const createdUser = {
   email: "maria@breadking.com",
   name: "María",
   roleId: SELLER_ROLE.id,
+  isBlocked: false,
 };
 
 /**
@@ -61,7 +71,13 @@ function post(body, token = tokenFor()) {
 
 beforeEach(() => {
   User.create.mockReset();
+  User.findAll.mockReset();
+  User.findByPk.mockReset();
+  User.count.mockReset();
   Role.findOne.mockReset();
+  sequelize.transaction.mockReset();
+  sequelize.transaction.mockImplementation((callback) => callback(TRANSACTION));
+  User.findByPk.mockResolvedValue(AUTH_USER);
 });
 
 describe("POST /users", () => {
@@ -78,6 +94,7 @@ describe("POST /users", () => {
       email: "maria@breadking.com",
       name: "María",
       role: "seller",
+      isBlocked: false,
     });
     expect(response.body).not.toHaveProperty("password");
     expect(response.body).not.toHaveProperty("roleId");
@@ -107,6 +124,7 @@ describe("POST /users", () => {
       email: "maria@breadking.com",
       name: null,
       role: "seller",
+      isBlocked: false,
     });
   });
 

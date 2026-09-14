@@ -11,6 +11,9 @@ const {
   requiredFieldsMessage,
 } = require("../auth/validators");
 const { createUserSchema, REQUIRED_USER_FIELDS } = require("./validators");
+const listRouter = require("./list");
+const statusRouter = require("./status");
+const removeRouter = require("./remove");
 
 const router = Router();
 
@@ -143,5 +146,9 @@ router.post("/", authenticate, authorize("admin"), async (req, res) => {
     throw error;
   }
 });
+
+router.use(listRouter);
+router.use(statusRouter);
+router.use(removeRouter);
 
 module.exports = router;
