@@ -1,5 +1,6 @@
 const { Router } = require("express");
 const sequelize = require("../database");
+const logger = require("../config/logger");
 
 const router = Router();
 
@@ -37,12 +38,22 @@ const router = Router();
  *                 database:
  *                   type: string
  *                   example: down
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", async (req, res) => {
   try {
     await sequelize.authenticate();
     res.json({ status: "ok", database: "up" });
   } catch (error) {
+    logger.error("Database health check failed", {
+      database: "down",
+      message: error && error.message,
+      stack: error && error.stack,
+      requestId: req.requestId,
+    });
     res.status(503).json({ status: "error", database: "down" });
   }
 });

@@ -15,9 +15,9 @@ npm start
 La documentación interactiva (Swagger UI) está disponible en
 `http://localhost:3001/docs`.
 
-Variables de entorno relevantes: `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`,
-`DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `GMAIL_USERNAME` y
-`GMAIL_TOKEN` (ver `.env.example`).
+Variables de entorno relevantes: `PORT`, `NODE_ENV`, `LOG_LEVEL`, `NO_COLOR`,
+`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`,
+`JWT_EXPIRES_IN`, `GMAIL_USERNAME` y `GMAIL_TOKEN` (ver `.env.example`).
 
 ## Autenticación
 
@@ -296,6 +296,37 @@ Errores:
 
 En ningún caso la contraseña viaja en las respuestas: se guarda como hash
 bcrypt.
+
+## Logs y manejo de errores
+
+La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
+`ERROR`) y contexto. El nivel se resalta con color ANSI cuando la salida es una
+terminal interactiva; en CI/Docker o cuando `NO_COLOR` está definido se imprime
+texto plano. `LOG_LEVEL` define el nivel mínimo impreso (`info` por defecto,
+`warn` o `error` para reducir ruido). El logger nunca imprime contraseñas,
+tokens, cookies ni códigos de recuperación: esos valores se reemplazan por
+`[REDACTED]`.
+
+Ejemplo de log de acceso:
+
+```text
+2026-09-13T10:15:31.002Z INFO 200 GET /health requestId=8a2d...
+```
+
+Cada petición recibe un `X-Request-Id` (el enviado por el cliente o un UUID
+generado) que aparece en los logs y en la cabecera `X-Request-Id` de la
+respuesta. Todas las respuestas de error son JSON:
+
+| Código | Cuerpo                                   | Cuándo                      |
+| ------ | ---------------------------------------- | --------------------------- |
+| `400`  | `{ "message": "Invalid JSON body" }`     | cuerpo con JSON malformado  |
+| `404`  | `{ "message": "Not found" }`             | ruta inexistente            |
+| `500`  | `{ "message": "Internal server error" }` | error interno no controlado |
+
+El detalle real del `500` (mensaje y stack) se escribe **solo** en los logs,
+junto al método, la ruta y el `requestId`. Con `NODE_ENV=development` la
+respuesta `500` añade un campo opcional `debug` con el mensaje del error; en
+`production` nunca se incluye.
 
 ## Tests
 

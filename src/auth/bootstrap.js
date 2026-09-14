@@ -32,6 +32,10 @@ const REQUIRED_FIELDS = ["username", "email", "password"];
  *                 hasAdmin:
  *                   type: boolean
  *                   example: false
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/setup-status", async (req, res) => {
   const adminRole = await findRoleByName(ADMIN_ROLE);
@@ -111,6 +115,10 @@ router.get("/setup-status", async (req, res) => {
  *             example:
  *               errors:
  *                 email: Invalid email
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.post("/register-admin", async (req, res) => {
   const body = req.body ?? {};
