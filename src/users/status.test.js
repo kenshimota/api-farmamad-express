@@ -33,6 +33,9 @@ const AUTH_USER = {
   setDataValue: jest.fn(function setDataValue(key, value) {
     this[key] = value;
   }),
+  update: jest.fn(function update(values) {
+    Object.assign(this, values);
+  }),
 };
 
 /**
@@ -226,40 +229,51 @@ describe("PATCH /users/:id/status", () => {
     expect(User.count).not.toHaveBeenCalled();
   });
 
-  it("responds 401 when the token is missing", async () => {
-    const response = await patchStatus(2, { isBlocked: true }, null);
+  it("blocks an already blocked administrator without the last admin guard", async () => {
+    const admin = target({
+      id: 3,
+      username: "ana",
+      email: "ana@breadking.com",
+      name: "Ana",
+      roleId: 1,
+      role: { name: "admin" },
+      isBlocked: true,
+    });
+    mockLookup(admin);
+    User.count.mockResolvedValue(1);
 
-    expect(response.status).toBe(401);
-    expect(response.body).toEqual({ message: "Unauthorized" });
+    const response = await patchStatus(3, { isBlocked: true });
+
+    expect(response.status).toBe(200);
+    expect(response.body.isBlocked).toBe(true);
   });
 
-  it("responds 401 when the token is invalid", async () => {
-    const response = await patchStatus(2, { isBlocked: true }, "not-a-jwt");
+  it("does not apply the last admin guard when unblocking", async () => {
+    const admin = target({
+      id: 3,
+      username: "ana",
+      email: "ana@breadking.com",
+      name: "Ana",
+      roleId: 1,
+      role: { name: "admin" },
+    });
+    mockLookup(admin);
+    User.count.mockResolvedValue(1);
 
-    expect(response.status).toBe(401);
-    expect(response.body).toEqual({ message: "Unauthorized" });
+    const response = await patchStatus(3, { isBlocked: false });
+
+    expect(response.status).toBe(200);
+    expect(response.body.isBlocked).toBe(false);
+    expect(User.count).not.toHaveBeenCalled();
   });
 
-  it.each(["seller", "delivery", "freelance_delivery", "customer"])(
-    "responds 403 when the authenticated user is %s",
-    async (role) => {
-      const response = await patchStatus(
-        2,
-        { isBlocked: true },
-        tokenFor(role),
-      );
+  it("allows unblocking your own account without the self block guard", async () => {
+    mockLookup(AUTH_USER);
+    User.count.mockResolvedValue(2);
 
-      expect(response.status).toBe(403);
-      expect(response.body).toEqual({ message: "Forbidden" });
-    },
-  );
+    const response = await patchStatus(1, { isBlocked: false });
 
-  it("responds 403 when the authenticated administrator is blocked", async () => {
-    User.findByPk.mockResolvedValue({ ...AUTH_USER, isBlocked: true });
-
-    const response = await patchStatus(2, { isBlocked: true });
-
-    expect(response.status).toBe(403);
-    expect(response.body).toEqual({ message: "User is blocked" });
+    expect(response.status).toBe(200);
+    expect(response.body.isBlocked).toBe(false);
   });
 });

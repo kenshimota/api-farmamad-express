@@ -54,6 +54,15 @@ describe("toPublicUser", () => {
     );
   });
 
+  it("normalizes a missing isBlocked flag to false", () => {
+    const result = toPublicUser(
+      { id: 1, username: "juan", email: "j@example.com", name: "Juan" },
+      "customer",
+    );
+
+    expect(result.isBlocked).toBe(false);
+  });
+
   it("never exposes the password or the roleId", () => {
     const result = toPublicUser(user, "customer");
 
