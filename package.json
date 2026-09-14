@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "db:create": "sequelize-cli db:create",
     "db:migrate": "sequelize-cli db:migrate",
-    "db:rollback": "sequelize-cli db:migrate:undo"
+    "db:rollback": "sequelize-cli db:migrate:undo",
+    "db:seed": "sequelize-cli db:seed:all"
   },
   "repository": {
     "type": "git",

@@ -8,7 +8,7 @@ REST API de Bread King construida con Express 5, Sequelize 6 y PostgreSQL.
 npm install
 docker-compose up -d db
 npm run db:migrate
-npx sequelize-cli db:seed:all
+npm run db:seed
 npm start
 ```
 
