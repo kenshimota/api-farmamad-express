@@ -2,9 +2,9 @@
  * Level definitions for the logger.
  *
  * Every level is a small strategy object bundling its ordering priority, the
- * ANSI colour applied to its label and the console sink used to print it.
- * Adding a level only means extending this table: the logger never branches on
- * level names.
+ * symbol prefixed to its label, the ANSI colour applied to it and the console
+ * sink used to print it. Adding a level only means extending this table: the
+ * logger never branches on level names.
  *
  * @typedef {"info"|"warn"|"error"} LogLevel
  */
@@ -12,16 +12,19 @@
 const LEVELS = {
   info: {
     priority: 0,
+    symbol: "🔍",
     color: "\u001b[32m",
     sink: (...args) => console.log(...args),
   },
   warn: {
     priority: 1,
+    symbol: "⚠",
     color: "\u001b[33m",
     sink: (...args) => console.warn(...args),
   },
   error: {
     priority: 2,
+    symbol: "❌",
     color: "\u001b[31m",
     sink: (...args) => console.error(...args),
   },

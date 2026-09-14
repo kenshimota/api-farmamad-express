@@ -428,9 +428,11 @@ la escritura no sufran condiciones de carrera.
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
-`ERROR`) y contexto. El nivel se resalta con color ANSI cuando la salida es una
-terminal interactiva; en CI/Docker o cuando `NO_COLOR` está definido se imprime
-texto plano. `LOG_LEVEL` define el nivel mínimo impreso (`info` por defecto,
+`ERROR`) y contexto. Cada nivel lleva su propio símbolo y color: `🔍 INFO` en
+**verde**, `⚠ WARN` en **amarillo** y `❌ ERROR` en **rojo**; la etiqueta va en
+negrita y todo el mensaje toma el color del nivel cuando la salida es una
+terminal interactiva. En CI/Docker o cuando `NO_COLOR` está definido se imprime
+texto plano (el símbolo se conserva). `LOG_LEVEL` define el nivel mínimo impreso (`info` por defecto,
 `warn` o `error` para reducir ruido). El logger nunca imprime contraseñas,
 tokens, cookies ni códigos de recuperación: esos valores se reemplazan por
 `[REDACTED]`.
@@ -438,8 +440,28 @@ tokens, cookies ni códigos de recuperación: esos valores se reemplazan por
 Ejemplo de log de acceso:
 
 ```text
-2026-09-13T10:15:31.002Z INFO 200 GET /health requestId=8a2d...
+2026-09-13T10:15:31.002Z 🔍 INFO 200 GET /health requestId=8a2d...
 ```
+
+### Logs de consultas SQL
+
+Con `NODE_ENV=development` la API imprime cada consulta que Sequelize ejecuta,
+coloreada según su operación y con el tiempo de ejecución en milisegundos:
+
+| Operación | Color   |
+| --------- | ------- |
+| `SELECT`  | azul    |
+| `UPDATE`  | amarillo |
+| `INSERT`  | verde   |
+| `DELETE`  | rojo    |
+
+```text
+2026-09-13T10:15:31.010Z SELECT "id", "username" FROM "users" AS "user"; (7 ms)
+2026-09-13T10:15:31.120Z INSERT INTO "users" (...) VALUES (...); (3 ms)
+```
+
+Fuera de `development` (producción, tests) las consultas no se imprimen. Los
+colores se desactivan con `NO_COLOR` o cuando la salida no es una terminal.
 
 Cada petición recibe un `X-Request-Id` (el enviado por el cliente o un UUID
 generado) que aparece en los logs y en la cabecera `X-Request-Id` de la

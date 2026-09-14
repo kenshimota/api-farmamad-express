@@ -39,7 +39,7 @@ describe("logger", () => {
     expect(logSpy).toHaveBeenCalledTimes(1);
     const line = logSpy.mock.calls[0][0];
     expect(line).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z INFO request completed/,
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z 🔍 INFO request completed/,
     );
     expect(line).toContain("method=GET");
     expect(line).toContain("status=200");
@@ -142,9 +142,47 @@ describe("logger", () => {
     logger.warn("colored");
     logger.error("colored");
 
-    expect(logSpy.mock.calls[0][0]).toContain("\u001b[32mINFO\u001b[0m");
-    expect(warnSpy.mock.calls[0][0]).toContain("\u001b[33mWARN\u001b[0m");
-    expect(errorSpy.mock.calls[0][0]).toContain("\u001b[31mERROR\u001b[0m");
+    expect(logSpy.mock.calls[0][0]).toContain("\u001b[32m🔍 INFO\u001b[0m");
+    expect(warnSpy.mock.calls[0][0]).toContain("\u001b[33m⚠ WARN\u001b[0m");
+    expect(errorSpy.mock.calls[0][0]).toContain("\u001b[31m❌ ERROR\u001b[0m");
+  });
+
+  it("renders the level label in bold on top of its color", () => {
+    setTTY(true);
+
+    logger.info("colored");
+    logger.error("colored");
+
+    expect(logSpy.mock.calls[0][0]).toContain(
+      "\u001b[1m\u001b[32m🔍 INFO\u001b[0m",
+    );
+    expect(errorSpy.mock.calls[0][0]).toContain(
+      "\u001b[1m\u001b[31m❌ ERROR\u001b[0m",
+    );
+  });
+
+  it("prefixes each level with its own symbol", () => {
+    logger.info("colored");
+    logger.warn("colored");
+    logger.error("colored");
+
+    expect(logSpy.mock.calls[0][0]).toContain("🔍 INFO");
+    expect(warnSpy.mock.calls[0][0]).toContain("⚠ WARN");
+    expect(errorSpy.mock.calls[0][0]).toContain("❌ ERROR");
+  });
+
+  it("colors the whole message and context with the level color", () => {
+    setTTY(true);
+
+    logger.info("ok", { status: 200 });
+    logger.error("boom", { status: 500 });
+
+    expect(logSpy.mock.calls[0][0]).toContain(
+      "\u001b[32mok status=200\u001b[0m",
+    );
+    expect(errorSpy.mock.calls[0][0]).toContain(
+      "\u001b[31mboom status=500\u001b[0m",
+    );
   });
 
   it("disables ANSI colors when NO_COLOR is defined even on a TTY", () => {

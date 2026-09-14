@@ -1,6 +1,7 @@
 const { LEVELS } = require("./levels");
 
 const RESET = "\u001b[0m";
+const BOLD = "\u001b[1m";
 
 /**
  * Tells whether ANSI colours should be applied.
@@ -22,10 +23,14 @@ function colorsEnabled() {
  *
  * @param {string} text
  * @param {string} color
+ * @param {boolean} [bold] prefixes the colour with the bold attribute
  * @returns {string}
  */
-function colorize(text, color) {
-  return colorsEnabled() ? `${color}${text}${RESET}` : text;
+function colorize(text, color, bold = false) {
+  if (!colorsEnabled()) {
+    return text;
+  }
+  return `${bold ? BOLD : ""}${color}${text}${RESET}`;
 }
 
 /**
@@ -83,18 +88,17 @@ function formatStack(stack) {
  */
 function buildLine(level, message, context) {
   const timestamp = new Date().toISOString();
-  const label = colorize(level.toUpperCase(), LEVELS[level].color);
+  const { color, symbol } = LEVELS[level];
+  const label = colorize(`${symbol} ${level.toUpperCase()}`, color, true);
   const { stack, ...rest } = context;
   const inline = formatContext(rest);
 
-  let line = `${timestamp} ${label} ${message}`;
-  if (inline && !stack) {
-    line += ` ${inline}`;
-  }
+  const body = inline && !stack ? `${message} ${inline}` : message;
+  let line = `${timestamp} ${label} ${colorize(body, color)}`;
   if (stack) {
     line += `\n${formatStack(stack)}`;
     if (inline) {
-      line += `\n    ${inline}`;
+      line += `\n    ${colorize(inline, color)}`;
     }
   }
   return line;
