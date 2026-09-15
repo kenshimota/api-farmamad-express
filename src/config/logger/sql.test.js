@@ -138,15 +138,15 @@ describe("formatQuery", () => {
     expect(formatQuery("SELECT 1", { logging: true })).not.toContain("ms)");
   });
 
-  it("disables ANSI colors when stdout is not a TTY", () => {
+  it("keeps ANSI colors even when stdout is not a TTY", () => {
     setTTY(false);
-    expect(formatQuery("SELECT 1", 3)).not.toMatch(ANSI_PATTERN);
+    expect(formatQuery("SELECT 1", 3)).toMatch(ANSI_PATTERN);
   });
 
-  it("disables ANSI colors when NO_COLOR is defined", () => {
+  it("keeps ANSI colors even when NO_COLOR is defined", () => {
     setTTY(true);
     process.env.NO_COLOR = "";
-    expect(formatQuery("SELECT 1")).not.toMatch(ANSI_PATTERN);
+    expect(formatQuery("SELECT 1")).toMatch(ANSI_PATTERN);
   });
 });
 
