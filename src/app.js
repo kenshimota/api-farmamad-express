@@ -1,6 +1,7 @@
 const express = require("express");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
+const cors = require("./config/cors");
 const requestId = require("./middleware/request-id");
 const requestLogger = require("./middleware/request-logger");
 const notFound = require("./middleware/not-found");
@@ -14,6 +15,9 @@ const app = express();
 
 app.use(requestId);
 app.use(requestLogger);
+// CORS runs before the JSON parser so preflights are answered without body
+// parsing and every response, including parser errors, carries CORS headers.
+app.use(cors);
 app.use(express.json());
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/hello-world", helloRouter);
