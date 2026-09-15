@@ -1,0 +1,82 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+test:
+  stage: test
+  image: node:24-alpine
+  services:
+    - name: postgres:17-alpine
+      alias: postgres
+      variables:
+        POSTGRES_DB: bread_king_test
+        POSTGRES_USER: bread_king
+        POSTGRES_PASSWORD: bread_king
+  variables:
+    DB_HOST: postgres
+    DB_HOST_TEST: postgres
+    DB_PORT: "5432"
+    DB_NAME: bread_king
+    DB_NAME_TEST: bread_king_test
+    DB_USER: bread_king
+    DB_PASSWORD: bread_king
+    JWT_SECRET: ci-test-secret
+    NO_COLOR: "1"
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  before_script:
+    - npm ci
+  script:
+    - npm test
+    - until node -e "require('net').connect(5432, 'postgres').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"; do sleep 2; done
+    - npm run test:integration
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+build:
+  stage: build
+  image: docker:28-cli
+  services:
+    - name: docker:28-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - echo "Building $CI_DOCKERHUB_USERNAME/$DOCKERHUB_IMAGE:$CI_COMMIT_TAG"
+    - echo "$CI_DOCKERHUB_TOKEN" | docker login -u "$CI_DOCKERHUB_USERNAME" --password-stdin
+    - docker build --build-arg VERSION=$CI_COMMIT_TAG -t "$CI_DOCKERHUB_USERNAME/$DOCKERHUB_IMAGE:$CI_COMMIT_TAG" -t "$CI_DOCKERHUB_USERNAME/$DOCKERHUB_IMAGE:latest" .
+    - docker push "$CI_DOCKERHUB_USERNAME/$DOCKERHUB_IMAGE:$CI_COMMIT_TAG"
+    - docker push "$CI_DOCKERHUB_USERNAME/$DOCKERHUB_IMAGE:latest"
+
+deploy:
+  stage: deploy
+  image: ubuntu:24.04
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - build
+  script:
+    - apt-get update -y && apt-get install -y --no-install-recommends openssh-client sshpass
+    - echo "$CI_DOCKERHUB_TOKEN" | sshpass -p "$VM_PASSWORD" ssh -o StrictHostKeyChecking=no "$VM_USERNAME@$VM_HOSTNAME" -p "$VM_PORT" "docker login -u \"$CI_DOCKERHUB_USERNAME\" --password-stdin"
+    - sshpass -p "$VM_PASSWORD" ssh -o StrictHostKeyChecking=no "$VM_USERNAME@$VM_HOSTNAME" -p "$VM_PORT" "export IMAGE=\"$CI_DOCKERHUB_USERNAME/$DOCKERHUB_IMAGE\" && export CONTAINER=asic-guanipa-api && export TAG=\"$CI_COMMIT_TAG\" && /app/create-container --restart unless-stopped -e NODE_ENV=production -e PORT=3000 -e LOG_LEVEL=\"$LOG_LEVEL\" -e DB_HOST=\"$DB_HOST\" -e DB_PORT=\"$DB_PORT\" -e DB_NAME=\"$DB_NAME\" -e DB_USER=\"$DB_USER\" -e DB_PASSWORD=\"$DB_PASSWORD\" -e JWT_SECRET=\"$JWT_SECRET\" -e JWT_EXPIRES_IN=\"$JWT_EXPIRES_IN\" -e GMAIL_USERNAME=\"$GMAIL_USERNAME\" -e GMAIL_TOKEN=\"$GMAIL_TOKEN\" --network asic-guanipa-network"
+    - sshpass -p "$VM_PASSWORD" ssh -o StrictHostKeyChecking=no "$VM_USERNAME@$VM_HOSTNAME" -p "$VM_PORT" "docker exec asic-guanipa-api npm run db:create &&  docker exec asic-guanipa-api npm run db:migrate && docker exec asic-guanipa-api npm run db:seed"
+    - sleep 10
+    - sshpass -p "$VM_PASSWORD" ssh -o StrictHostKeyChecking=no "$VM_USERNAME@$VM_HOSTNAME" -p "$VM_PORT" "CONTAINER=asic-guanipa-api bash /app/check-container"
+    - echo "Deployment successful!"
