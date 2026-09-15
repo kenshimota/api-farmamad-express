@@ -28,6 +28,7 @@ Express 5 API (CommonJS, Node 24) that talks to Postgres through Sequelize 6 (`p
 - TDD: failing Jest test `<modulo>.test.js` first, then implementation in `<modulo>/index.js`.
 - Coverage target >90%; mutation score target >80% (delegate to `@mutation`), then `@refactor` for design patterns.
 - One branch per task: `feature/<name>` or `fix/<name>`. Tasks live as files under `issues/to-do`, then move to `issues/doing` and finally `issues/completed`.
+- Issue files (`issues/**/NN.md`) follow a fixed template: `# HU-NN — <title>`, then `## Historia de usuario`, `## Alcance`, `## Requerimientos funcionales` (`### RF-NN`), `## Requerimientos no funcionales` (`**RNF-NN**`), `## Contrato de la API`, `## Criterios de aceptación` (checkboxes), `## Fuera de alcance` and `## Dependencias técnicas` (new/modified files and env vars). Keep the same headings and numbering when writing a new one.
 
 ## Rules
 

@@ -17,7 +17,8 @@ La documentación interactiva (Swagger UI) está disponible en
 
 Variables de entorno relevantes: `PORT`, `NODE_ENV`, `LOG_LEVEL`, `NO_COLOR`,
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`,
-`JWT_EXPIRES_IN`, `GMAIL_USERNAME` y `GMAIL_TOKEN` (ver `.env.example`).
+`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME` y `GMAIL_TOKEN` (ver
+`.env.example`).
 
 ## Autenticación
 
@@ -25,6 +26,46 @@ Los endpoints protegidos esperan el header `Authorization: Bearer <jwt>`. El
 token se obtiene en `POST /auth/login` e incluye el `role` del usuario en su
 payload. Si el token falta, es inválido o está expirado, la API responde `401`
 con `{ "message": "Unauthorized" }`.
+
+## CORS
+
+La API responde con cabeceras CORS en **todas** las respuestas (éxito y error),
+incluidas las que producen el manejador de rutas inexistentes y el de errores.
+Por defecto se permite cualquier origen:
+
+```http
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: X-Request-Id
+```
+
+Las peticiones preflight (`OPTIONS`) a una ruta existente se responden sin
+llegar a los routers de negocio ni consultar la base de datos:
+
+```http
+HTTP/1.1 204 No Content
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+Access-Control-Allow-Headers: Content-Type,Authorization,X-Request-Id
+Access-Control-Max-Age: 86400
+```
+
+Un `OPTIONS` a una ruta inexistente sigue respondiendo `404`
+(`{ "message": "Not found" }`), también con las cabeceras CORS. La cabecera
+`X-Request-Id` se expone con `Access-Control-Expose-Headers` para que el
+navegador pueda leerla; no se exponen `Authorization` ni `Set-Cookie`. La API
+no habilita `Access-Control-Allow-Credentials`: la autenticación es con
+`Authorization: Bearer`, no con cookies.
+
+El valor `*` es una **decisión temporal**: cuando exista la lista definitiva de
+dominios, define `CORS_ORIGIN` con los orígenes permitidos separados por comas
+y solo esos orígenes recibirán la cabecera con su propio valor (más
+`Vary: Origin`); las peticiones sin `Origin` no reciben la cabecera.
+
+```bash
+CORS_ORIGIN=https://app.breadking.com,https://admin.breadking.com
+```
+
+Si `CORS_ORIGIN` no está definida o está vacía, se permite cualquier origen.
 
 ## Roles
 
@@ -448,12 +489,12 @@ Ejemplo de log de acceso:
 Con `NODE_ENV=development` la API imprime cada consulta que Sequelize ejecuta,
 coloreada según su operación y con el tiempo de ejecución en milisegundos:
 
-| Operación | Color   |
-| --------- | ------- |
-| `SELECT`  | azul    |
+| Operación | Color    |
+| --------- | -------- |
+| `SELECT`  | azul     |
 | `UPDATE`  | amarillo |
-| `INSERT`  | verde   |
-| `DELETE`  | rojo    |
+| `INSERT`  | verde    |
+| `DELETE`  | rojo     |
 
 ```text
 2026-09-13T10:15:31.010Z SELECT "id", "username" FROM "users" AS "user"; (7 ms)
