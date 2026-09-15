@@ -67,6 +67,8 @@ beforeEach(() => {
     role: { name: "customer" },
     save: jest.fn(),
   };
+  User.findByPk.mockReset();
+  User.findByPk.mockResolvedValue(user);
   token = jwt.sign({ sub: 1, username: "juan", role: "customer" }, SECRET, {
     expiresIn: "1h",
   });
@@ -142,6 +144,21 @@ describe("verify-reset-code guards", () => {
     });
     expect(internalErrors).toEqual([]);
   });
+
+  it("responds 403 and does not consume the code when the user is blocked", async () => {
+    User.findOne.mockResolvedValue({ ...user, isBlocked: true });
+
+    const response = await verifyResetCode({
+      email: "juan@example.com",
+      code: "00427193",
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ message: "User is blocked" });
+    expect(PasswordResetCode.findOne).not.toHaveBeenCalled();
+    expect(PasswordResetCode.update).not.toHaveBeenCalled();
+    expect(internalErrors).toEqual([]);
+  });
 });
 
 describe("reset-password guards", () => {
@@ -155,7 +172,8 @@ describe("reset-password guards", () => {
     const response = await resetPassword({ password: "nuevaClave123" });
 
     expect(response.status).toBe(400);
-    expect(User.findByPk).not.toHaveBeenCalled();
+    expect(User.findByPk).toHaveBeenCalledTimes(1);
+    expect(PasswordResetCode.update).not.toHaveBeenCalled();
     expect(internalErrors).toEqual([]);
   });
 
@@ -166,7 +184,8 @@ describe("reset-password guards", () => {
     });
 
     expect(response.status).toBe(422);
-    expect(User.findByPk).not.toHaveBeenCalled();
+    expect(User.findByPk).toHaveBeenCalledTimes(1);
+    expect(PasswordResetCode.update).not.toHaveBeenCalled();
     expect(internalErrors).toEqual([]);
   });
 });

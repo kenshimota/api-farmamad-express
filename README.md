@@ -143,10 +143,24 @@ Respuesta `200`:
     "username": "admin",
     "email": "admin@breadking.com",
     "name": "Administrador",
-    "role": "admin"
+    "role": "admin",
+    "isBlocked": false
   }
 }
 ```
+
+Errores:
+
+| Código | Cuerpo                                 |
+| ------ | -------------------------------------- |
+| `401`  | `{ "message": "Invalid credentials" }` |
+| `403`  | `{ "message": "User is blocked" }`     |
+| `422`  | `{ "errors": { "password": "..." } }`  |
+
+La comprobación de bloqueo ocurre **después** de validar las credenciales: si la
+cuenta está bloqueada la API responde `403` con `{ "message": "User is blocked" }`
+en lugar del `401` genérico, para que el usuario sepa que su cuenta está
+suspendida. El mensaje nunca se emite para credenciales inválidas.
 
 ### `GET /auth/me`
 
@@ -218,6 +232,7 @@ Errores:
 | ------ | ------------------------------------------------------------ |
 | `400`  | `{ "message": "email and code are required" }`               |
 | `401`  | `{ "message": "Invalid or expired code" }`                   |
+| `403`  | `{ "message": "User is blocked" }`                           |
 | `422`  | `{ "errors": { "code": "El código debe tener 8 dígitos" } }` |
 
 ### `POST /auth/reset-password`
@@ -280,7 +295,8 @@ Respuesta `201`:
   "username": "maria",
   "email": "maria@breadking.com",
   "name": "María",
-  "role": "seller"
+  "role": "seller",
+  "isBlocked": false
 }
 ```
 
@@ -294,15 +310,129 @@ Errores:
 | `409`  | `{ "message": "User already exists" }`                             |
 | `422`  | `{ "errors": { "role": "Invalid role" } }`                         |
 
+Los usuarios siempre se crean desbloqueados (`isBlocked: false`): el campo no se
+acepta en el cuerpo y un usuario no puede crearse bloqueado.
+
 En ningún caso la contraseña viaja en las respuestas: se guarda como hash
 bcrypt.
+
+### `GET /users`
+
+Protegido: requiere un JWT con rol `admin`. Devuelve la colección de usuarios
+ordenada por `id` ascendente, con los datos públicos de cada uno y **sin**
+`password` ni `roleId`. Si no hay usuarios responde `200` con `[]`.
+
+```bash
+curl http://localhost:3001/users -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "email": "admin@breadking.com",
+    "name": "Administrador",
+    "role": "admin",
+    "isBlocked": false
+  },
+  {
+    "id": 2,
+    "username": "maria",
+    "email": "maria@breadking.com",
+    "name": "María",
+    "role": "seller",
+    "isBlocked": true
+  }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                          |
+| ------ | ------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }` |
+| `403`  | `{ "message": "Forbidden" }`    |
+
+### `PATCH /users/:id/status`
+
+Protegido: requiere un JWT con rol `admin`. Bloquea (`{ "isBlocked": true }`) o
+desbloquea (`{ "isBlocked": false }`) al usuario indicado y devuelve sus datos
+públicos actualizados. Un usuario bloqueado no puede iniciar sesión ni usar un
+JWT emitido antes del bloqueo, pero no se elimina ni pierde su contraseña.
+
+```bash
+curl -X PATCH http://localhost:3001/users/2/status \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"isBlocked":true}'
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 2,
+  "username": "maria",
+  "email": "maria@breadking.com",
+  "name": "María",
+  "role": "seller",
+  "isBlocked": true
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                         |
+| ------ | -------------------------------------------------------------- |
+| `400`  | `{ "message": "isBlocked is required" }`                       |
+| `401`  | `{ "message": "Unauthorized" }`                                |
+| `403`  | `{ "message": "Forbidden" }`                                   |
+| `404`  | `{ "message": "User not found" }`                              |
+| `409`  | `{ "message": "You cannot block your own account" }`           |
+| `409`  | `{ "message": "Cannot block the last administrator" }`         |
+| `422`  | `{ "errors": { "isBlocked": "isBlocked must be a boolean" } }` |
+| `422`  | `{ "errors": { "id": "Invalid user id" } }`                    |
+
+El bloqueo se ejecuta dentro de una transacción: el sistema nunca se queda sin
+administradores activos.
+
+### `DELETE /users/:id`
+
+Protegido: requiere un JWT con rol `admin`. Elimina de forma permanente al
+usuario indicado y responde `204` sin cuerpo. Sus códigos de recuperación de
+contraseña pendientes se eliminan en cascada.
+
+```bash
+curl -X DELETE http://localhost:3001/users/2 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                                  |
+| ------ | ------------------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                         |
+| `403`  | `{ "message": "Forbidden" }`                            |
+| `404`  | `{ "message": "User not found" }`                       |
+| `409`  | `{ "message": "You cannot delete your own account" }`   |
+| `409`  | `{ "message": "Cannot delete the last administrator" }` |
+| `422`  | `{ "errors": { "id": "Invalid user id" } }`             |
+
+Tanto el bloqueo como la eliminación se ejecutan dentro de una transacción
+(`sequelize.transaction`) para que la comprobación de "último administrador" y
+la escritura no sufran condiciones de carrera.
 
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
-`ERROR`) y contexto. El nivel se resalta con color ANSI cuando la salida es una
-terminal interactiva; en CI/Docker o cuando `NO_COLOR` está definido se imprime
-texto plano. `LOG_LEVEL` define el nivel mínimo impreso (`info` por defecto,
+`ERROR`) y contexto. Cada nivel lleva su propio símbolo y color: `🔍 INFO` en
+**verde**, `⚠ WARN` en **amarillo** y `❌ ERROR` en **rojo**; la etiqueta va en
+negrita y todo el mensaje toma el color del nivel cuando la salida es una
+terminal interactiva. En CI/Docker o cuando `NO_COLOR` está definido se imprime
+texto plano (el símbolo se conserva). `LOG_LEVEL` define el nivel mínimo impreso (`info` por defecto,
 `warn` o `error` para reducir ruido). El logger nunca imprime contraseñas,
 tokens, cookies ni códigos de recuperación: esos valores se reemplazan por
 `[REDACTED]`.
@@ -310,8 +440,28 @@ tokens, cookies ni códigos de recuperación: esos valores se reemplazan por
 Ejemplo de log de acceso:
 
 ```text
-2026-09-13T10:15:31.002Z INFO 200 GET /health requestId=8a2d...
+2026-09-13T10:15:31.002Z 🔍 INFO 200 GET /health requestId=8a2d...
 ```
+
+### Logs de consultas SQL
+
+Con `NODE_ENV=development` la API imprime cada consulta que Sequelize ejecuta,
+coloreada según su operación y con el tiempo de ejecución en milisegundos:
+
+| Operación | Color   |
+| --------- | ------- |
+| `SELECT`  | azul    |
+| `UPDATE`  | amarillo |
+| `INSERT`  | verde   |
+| `DELETE`  | rojo    |
+
+```text
+2026-09-13T10:15:31.010Z SELECT "id", "username" FROM "users" AS "user"; (7 ms)
+2026-09-13T10:15:31.120Z INSERT INTO "users" (...) VALUES (...); (3 ms)
+```
+
+Fuera de `development` (producción, tests) las consultas no se imprimen. Los
+colores se desactivan con `NO_COLOR` o cuando la salida no es una terminal.
 
 Cada petición recibe un `X-Request-Id` (el enviado por el cliente o un UUID
 generado) que aparece en los logs y en la cabecera `X-Request-Id` de la

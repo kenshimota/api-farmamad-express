@@ -16,6 +16,14 @@ describe("User model", () => {
     expect(attributes.name.allowNull).toBe(true);
   });
 
+  it("defines isBlocked as a non-null boolean defaulting to false", () => {
+    const attributes = User.getAttributes();
+
+    expect(attributes.isBlocked.type.toString()).toBe("BOOLEAN");
+    expect(attributes.isBlocked.allowNull).toBe(false);
+    expect(attributes.isBlocked.defaultValue).toBe(false);
+  });
+
   it("requires a roleId and belongs to a role", () => {
     const attributes = User.getAttributes();
 
@@ -119,5 +127,30 @@ describe("User model", () => {
     expect(instance.toJSON()).toEqual(
       expect.objectContaining({ role: "customer" }),
     );
+  });
+
+  it("exposes isBlocked through toJSON", () => {
+    const instance = User.build({
+      username: "juan",
+      email: "juan@example.com",
+      password: "hash",
+      roleId: 1,
+      isBlocked: true,
+    });
+
+    expect(instance.toJSON()).toEqual(
+      expect.objectContaining({ isBlocked: true }),
+    );
+  });
+
+  it("defaults isBlocked to false when a user is built", () => {
+    const instance = User.build({
+      username: "juan",
+      email: "juan@example.com",
+      password: "hash",
+      roleId: 1,
+    });
+
+    expect(instance.get("isBlocked")).toBe(false);
   });
 });

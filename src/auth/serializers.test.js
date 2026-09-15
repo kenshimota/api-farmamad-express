@@ -7,6 +7,7 @@ const user = {
   name: "Juan",
   password: "hash",
   roleId: 3,
+  isBlocked: false,
 };
 
 describe("getRoleName", () => {
@@ -32,6 +33,7 @@ describe("toPublicUser", () => {
       email: "juan@example.com",
       name: "Juan",
       role: "admin",
+      isBlocked: false,
     });
   });
 
@@ -42,7 +44,23 @@ describe("toPublicUser", () => {
       email: "juan@example.com",
       name: "Juan",
       role: "customer",
+      isBlocked: false,
     });
+  });
+
+  it("exposes the current isBlocked flag", () => {
+    expect(toPublicUser({ ...user, isBlocked: true }, "customer")).toEqual(
+      expect.objectContaining({ isBlocked: true }),
+    );
+  });
+
+  it("normalizes a missing isBlocked flag to false", () => {
+    const result = toPublicUser(
+      { id: 1, username: "juan", email: "j@example.com", name: "Juan" },
+      "customer",
+    );
+
+    expect(result.isBlocked).toBe(false);
   });
 
   it("never exposes the password or the roleId", () => {

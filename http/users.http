@@ -48,3 +48,69 @@ Content-Type: application/json
 {
   "username": "incompleto"
 }
+
+### GET /users — lista los usuarios (200)
+# Devuelve id, username, email, name, role e isBlocked, sin password ni roleId.
+GET {{baseUrl}}/users
+Authorization: Bearer {{token}}
+
+### GET /users — sin token (401 Unauthorized)
+GET {{baseUrl}}/users
+
+### PATCH /users/:id/status — bloquea un usuario (200)
+# Sustituye 2 por el id del usuario a bloquear.
+PATCH {{baseUrl}}/users/2/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "isBlocked": true
+}
+
+### PATCH /users/:id/status — desbloquea un usuario (200)
+PATCH {{baseUrl}}/users/2/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "isBlocked": false
+}
+
+### PATCH /users/:id/status — falta isBlocked (400)
+PATCH {{baseUrl}}/users/2/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### PATCH /users/:id/status — isBlocked no booleano (422)
+PATCH {{baseUrl}}/users/2/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "isBlocked": "true"
+}
+
+### PATCH /users/:id/status — intento de bloquearse a sí mismo (409)
+# El id debe coincidir con el sub del JWT del administrador.
+PATCH {{baseUrl}}/users/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "isBlocked": true
+}
+
+### DELETE /users/:id — elimina un usuario (204, sin cuerpo)
+# Sustituye 2 por el id del usuario a eliminar.
+DELETE {{baseUrl}}/users/2
+Authorization: Bearer {{token}}
+
+### DELETE /users/:id — id inválido (422)
+DELETE {{baseUrl}}/users/abc
+Authorization: Bearer {{token}}
+
+### DELETE /users/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/users/2
+

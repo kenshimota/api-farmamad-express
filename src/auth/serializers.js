@@ -19,7 +19,7 @@ function getRoleName(user) {
  * @param {string} [roleName] - Explicit role name; derived from the user when
  *   omitted.
  * @returns {{ id: number, username: string, email: string, name: string|null,
- *   role: string|undefined }} The public user data.
+ *   role: string|undefined, isBlocked: boolean }} The public user data.
  */
 function toPublicUser(user, roleName = getRoleName(user)) {
   return {
@@ -28,6 +28,7 @@ function toPublicUser(user, roleName = getRoleName(user)) {
     email: user.email,
     name: user.name,
     role: roleName,
+    isBlocked: user.isBlocked === true,
   };
 }
 

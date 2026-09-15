@@ -54,6 +54,12 @@ const swaggerSpec = swaggerJsdoc({
               description: "Name of the role stored in the roles table",
               example: "admin",
             },
+            isBlocked: {
+              type: "boolean",
+              description:
+                "Whether the account is blocked and cannot start a session",
+              example: false,
+            },
           },
         },
         Role: {

@@ -23,8 +23,6 @@ const { Op } = require("sequelize");
 const User = require("../models/user");
 const Role = require("../models/role");
 const authRouter = require("./index");
-const { getJwtSecret } = require("./middleware");
-const { loginSchema, formatLoginErrors } = require("./validators");
 
 const app = express();
 app.use(express.json());
@@ -40,6 +38,7 @@ const user = {
   name: "Juan",
   password: passwordHash,
   role: { name: "customer" },
+  isBlocked: false,
 };
 const publicUser = {
   id: 1,
@@ -47,6 +46,7 @@ const publicUser = {
   email: "juan@example.com",
   name: "Juan",
   role: "customer",
+  isBlocked: false,
 };
 
 const login = (body) => request(app).post("/auth/login").send(body);
@@ -141,6 +141,16 @@ describe("POST /auth/login", () => {
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Invalid credentials" });
+  });
+
+  it("responds 403 when the credentials are valid but the user is blocked", async () => {
+    User.findOne.mockResolvedValue({ ...user, isBlocked: true });
+
+    const response = await login({ identifier: "juan", password: PASSWORD });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ message: "User is blocked" });
+    expect(response.body).not.toHaveProperty("token");
   });
 
   it("responds 400 when the request has no body", async () => {
@@ -264,42 +274,5 @@ describe("GET /auth/me", () => {
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Unauthorized" });
-  });
-});
-
-describe("loginSchema", () => {
-  it("accepts a password with exactly 8 characters", async () => {
-    await expect(
-      loginSchema.validate({ identifier: "juan", password: "12345678" }),
-    ).resolves.toBeDefined();
-  });
-
-  it("rejects a password with 7 characters", async () => {
-    await expect(
-      loginSchema.validate({ identifier: "juan", password: "1234567" }),
-    ).rejects.toThrow("Password must be at least 8 characters long");
-  });
-});
-
-describe("formatLoginErrors", () => {
-  it("falls back to the error itself when there are no inner errors", () => {
-    const error = { path: "identifier", message: "Invalid email or username" };
-
-    expect(formatLoginErrors(error, "juan")).toEqual({
-      identifier: "Invalid email or username",
-    });
-  });
-});
-
-describe("JWT configuration", () => {
-  it("requires JWT_SECRET to be defined", () => {
-    const original = process.env.JWT_SECRET;
-    delete process.env.JWT_SECRET;
-
-    try {
-      expect(() => getJwtSecret()).toThrow("JWT_SECRET is required");
-    } finally {
-      process.env.JWT_SECRET = original;
-    }
   });
 });

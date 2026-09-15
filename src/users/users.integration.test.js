@@ -104,6 +104,7 @@ describe("POST /users with a real database", () => {
         email: "maria@breadking.com",
         name: "María",
         role,
+        isBlocked: false,
       });
       expect(response.body).not.toHaveProperty("password");
 
@@ -113,6 +114,26 @@ describe("POST /users with a real database", () => {
       expect(stored.role.name).toBe(role);
     },
   );
+
+  it("ignores isBlocked on creation and stores the default false", async () => {
+    await createUser({
+      username: "admin",
+      email: "admin@breadking.com",
+      role: "admin",
+    });
+    const token = await tokenFor("admin");
+
+    const response = await request(app)
+      .post("/users")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ ...body, isBlocked: true });
+
+    expect(response.status).toBe(201);
+    expect(response.body.isBlocked).toBe(false);
+
+    const stored = await User.findByPk(response.body.id);
+    expect(stored.isBlocked).toBe(false);
+  });
 
   it("responds 401 without a token", async () => {
     const response = await request(app).post("/users").send(body);

@@ -34,10 +34,13 @@ async function requestPasswordReset(email) {
 
 /**
  * Validates and consumes a recovery code. Unknown users and invalid, expired
- * or already used codes share the same invalid result.
+ * or already used codes share the same invalid result. A blocked user is
+ * reported as blocked before consuming the code, so a suspended account can
+ * never start a session with a valid code.
  * @param {string} email - Email sent by the client.
  * @param {string} code - Plain 8-digit code sent by the client.
- * @returns {Promise<{ valid: boolean, user?: object }>} The user when valid.
+ * @returns {Promise<{ valid: boolean, blocked?: boolean, user?: object }>} The
+ *   user when valid, or a blocked flag when the account is suspended.
  */
 async function verifyResetCode(email, code) {
   const user = await User.findOne({
@@ -47,6 +50,10 @@ async function verifyResetCode(email, code) {
 
   if (!user) {
     return { valid: false };
+  }
+
+  if (user.isBlocked) {
+    return { blocked: true };
   }
 
   const result = await consumeCode(user.id, code);

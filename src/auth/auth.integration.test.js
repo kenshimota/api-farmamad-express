@@ -132,6 +132,7 @@ describe("POST /auth/login with a real database", () => {
       email: "juan@example.com",
       name: "Juan",
       role: "customer",
+      isBlocked: false,
     });
     expect(response.body.user).not.toHaveProperty("password");
 
@@ -192,6 +193,7 @@ describe("GET /auth/me with a real database", () => {
       email: "juan@example.com",
       name: "Juan",
       role: "customer",
+      isBlocked: false,
     });
     expect(response.body).not.toHaveProperty("password");
   });
@@ -252,6 +254,7 @@ describe("POST /auth/register-admin with a real database", () => {
       email: "admin@breadking.com",
       name: "Administrador",
       role: "admin",
+      isBlocked: false,
     });
     expect(response.body).not.toHaveProperty("password");
 

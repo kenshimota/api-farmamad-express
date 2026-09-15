@@ -103,6 +103,7 @@ describe("POST /auth/register-admin", () => {
       email: "admin@breadking.com",
       name: "Administrador",
       role: "admin",
+      isBlocked: false,
     });
     expect(response.body).not.toHaveProperty("password");
     expect(response.body).not.toHaveProperty("roleId");

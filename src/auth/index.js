@@ -66,6 +66,14 @@ const router = Router();
  *               $ref: '#/components/schemas/ErrorMessage'
  *             example:
  *               message: Invalid credentials
+ *       403:
+ *         description: Valid credentials but the account is blocked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *             example:
+ *               message: User is blocked
  *       422:
  *         description: Invalid fields
  *         content:
@@ -110,6 +118,10 @@ router.post("/login", async (req, res) => {
 
   if (!user || !(await verifyPassword(credentials.password, user.password))) {
     return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  if (user.isBlocked) {
+    return res.status(403).json({ message: "User is blocked" });
   }
 
   return res.json({ token: signToken(user), user: toPublicUser(user) });
