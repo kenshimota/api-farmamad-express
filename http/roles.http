@@ -1,0 +1,18 @@
+# Archivo: roles.http
+# Módulo: roles  ->  GET /roles
+# Protegido: requiere un JWT con rol admin.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### GET /roles — lista el catálogo de roles (200)
+# Devuelve id y name, ordenado por id ascendente.
+# Los nombres son los que acepta POST /users en el campo "role".
+GET {{baseUrl}}/roles
+Authorization: Bearer {{token}}
+
+### GET /roles — sin token (401 Unauthorized)
+GET {{baseUrl}}/roles
+
+### GET /roles — token inválido (401 Unauthorized)
+GET {{baseUrl}}/roles
+Authorization: Bearer not-a-jwt
+

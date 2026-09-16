@@ -10,6 +10,7 @@ const helloRouter = require("./hello");
 const healthRouter = require("./health");
 const authRouter = require("./auth");
 const usersRouter = require("./users");
+const rolesRouter = require("./roles");
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use("/hello-world", helloRouter);
 app.use("/health", healthRouter);
 app.use("/auth", authRouter);
 app.use("/users", usersRouter);
+app.use("/roles", rolesRouter);
 
 app.use(notFound);
 app.use(errorHandler);
