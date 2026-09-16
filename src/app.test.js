@@ -12,6 +12,7 @@ jest.mock("./models/user", () => ({
 
 jest.mock("./models/role", () => ({
   findOne: jest.fn(),
+  findAll: jest.fn(),
 }));
 
 jest.mock("./models/password-reset-code", () => ({
@@ -86,6 +87,13 @@ describe("app", () => {
 
   it("exposes POST /users behind authentication", async () => {
     const response = await request(app).post("/users").send({});
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: "Unauthorized" });
+  });
+
+  it("exposes GET /roles behind authentication", async () => {
+    const response = await request(app).get("/roles");
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Unauthorized" });

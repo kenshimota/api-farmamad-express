@@ -12,6 +12,7 @@ describe("swagger spec", () => {
         "/auth/setup-status",
         "/auth/register-admin",
         "/users",
+        "/roles",
       ]),
     );
   });

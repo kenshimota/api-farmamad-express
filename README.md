@@ -357,6 +357,40 @@ acepta en el cuerpo y un usuario no puede crearse bloqueado.
 En ningún caso la contraseña viaja en las respuestas: se guarda como hash
 bcrypt.
 
+### `GET /roles`
+
+Protegido: requiere un JWT con rol `admin`. Devuelve el catálogo de roles
+guardado en la tabla `roles`, ordenado por `id` ascendente y con **solo** `id` y
+`name` (sin `createdAt` ni `updatedAt`). Si la tabla está vacía responde `200`
+con `[]`.
+
+Los `name` de la respuesta son exactamente los valores que acepta el campo
+`role` de `POST /users`, así que un frontend puede usar este endpoint para
+poblar el selector de rol en lugar de escribir la lista a mano.
+
+```bash
+curl http://localhost:3001/roles -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  { "id": 1, "name": "admin" },
+  { "id": 2, "name": "seller" },
+  { "id": 3, "name": "delivery" },
+  { "id": 4, "name": "freelance_delivery" },
+  { "id": 5, "name": "customer" }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                          |
+| ------ | ------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }` |
+| `403`  | `{ "message": "Forbidden" }`    |
+
 ### `GET /users`
 
 Protegido: requiere un JWT con rol `admin`. Devuelve la colección de usuarios
