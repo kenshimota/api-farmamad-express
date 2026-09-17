@@ -11,6 +11,7 @@ const healthRouter = require("./health");
 const authRouter = require("./auth");
 const usersRouter = require("./users");
 const rolesRouter = require("./roles");
+const customersRouter = require("./customers");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/health", healthRouter);
 app.use("/auth", authRouter);
 app.use("/users", usersRouter);
 app.use("/roles", rolesRouter);
+app.use("/customers", customersRouter);
 
 app.use(notFound);
 app.use(errorHandler);
