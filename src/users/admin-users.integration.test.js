@@ -10,13 +10,13 @@ const { assertTestDatabase } = require("../../test/helpers/test-database");
 const PASSWORD = "secret123";
 const ADMIN = {
   username: "admin",
-  email: "admin@breadking.com",
+  email: "admin@superking.com",
   name: "Administrador",
   role: "admin",
 };
 const SELLER = {
   username: "maria",
-  email: "maria@breadking.com",
+  email: "maria@superking.com",
   name: "María",
   role: "seller",
 };
@@ -110,7 +110,7 @@ describe("GET /users with a real database", () => {
       {
         id: admin.id,
         username: "admin",
-        email: "admin@breadking.com",
+        email: "admin@superking.com",
         name: "Administrador",
         role: "admin",
         isBlocked: false,
@@ -118,7 +118,7 @@ describe("GET /users with a real database", () => {
       {
         id: seller.id,
         username: "maria",
-        email: "maria@breadking.com",
+        email: "maria@superking.com",
         name: "María",
         role: "seller",
         isBlocked: true,

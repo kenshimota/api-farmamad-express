@@ -7,21 +7,27 @@ const {
   setTransport,
   resetTransport,
   sendRecoveryCode,
+  sendWelcomeEmail,
 } = require("./mailer");
 
 const CODE = "00427193";
 const USERNAME = "sender@gmail.com";
 const TOKEN = "app-password";
+const DEFAULT_URL = "https://dashboard.asic-guanipa.online/";
 
 beforeEach(() => {
   process.env.GMAIL_USERNAME = USERNAME;
   process.env.GMAIL_TOKEN = TOKEN;
+  delete process.env.APP_NAME;
+  delete process.env.APP_URL;
   resetTransport();
 });
 
 afterAll(() => {
   delete process.env.GMAIL_USERNAME;
   delete process.env.GMAIL_TOKEN;
+  delete process.env.APP_NAME;
+  delete process.env.APP_URL;
 });
 
 describe("getTransport", () => {
@@ -87,20 +93,33 @@ describe("sendRecoveryCode", () => {
     const message = sendMail.mock.calls[0][0];
     expect(message.from).toBe(USERNAME);
     expect(message.to).toBe("juan@example.com");
-    expect(message.subject).toMatch(/recuperación/i);
+    expect(message.subject).toBe("Recuperación de contraseña - Super King");
     expect(message.text).toBe(
       [
         "Hola,",
         "",
-        "Recibimos una solicitud para restablecer tu contraseña en Bread King.",
+        "Recibimos una solicitud para restablecer tu contraseña en Super King.",
         `Tu código de recuperación es: ${CODE}`,
         "",
         "El código es válido durante 5 minutos. Si no solicitaste este cambio, " +
           "ignora este correo.",
         "",
-        "Equipo Bread King",
+        "Equipo Super King",
       ].join("\n"),
     );
+  });
+
+  it("uses the configured product name in the recovery email", async () => {
+    process.env.APP_NAME = "Panadería Central";
+    const sendMail = jest.fn().mockResolvedValue({ messageId: "1" });
+    setTransport({ sendMail });
+
+    await sendRecoveryCode("juan@example.com", CODE);
+
+    const { subject, text } = sendMail.mock.calls[0][0];
+    expect(subject).toBe("Recuperación de contraseña - Panadería Central");
+    expect(text).toContain("restablecer tu contraseña en Panadería Central.");
+    expect(text).toContain("Equipo Panadería Central");
   });
 
   it("wraps delivery failures in a MailDeliveryError", async () => {
@@ -111,5 +130,70 @@ describe("sendRecoveryCode", () => {
 
     await expect(promise).rejects.toBeInstanceOf(MailDeliveryError);
     await expect(promise).rejects.toThrow("Could not send the recovery email");
+  });
+});
+
+describe("sendWelcomeEmail", () => {
+  it("sends a plain text Spanish welcome email to the new user", async () => {
+    const sendMail = jest.fn().mockResolvedValue({ messageId: "1" });
+    setTransport({ sendMail });
+
+    await sendWelcomeEmail("maria@superking.com", "María");
+
+    expect(sendMail).toHaveBeenCalledTimes(1);
+    const message = sendMail.mock.calls[0][0];
+    expect(message.from).toBe(USERNAME);
+    expect(message.to).toBe("maria@superking.com");
+    expect(message.subject).toBe("¡Bienvenido a Super King!");
+    expect(message.text).toBe(
+      [
+        "Hola María,",
+        "",
+        "¡Te damos la bienvenida a Super King!",
+        "",
+        "Ya puedes ingresar a la web desde:",
+        DEFAULT_URL,
+        "",
+        "Si no creaste esta cuenta, ignora este correo.",
+        "",
+        "Equipo Super King",
+      ].join("\n"),
+    );
+  });
+
+  it("uses a generic greeting when the user has no name", async () => {
+    const sendMail = jest.fn().mockResolvedValue({ messageId: "1" });
+    setTransport({ sendMail });
+
+    await sendWelcomeEmail("maria@superking.com", null);
+
+    const { text } = sendMail.mock.calls[0][0];
+    expect(text.startsWith("Hola,\n")).toBe(true);
+    expect(text).not.toContain("Hola null");
+  });
+
+  it("uses the configured product name and URL", async () => {
+    process.env.APP_NAME = "Panadería Central";
+    process.env.APP_URL = "https://panaderia.example.com/";
+    const sendMail = jest.fn().mockResolvedValue({ messageId: "1" });
+    setTransport({ sendMail });
+
+    await sendWelcomeEmail("maria@superking.com", "María");
+
+    const { subject, text } = sendMail.mock.calls[0][0];
+    expect(subject).toBe("¡Bienvenido a Panadería Central!");
+    expect(text).toContain("¡Te damos la bienvenida a Panadería Central!");
+    expect(text).toContain("https://panaderia.example.com/");
+    expect(text).toContain("Equipo Panadería Central");
+  });
+
+  it("wraps delivery failures in a MailDeliveryError", async () => {
+    const cause = new Error("smtp down");
+    setTransport({ sendMail: jest.fn().mockRejectedValue(cause) });
+
+    const promise = sendWelcomeEmail("maria@superking.com", "María");
+
+    await expect(promise).rejects.toBeInstanceOf(MailDeliveryError);
+    await expect(promise).rejects.toThrow("Could not send the welcome email");
   });
 });

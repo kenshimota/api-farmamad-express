@@ -16,12 +16,30 @@ jest.mock("../models/password-reset-code", () => ({
 
 jest.mock("../database", () => ({ transaction: jest.fn() }));
 
+jest.mock("./mailer", () => {
+  const actual = jest.requireActual("./mailer");
+
+  return {
+    ...actual,
+    sendRecoveryCode: jest.fn(),
+    sendWelcomeEmail: jest.fn(),
+  };
+});
+
+jest.mock("../config/logger", () => ({
+  error: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+}));
+
 const express = require("express");
 const request = require("supertest");
 const User = require("../models/user");
 const Role = require("../models/role");
 const sequelize = require("../database");
 const authRouter = require("./index");
+const { sendWelcomeEmail } = require("./mailer");
+const logger = require("../config/logger");
 
 const app = express();
 app.use(express.json());
@@ -31,7 +49,7 @@ const ADMIN_ROLE = { id: 1, name: "admin" };
 const TRANSACTION = { LOCK: { UPDATE: "UPDATE" } };
 const validBody = {
   username: "admin",
-  email: "admin@breadking.com",
+  email: "admin@superking.com",
   password: "secret123",
   name: "Administrador",
 };
@@ -44,6 +62,8 @@ beforeEach(() => {
   User.create.mockReset();
   Role.findOne.mockReset();
   sequelize.transaction.mockImplementation((callback) => callback(TRANSACTION));
+  sendWelcomeEmail.mockReset();
+  logger.error.mockReset();
 });
 
 describe("GET /auth/setup-status", () => {
@@ -89,7 +109,7 @@ describe("POST /auth/register-admin", () => {
     User.create.mockResolvedValue({
       id: 1,
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@superking.com",
       name: "Administrador",
       roleId: 1,
     });
@@ -100,7 +120,7 @@ describe("POST /auth/register-admin", () => {
     expect(response.body).toEqual({
       id: 1,
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@superking.com",
       name: "Administrador",
       role: "admin",
       isBlocked: false,
@@ -120,7 +140,7 @@ describe("POST /auth/register-admin", () => {
     expect(User.create).toHaveBeenCalledWith(
       {
         username: "admin",
-        email: "admin@breadking.com",
+        email: "admin@superking.com",
         password: "secret123",
         name: "Administrador",
         roleId: 1,
@@ -135,7 +155,7 @@ describe("POST /auth/register-admin", () => {
     User.create.mockResolvedValue({
       id: 1,
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@superking.com",
       name: null,
       roleId: 1,
     });
@@ -147,12 +167,64 @@ describe("POST /auth/register-admin", () => {
     expect(User.create).toHaveBeenCalledWith(
       {
         username: "admin",
-        email: "admin@breadking.com",
+        email: "admin@superking.com",
         password: "secret123",
         name: "Administrador",
         roleId: 1,
       },
       { transaction: TRANSACTION },
+    );
+  });
+
+  it("sends a welcome email after the administrator is created", async () => {
+    Role.findOne.mockResolvedValue(ADMIN_ROLE);
+    User.findOne.mockResolvedValue(null);
+    User.create.mockResolvedValue({
+      id: 1,
+      username: "admin",
+      email: "admin@superking.com",
+      name: "Administrador",
+      roleId: 1,
+    });
+    sendWelcomeEmail.mockResolvedValue(undefined);
+
+    const response = await register(validBody);
+
+    expect(response.status).toBe(201);
+    expect(sendWelcomeEmail).toHaveBeenCalledTimes(1);
+    expect(sendWelcomeEmail).toHaveBeenCalledWith(
+      "admin@superking.com",
+      "Administrador",
+    );
+  });
+
+  it("still responds 201 and logs when the welcome email fails", async () => {
+    Role.findOne.mockResolvedValue(ADMIN_ROLE);
+    User.findOne.mockResolvedValue(null);
+    User.create.mockResolvedValue({
+      id: 1,
+      username: "admin",
+      email: "admin@superking.com",
+      name: "Administrador",
+      roleId: 1,
+    });
+    const error = new Error("connection refused");
+    sendWelcomeEmail.mockRejectedValue(error);
+
+    const response = await register(validBody);
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      id: 1,
+      username: "admin",
+      email: "admin@superking.com",
+      name: "Administrador",
+      role: "admin",
+      isBlocked: false,
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      "Could not send the welcome email",
+      { email: "admin@superking.com", error },
     );
   });
 
@@ -165,6 +237,7 @@ describe("POST /auth/register-admin", () => {
     expect(response.status).toBe(409);
     expect(response.body).toEqual({ message: "Admin already exists" });
     expect(User.create).not.toHaveBeenCalled();
+    expect(sendWelcomeEmail).not.toHaveBeenCalled();
   });
 
   it("responds 500 when the administrator role is not configured", async () => {
@@ -175,6 +248,7 @@ describe("POST /auth/register-admin", () => {
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ message: "Server error" });
     expect(User.create).not.toHaveBeenCalled();
+    expect(sendWelcomeEmail).not.toHaveBeenCalled();
   });
 
   it.each([

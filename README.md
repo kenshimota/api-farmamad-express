@@ -1,6 +1,6 @@
-# API Bread King
+# API Super King
 
-REST API de Bread King construida con Express 5, Sequelize 6 y PostgreSQL.
+REST API de Super King construida con Express 5, Sequelize 6 y PostgreSQL.
 
 ## Puesta en marcha
 
@@ -17,8 +17,13 @@ La documentación interactiva (Swagger UI) está disponible en
 
 Variables de entorno relevantes: `PORT`, `NODE_ENV`, `LOG_LEVEL`, `NO_COLOR`,
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`,
-`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME` y `GMAIL_TOKEN` (ver
-`.env.example`).
+`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME` y
+`APP_URL` (ver `.env.example`).
+
+`APP_NAME` es el nombre del producto que aparece en los correos (por defecto
+`Super King`) y `APP_URL` es el link de ingreso incluido en el correo de
+bienvenida (por defecto `https://dashboard.asic-guanipa.online/`). Si cualquiera
+de las dos no está definida o está vacía se usa su valor por defecto.
 
 ## Autenticación
 
@@ -62,7 +67,7 @@ y solo esos orígenes recibirán la cabecera con su propio valor (más
 `Vary: Origin`); las peticiones sin `Origin` no reciben la cabecera.
 
 ```bash
-CORS_ORIGIN=https://app.breadking.com,https://admin.breadking.com
+CORS_ORIGIN=https://app.superking.com,https://admin.superking.com
 ```
 
 Si `CORS_ORIGIN` no está definida o está vacía, se permite cualquier origen.
@@ -135,13 +140,17 @@ Público. Registra al admin inicial. Solo funciona si todavía no existe
 ningún admin; en caso contrario responde `409`. El rol del usuario
 creado es siempre `admin`.
 
+Tras crearlo, la API envía un **correo de bienvenida** al `email` indicado. El
+envío es un efecto secundario: si falla, el administrador igual queda creado y la
+respuesta sigue siendo `201` (el fallo se registra en los logs).
+
 Campos: `username`, `email`, `password` (mínimo 8 caracteres, requeridos) y
 `name` (opcional).
 
 ```bash
 curl -X POST http://localhost:3001/auth/register-admin \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","email":"admin@breadking.com","password":"secreto123","name":"Administrador"}'
+  -d '{"username":"admin","email":"admin@superking.com","password":"secreto123","name":"Administrador"}'
 ```
 
 Respuesta `201`:
@@ -150,7 +159,7 @@ Respuesta `201`:
 {
   "id": 1,
   "username": "admin",
-  "email": "admin@breadking.com",
+  "email": "admin@superking.com",
   "name": "Administrador",
   "role": "admin"
 }
@@ -171,7 +180,7 @@ Público. Autentica con `identifier` (email o username) y `password`.
 ```bash
 curl -X POST http://localhost:3001/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"identifier":"admin@breadking.com","password":"secreto123"}'
+  -d '{"identifier":"admin@superking.com","password":"secreto123"}'
 ```
 
 Respuesta `200`:
@@ -182,7 +191,7 @@ Respuesta `200`:
   "user": {
     "id": 1,
     "username": "admin",
-    "email": "admin@breadking.com",
+    "email": "admin@superking.com",
     "name": "Administrador",
     "role": "admin",
     "isBlocked": false
@@ -310,7 +319,20 @@ Errores:
 
 Los correos se envían con Nodemailer a través de Gmail: configura
 `GMAIL_USERNAME` (cuenta remitente) y `GMAIL_TOKEN` (App Password de 16
-caracteres, nunca la contraseña normal de la cuenta).
+caracteres, nunca la contraseña normal de la cuenta). El nombre del producto y
+el link de ingreso que aparecen en los correos se configuran con `APP_NAME` y
+`APP_URL`.
+
+### Correo de bienvenida
+
+Al crear un usuario (`POST /users`) o registrar al admin inicial
+(`POST /auth/register-admin`), la API envía un correo de **texto plano** en
+español a la dirección del usuario creado. El asunto es
+`¡Bienvenido a <APP_NAME>!` y el cuerpo incluye el saludo con el `name` del
+usuario (o un saludo genérico si no tiene), el link `APP_URL` y la firma
+`Equipo <APP_NAME>`. Un `409` por `username` o `email` duplicado no envía ningún
+correo. Si el envío falla, el usuario igual queda creado, la respuesta sigue
+siendo `201` y el fallo se registra con `logger.error(...)`.
 
 ### `POST /users`
 
@@ -321,11 +343,14 @@ Campos: `username`, `email`, `password` (mínimo 8 caracteres) y `role`
 (requeridos); `name` (opcional). Si `username` o `email` ya existen responde
 `409`; si el rol no existe responde `422`.
 
+Tras crearlo, la API envía el **correo de bienvenida** al `email` del usuario
+(ver _Correo de bienvenida_); un fallo de envío no cambia la respuesta `201`.
+
 ```bash
 curl -X POST http://localhost:3001/users \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"username":"maria","email":"maria@breadking.com","password":"secreto123","name":"María","role":"seller"}'
+  -d '{"username":"maria","email":"maria@superking.com","password":"secreto123","name":"María","role":"seller"}'
 ```
 
 Respuesta `201`:
@@ -334,7 +359,7 @@ Respuesta `201`:
 {
   "id": 2,
   "username": "maria",
-  "email": "maria@breadking.com",
+  "email": "maria@superking.com",
   "name": "María",
   "role": "seller",
   "isBlocked": false
@@ -408,7 +433,7 @@ Respuesta `200`:
   {
     "id": 1,
     "username": "admin",
-    "email": "admin@breadking.com",
+    "email": "admin@superking.com",
     "name": "Administrador",
     "role": "admin",
     "isBlocked": false
@@ -416,7 +441,7 @@ Respuesta `200`:
   {
     "id": 2,
     "username": "maria",
-    "email": "maria@breadking.com",
+    "email": "maria@superking.com",
     "name": "María",
     "role": "seller",
     "isBlocked": true
@@ -451,7 +476,7 @@ Respuesta `200`:
 {
   "id": 2,
   "username": "maria",
-  "email": "maria@breadking.com",
+  "email": "maria@superking.com",
   "name": "María",
   "role": "seller",
   "isBlocked": true

@@ -24,7 +24,7 @@ const storedUsers = [
   {
     id: 1,
     username: "admin",
-    email: "admin@breadking.com",
+    email: "admin@superking.com",
     name: "Administrador",
     isBlocked: false,
     role: { name: "admin" },
@@ -32,7 +32,7 @@ const storedUsers = [
   {
     id: 2,
     username: "maria",
-    email: "maria@breadking.com",
+    email: "maria@superking.com",
     name: "María",
     isBlocked: true,
     role: { name: "seller" },
@@ -79,7 +79,7 @@ describe("GET /users", () => {
       {
         id: 1,
         username: "admin",
-        email: "admin@breadking.com",
+        email: "admin@superking.com",
         name: "Administrador",
         role: "admin",
         isBlocked: false,
@@ -87,7 +87,7 @@ describe("GET /users", () => {
       {
         id: 2,
         username: "maria",
-        email: "maria@breadking.com",
+        email: "maria@superking.com",
         name: "María",
         role: "seller",
         isBlocked: true,

@@ -1,7 +1,9 @@
 const nodemailer = require("nodemailer");
+const { getProductName, getProductUrl } = require("../config/product");
+const { buildRecoveryBody, buildWelcomeBody } = require("./email-templates");
 
 /**
- * Error thrown when the recovery email cannot be delivered.
+ * Error thrown when a product email cannot be delivered.
  */
 class MailDeliveryError extends Error {
   /**
@@ -52,22 +54,22 @@ function resetTransport() {
 }
 
 /**
- * Builds the Spanish recovery email body.
- * @param {string} code - Plain 8-digit recovery code.
- * @returns {string} The email text.
+ * Delivers a message through the current transport, wrapping any transport
+ * error in a {@link MailDeliveryError}.
+ * @param {{ to: string, subject: string, text: string }} message - Message to deliver.
+ * @param {string} failureMessage - Error message to expose when delivery fails.
+ * @returns {Promise<void>}
+ * @throws {MailDeliveryError} When the transport cannot deliver the message.
  */
-function buildBody(code) {
-  return [
-    "Hola,",
-    "",
-    "Recibimos una solicitud para restablecer tu contraseña en Bread King.",
-    `Tu código de recuperación es: ${code}`,
-    "",
-    "El código es válido durante 5 minutos. Si no solicitaste este cambio, " +
-      "ignora este correo.",
-    "",
-    "Equipo Bread King",
-  ].join("\n");
+async function deliver(message, failureMessage) {
+  try {
+    await getTransport().sendMail({
+      from: process.env.GMAIL_USERNAME,
+      ...message,
+    });
+  } catch (error) {
+    throw new MailDeliveryError(failureMessage, error);
+  }
 }
 
 /**
@@ -78,16 +80,37 @@ function buildBody(code) {
  * @throws {MailDeliveryError} When the transport cannot deliver the message.
  */
 async function sendRecoveryCode(email, code) {
-  try {
-    await getTransport().sendMail({
-      from: process.env.GMAIL_USERNAME,
+  const productName = getProductName();
+
+  return deliver(
+    {
       to: email,
-      subject: "Recuperación de contraseña - Bread King",
-      text: buildBody(code),
-    });
-  } catch (error) {
-    throw new MailDeliveryError("Could not send the recovery email", error);
-  }
+      subject: `Recuperación de contraseña - ${productName}`,
+      text: buildRecoveryBody(code, productName),
+    },
+    "Could not send the recovery email",
+  );
+}
+
+/**
+ * Sends the welcome email to a newly created user through Gmail.
+ * @param {string} email - Recipient address.
+ * @param {string|null|undefined} name - User name, used in the greeting.
+ * @returns {Promise<void>}
+ * @throws {MailDeliveryError} When the transport cannot deliver the message.
+ */
+async function sendWelcomeEmail(email, name) {
+  const productName = getProductName();
+  const productUrl = getProductUrl();
+
+  return deliver(
+    {
+      to: email,
+      subject: `¡Bienvenido a ${productName}!`,
+      text: buildWelcomeBody(name, productName, productUrl),
+    },
+    "Could not send the welcome email",
+  );
 }
 
 module.exports = {
@@ -96,4 +119,5 @@ module.exports = {
   setTransport,
   resetTransport,
   sendRecoveryCode,
+  sendWelcomeEmail,
 };

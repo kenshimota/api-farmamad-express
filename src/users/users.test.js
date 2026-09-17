@@ -8,6 +8,12 @@ jest.mock("../models/user", () => ({
 }));
 jest.mock("../models/role", () => ({ findOne: jest.fn() }));
 jest.mock("../database", () => ({ transaction: jest.fn() }));
+jest.mock("../auth/mailer", () => ({ sendWelcomeEmail: jest.fn() }));
+jest.mock("../config/logger", () => ({
+  error: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+}));
 
 const express = require("express");
 const request = require("supertest");
@@ -17,6 +23,8 @@ const User = require("../models/user");
 const Role = require("../models/role");
 const sequelize = require("../database");
 const usersRouter = require("./index");
+const { sendWelcomeEmail } = require("../auth/mailer");
+const logger = require("../config/logger");
 
 const app = express();
 app.use(express.json());
@@ -31,7 +39,7 @@ const AUTH_USER = { id: 1, username: "admin", isBlocked: false };
 const SELLER_ROLE = { id: 2, name: "seller" };
 const validBody = {
   username: "maria",
-  email: "maria@breadking.com",
+  email: "maria@superking.com",
   password: "secret123",
   name: "María",
   role: "seller",
@@ -39,7 +47,7 @@ const validBody = {
 const createdUser = {
   id: 2,
   username: "maria",
-  email: "maria@breadking.com",
+  email: "maria@superking.com",
   name: "María",
   roleId: SELLER_ROLE.id,
   isBlocked: false,
@@ -78,6 +86,8 @@ beforeEach(() => {
   sequelize.transaction.mockReset();
   sequelize.transaction.mockImplementation((callback) => callback(TRANSACTION));
   User.findByPk.mockResolvedValue(AUTH_USER);
+  sendWelcomeEmail.mockReset();
+  logger.error.mockReset();
 });
 
 describe("POST /users", () => {
@@ -91,7 +101,7 @@ describe("POST /users", () => {
     expect(response.body).toEqual({
       id: 2,
       username: "maria",
-      email: "maria@breadking.com",
+      email: "maria@superking.com",
       name: "María",
       role: "seller",
       isBlocked: false,
@@ -103,7 +113,23 @@ describe("POST /users", () => {
     });
     expect(User.create).toHaveBeenCalledWith({
       username: "maria",
-      email: "maria@breadking.com",
+      email: "maria@superking.com",
+      password: "secret123",
+      name: "María",
+      role: "seller",
+      roleId: 2,
+    });
+  });
+
+  it("strips unknown fields before persisting the user", async () => {
+    Role.findOne.mockResolvedValue(SELLER_ROLE);
+    User.create.mockResolvedValue(createdUser);
+
+    await post({ ...validBody, isBlocked: true, roleId: 99 });
+
+    expect(User.create).toHaveBeenCalledWith({
+      username: "maria",
+      email: "maria@superking.com",
       password: "secret123",
       name: "María",
       role: "seller",
@@ -121,11 +147,49 @@ describe("POST /users", () => {
     expect(response.body).toEqual({
       id: 2,
       username: "maria",
-      email: "maria@breadking.com",
+      email: "maria@superking.com",
       name: null,
       role: "seller",
       isBlocked: false,
     });
+  });
+
+  it("sends a welcome email after the user is created", async () => {
+    Role.findOne.mockResolvedValue(SELLER_ROLE);
+    User.create.mockResolvedValue(createdUser);
+    sendWelcomeEmail.mockResolvedValue(undefined);
+
+    const response = await post(validBody);
+
+    expect(response.status).toBe(201);
+    expect(sendWelcomeEmail).toHaveBeenCalledTimes(1);
+    expect(sendWelcomeEmail).toHaveBeenCalledWith(
+      "maria@superking.com",
+      "María",
+    );
+  });
+
+  it("still responds 201 and logs when the welcome email fails", async () => {
+    Role.findOne.mockResolvedValue(SELLER_ROLE);
+    User.create.mockResolvedValue(createdUser);
+    const error = new Error("connection refused");
+    sendWelcomeEmail.mockRejectedValue(error);
+
+    const response = await post(validBody);
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      id: 2,
+      username: "maria",
+      email: "maria@superking.com",
+      name: "María",
+      role: "seller",
+      isBlocked: false,
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      "Could not send the welcome email",
+      { email: "maria@superking.com", error },
+    );
   });
 
   it("responds 401 when the token is missing", async () => {
@@ -214,6 +278,7 @@ describe("POST /users", () => {
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({ message: "User already exists" });
+    expect(sendWelcomeEmail).not.toHaveBeenCalled();
   });
 
   it("forwards unexpected persistence errors", async () => {

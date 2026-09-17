@@ -21,15 +21,15 @@ const PUBLIC_CUSTOMER = {
   email: "juan@example.com",
 };
 const USERS = {
-  admin: { username: "admin", email: "admin@breadking.com", name: "Admin" },
-  seller: { username: "maria", email: "maria@breadking.com", name: "María" },
-  delivery: { username: "pedro", email: "pedro@breadking.com", name: "Pedro" },
+  admin: { username: "admin", email: "admin@superking.com", name: "Admin" },
+  seller: { username: "maria", email: "maria@superking.com", name: "María" },
+  delivery: { username: "pedro", email: "pedro@superking.com", name: "Pedro" },
   freelance_delivery: {
     username: "luis",
-    email: "luis@breadking.com",
+    email: "luis@superking.com",
     name: "Luis",
   },
-  customer: { username: "ana", email: "ana@breadking.com", name: "Ana" },
+  customer: { username: "ana", email: "ana@superking.com", name: "Ana" },
 };
 
 /**

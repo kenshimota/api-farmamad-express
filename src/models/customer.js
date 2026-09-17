@@ -3,7 +3,7 @@ const sequelize = require("../database");
 const { toPublicCustomer } = require("../customers/serializer");
 
 /**
- * Sequelize model that represents a Bread King customer. A customer is a third
+ * Sequelize model that represents a Super King customer. A customer is a third
  * party that receives orders, not a system user that starts a session.
  */
 const Customer = sequelize.define(
