@@ -1,0 +1,143 @@
+# Archivo: customers.http
+# Módulo: customers  ->  POST /customers, GET /customers, GET /customers/:id,
+#                        PUT /customers/:id, DELETE /customers/:id
+# Protegido: escritura requiere rol admin o seller; lectura también delivery.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /customers — registra un cliente (201)
+# latitude debe estar entre -90 y 90; longitude entre -180 y 180.
+POST {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Juan Pérez",
+  "latitude": -17.7833,
+  "longitude": -63.1821,
+  "direction": "Av. Monseñor Rivero 123",
+  "email": "juan@example.com"
+}
+
+### POST /customers — sin token (401 Unauthorized)
+POST {{baseUrl}}/customers
+Content-Type: application/json
+
+{
+  "fullName": "Juan Pérez",
+  "latitude": -17.7833,
+  "longitude": -63.1821,
+  "direction": "Av. Monseñor Rivero 123",
+  "email": "juan@example.com"
+}
+
+### POST /customers — faltan campos (400)
+POST {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Juan Pérez"
+}
+
+### POST /customers — latitud inválida (422)
+POST {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Juan Pérez",
+  "latitude": 100,
+  "longitude": -63.1821,
+  "direction": "Av. Monseñor Rivero 123",
+  "email": "juan@example.com"
+}
+
+### POST /customers — email ya registrado (409)
+POST {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Otro Juan",
+  "latitude": -17.78,
+  "longitude": -63.18,
+  "direction": "Otra dirección 456",
+  "email": "juan@example.com"
+}
+
+### GET /customers — lista los clientes (200)
+# Devuelve id, fullName, latitude, longitude, direction y email; [] si no hay.
+GET {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+
+### GET /customers — sin token (401 Unauthorized)
+GET {{baseUrl}}/customers
+
+### GET /customers/:id — consulta un cliente (200)
+# Sustituye 1 por el id del cliente.
+GET {{baseUrl}}/customers/1
+Authorization: Bearer {{token}}
+
+### GET /customers/:id — id inexistente (404)
+GET {{baseUrl}}/customers/99999
+Authorization: Bearer {{token}}
+
+### GET /customers/:id — id inválido (422)
+GET {{baseUrl}}/customers/abc
+Authorization: Bearer {{token}}
+
+### PUT /customers/:id — actualiza un cliente (200)
+# Actualización completa: se envían los cinco campos.
+PUT {{baseUrl}}/customers/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Juan Pérez Gómez",
+  "latitude": -17.79,
+  "longitude": -63.19,
+  "direction": "Av. Monseñor Rivero 456",
+  "email": "juan@example.com"
+}
+
+### PUT /customers/:id — email de otro cliente (409)
+PUT {{baseUrl}}/customers/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Juan Pérez",
+  "latitude": -17.7833,
+  "longitude": -63.1821,
+  "direction": "Av. Monseñor Rivero 123",
+  "email": "ana@example.com"
+}
+
+### PUT /customers/:id — id inexistente (404)
+PUT {{baseUrl}}/customers/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "Juan Pérez",
+  "latitude": -17.7833,
+  "longitude": -63.1821,
+  "direction": "Av. Monseñor Rivero 123",
+  "email": "juan@example.com"
+}
+
+### DELETE /customers/:id — elimina un cliente (204, sin cuerpo)
+# Sustituye 1 por el id del cliente a eliminar.
+DELETE {{baseUrl}}/customers/1
+Authorization: Bearer {{token}}
+
+### DELETE /customers/:id — id inexistente (404)
+DELETE {{baseUrl}}/customers/99999
+Authorization: Bearer {{token}}
+
+### DELETE /customers/:id — id inválido (422)
+DELETE {{baseUrl}}/customers/abc
+Authorization: Bearer {{token}}
+
+### DELETE /customers/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/customers/1

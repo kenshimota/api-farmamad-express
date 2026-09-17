@@ -21,6 +21,12 @@ jest.mock("./models/password-reset-code", () => ({
   update: jest.fn(),
 }));
 
+jest.mock("./models/customer", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
+
 const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");
@@ -94,6 +100,13 @@ describe("app", () => {
 
   it("exposes GET /roles behind authentication", async () => {
     const response = await request(app).get("/roles");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: "Unauthorized" });
+  });
+
+  it("exposes POST /customers behind authentication", async () => {
+    const response = await request(app).post("/customers").send({});
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Unauthorized" });

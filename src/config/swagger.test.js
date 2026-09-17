@@ -13,6 +13,8 @@ describe("swagger spec", () => {
         "/auth/register-admin",
         "/users",
         "/roles",
+        "/customers",
+        "/customers/{id}",
       ]),
     );
   });
@@ -34,6 +36,23 @@ describe("swagger spec", () => {
       },
     });
     expect(swaggerSpec.components.schemas.User.properties.role).toBeDefined();
+  });
+
+  it("documents the Customer schema without audit fields", () => {
+    expect(swaggerSpec.components.schemas.Customer).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        fullName: { type: "string" },
+        latitude: { type: "number", example: -17.7833 },
+        longitude: { type: "number", example: -63.1821 },
+        direction: { type: "string" },
+        email: { type: "string", format: "email" },
+      },
+    });
+    expect(
+      swaggerSpec.components.schemas.Customer.properties,
+    ).not.toHaveProperty("createdAt");
   });
 
   it("documents the generic 500 and 404 schemas and responses", () => {

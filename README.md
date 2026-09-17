@@ -500,6 +500,189 @@ Tanto el bloqueo como la eliminación se ejecutan dentro de una transacción
 (`sequelize.transaction`) para que la comprobación de "último administrador" y
 la escritura no sufran condiciones de carrera.
 
+## Clientes
+
+Los clientes viven en la tabla `customers` (modelo `Customer`), separada de
+`users`: un cliente es un tercero al que se le vende, no un usuario que inicia
+sesión. `latitude` y `longitude` se persisten como `DECIMAL(10,7)` y la API las
+devuelve como **números** con hasta 7 decimales. Ninguna respuesta incluye
+`createdAt`, `updatedAt` ni `isRegistered`.
+
+Permisos por endpoint:
+
+| Endpoint                | `admin` | `seller` | `delivery` | `freelance_delivery` | `customer` |
+| ----------------------- | ------- | -------- | ---------- | -------------------- | ---------- |
+| `POST /customers`       | ✅      | ✅       | ❌ `403`   | ❌ `403`             | ❌ `403`   |
+| `GET /customers`        | ✅      | ✅       | ✅         | ❌ `403`             | ❌ `403`   |
+| `GET /customers/:id`    | ✅      | ✅       | ✅         | ❌ `403`             | ❌ `403`   |
+| `PUT /customers/:id`    | ✅      | ✅       | ❌ `403`   | ❌ `403`             | ❌ `403`   |
+| `DELETE /customers/:id` | ✅      | ✅       | ❌ `403`   | ❌ `403`             | ❌ `403`   |
+
+Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` en
+todos los endpoints, y sin token (o con token inválido/expirado) la respuesta es
+`401` con `{ "message": "Unauthorized" }`.
+
+### `POST /customers`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos:
+`fullName`, `latitude` (entre `-90` y `90`), `longitude` (entre `-180` y `180`),
+`direction` y `email`. El campo opcional `isRegistered` (booleano) se guarda en
+la tabla pero no se expone en la respuesta.
+
+```bash
+curl -X POST http://localhost:3001/customers \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Juan Pérez","latitude":-17.7833,"longitude":-63.1821,"direction":"Av. Monseñor Rivero 123","email":"juan@example.com"}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "fullName": "Juan Pérez",
+  "latitude": -17.7833,
+  "longitude": -63.1821,
+  "direction": "Av. Monseñor Rivero 123",
+  "email": "juan@example.com"
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                                         |
+| ------ | ------------------------------------------------------------------------------ |
+| `400`  | `{ "message": "fullName, latitude, longitude, direction and email are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                                                |
+| `403`  | `{ "message": "Forbidden" }`                                                   |
+| `409`  | `{ "message": "Customer already exists" }`                                     |
+| `422`  | `{ "errors": { "latitude": "Latitud inválida" } }`                             |
+
+### `GET /customers`
+
+Protegido: requiere un JWT con rol `admin`, `seller` o `delivery`. Devuelve la
+colección completa ordenada por `id` ascendente. Si no hay clientes responde
+`200` con `[]` (nunca `404`).
+
+```bash
+curl http://localhost:3001/customers -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "fullName": "Juan Pérez",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "juan@example.com"
+  }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                          |
+| ------ | ------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }` |
+| `403`  | `{ "message": "Forbidden" }`    |
+
+### `GET /customers/:id`
+
+Protegido: requiere un JWT con rol `admin`, `seller` o `delivery`. Devuelve un
+único cliente.
+
+```bash
+curl http://localhost:3001/customers/1 -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 1,
+  "fullName": "Juan Pérez",
+  "latitude": -17.7833,
+  "longitude": -63.1821,
+  "direction": "Av. Monseñor Rivero 123",
+  "email": "juan@example.com"
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                            |
+| ------ | ------------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                   |
+| `403`  | `{ "message": "Forbidden" }`                      |
+| `404`  | `{ "message": "Customer not found" }`             |
+| `422`  | `{ "errors": { "id": "Invalid customer id" } }`   |
+
+### `PUT /customers/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Es una actualización
+completa: exige los mismos campos que la creación (`fullName`, `latitude`,
+`longitude`, `direction` y `email`); `isRegistered` es opcional y, si se omite,
+conserva su valor anterior.
+
+```bash
+curl -X PUT http://localhost:3001/customers/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Juan Pérez Gómez","latitude":-17.79,"longitude":-63.19,"direction":"Av. Monseñor Rivero 456","email":"juan@example.com"}'
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 1,
+  "fullName": "Juan Pérez Gómez",
+  "latitude": -17.79,
+  "longitude": -63.19,
+  "direction": "Av. Monseñor Rivero 456",
+  "email": "juan@example.com"
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                                             |
+| ------ | ---------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "fullName, latitude, longitude, direction and email are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                                                    |
+| `403`  | `{ "message": "Forbidden" }`                                                       |
+| `404`  | `{ "message": "Customer not found" }`                                              |
+| `409`  | `{ "message": "Customer already exists" }`                                         |
+| `422`  | `{ "errors": { "id": "Invalid customer id" } }`                                    |
+
+### `DELETE /customers/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Elimina de forma
+permanente al cliente y responde `204` sin cuerpo. No toca la tabla `users`.
+
+```bash
+curl -X DELETE http://localhost:3001/customers/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "Forbidden" }`                    |
+| `404`  | `{ "message": "Customer not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid customer id" } }` |
+
+El email duplicado se detecta con la restricción única de Postgres
+(`UniqueConstraintError`), de modo que dos peticiones simultáneas nunca crean
+clientes repetidos.
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
