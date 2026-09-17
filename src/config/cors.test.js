@@ -59,7 +59,7 @@ describe("cors middleware", () => {
     });
 
     it("appends Origin to an existing Vary header", async () => {
-      process.env.CORS_ORIGIN = "https://app.breadking.com";
+      process.env.CORS_ORIGIN = "https://app.superking.com";
       const app = express();
       app.use((req, res, next) => {
         res.setHeader("Vary", "Accept-Encoding");
@@ -75,7 +75,7 @@ describe("cors middleware", () => {
     });
 
     it("does not duplicate Origin in the Vary header", async () => {
-      process.env.CORS_ORIGIN = "https://app.breadking.com";
+      process.env.CORS_ORIGIN = "https://app.superking.com";
       const app = express();
       app.use((req, res, next) => {
         res.setHeader("Vary", "Origin");
@@ -92,20 +92,20 @@ describe("cors middleware", () => {
 
     it("echoes the request origin when it is part of the configured list", async () => {
       process.env.CORS_ORIGIN =
-        "https://app.breadking.com, https://admin.breadking.com";
+        "https://app.superking.com, https://admin.superking.com";
 
       const response = await request(buildApp())
         .get("/items")
-        .set("Origin", "https://admin.breadking.com");
+        .set("Origin", "https://admin.superking.com");
 
       expect(response.headers["access-control-allow-origin"]).toBe(
-        "https://admin.breadking.com",
+        "https://admin.superking.com",
       );
       expect(response.headers.vary).toBe("Origin");
     });
 
     it("does not allow origins outside the configured list", async () => {
-      process.env.CORS_ORIGIN = "https://app.breadking.com";
+      process.env.CORS_ORIGIN = "https://app.superking.com";
 
       const response = await request(buildApp())
         .get("/items")
@@ -116,7 +116,7 @@ describe("cors middleware", () => {
     });
 
     it("does not set an allow-origin header when the request has no Origin", async () => {
-      process.env.CORS_ORIGIN = "https://app.breadking.com";
+      process.env.CORS_ORIGIN = "https://app.superking.com";
 
       const response = await request(buildApp()).get("/items");
 
@@ -221,7 +221,7 @@ describe("cors middleware", () => {
     });
 
     it("keeps the preflight headers when the origin is not allowed", async () => {
-      process.env.CORS_ORIGIN = "https://app.breadking.com";
+      process.env.CORS_ORIGIN = "https://app.superking.com";
 
       const response = await request(buildApp())
         .options("/items")

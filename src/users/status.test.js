@@ -59,7 +59,7 @@ function target(overrides = {}) {
   return {
     id: 2,
     username: "maria",
-    email: "maria@breadking.com",
+    email: "maria@superking.com",
     name: "María",
     isBlocked: false,
     roleId: 2,
@@ -117,7 +117,7 @@ describe("PATCH /users/:id/status", () => {
     expect(response.body).toEqual({
       id: 2,
       username: "maria",
-      email: "maria@breadking.com",
+      email: "maria@superking.com",
       name: "María",
       role: "seller",
       isBlocked: true,
@@ -201,7 +201,7 @@ describe("PATCH /users/:id/status", () => {
     const admin = target({
       id: 3,
       username: "ana",
-      email: "ana@breadking.com",
+      email: "ana@superking.com",
       name: "Ana",
       roleId: 1,
       role: { name: "admin" },
@@ -233,7 +233,7 @@ describe("PATCH /users/:id/status", () => {
     const admin = target({
       id: 3,
       username: "ana",
-      email: "ana@breadking.com",
+      email: "ana@superking.com",
       name: "Ana",
       roleId: 1,
       role: { name: "admin" },
@@ -252,7 +252,7 @@ describe("PATCH /users/:id/status", () => {
     const admin = target({
       id: 3,
       username: "ana",
-      email: "ana@breadking.com",
+      email: "ana@superking.com",
       name: "Ana",
       roleId: 1,
       role: { name: "admin" },

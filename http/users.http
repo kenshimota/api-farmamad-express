@@ -35,7 +35,7 @@ Content-Type: application/json
 
 {
   "username": "pedro",
-  "email": "pedro@breadking.com",
+  "email": "pedro@superking.com",
   "password": "secreto123",
   "role": "no-existe"
 }

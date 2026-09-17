@@ -93,7 +93,7 @@ describe("GET /roles with a real database", () => {
   it("lists the seeded role catalog ordered by id with only id and name", async () => {
     await createUser({
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@superking.com",
       role: "admin",
     });
     const token = await tokenFor("admin");
@@ -116,7 +116,7 @@ describe("GET /roles with a real database", () => {
   it("returns the names accepted by POST /users", async () => {
     await createUser({
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@superking.com",
       role: "admin",
     });
     const token = await tokenFor("admin");

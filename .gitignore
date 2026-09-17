@@ -4,4 +4,6 @@
 /.opencode/package-lock.json
 /.env
 /coverage
+/.stryker-tmp
+/reports
 /http/http-client.private.env.json

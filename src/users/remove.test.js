@@ -56,7 +56,7 @@ function target(overrides = {}) {
   return {
     id: 2,
     username: "maria",
-    email: "maria@breadking.com",
+    email: "maria@superking.com",
     name: "María",
     isBlocked: false,
     roleId: 2,
@@ -149,7 +149,7 @@ describe("DELETE /users/:id", () => {
     const admin = target({
       id: 3,
       username: "ana",
-      email: "ana@breadking.com",
+      email: "ana@superking.com",
       name: "Ana",
       roleId: 1,
       role: { name: "admin" },

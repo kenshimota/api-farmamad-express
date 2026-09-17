@@ -11,6 +11,7 @@ const {
   requiredFieldsMessage,
 } = require("../auth/validators");
 const { createUserSchema, REQUIRED_USER_FIELDS } = require("./validators");
+const { notifyWelcomeUser } = require("../auth/welcome");
 const listRouter = require("./list");
 const statusRouter = require("./status");
 const removeRouter = require("./remove");
@@ -22,6 +23,9 @@ const router = Router();
  * /users:
  *   post:
  *     summary: Creates a user; only administrators can do it
+ *     description: >-
+ *       Creates the user and sends a welcome email to the given address. A
+ *       delivery failure does not change the response.
  *     tags:
  *       - Users
  *     security:
@@ -44,7 +48,7 @@ const router = Router();
  *               email:
  *                 type: string
  *                 format: email
- *                 example: maria@breadking.com
+ *                 example: maria@superking.com
  *               password:
  *                 type: string
  *                 format: password
@@ -135,9 +139,9 @@ router.post("/", authenticate, authorize("admin"), async (req, res) => {
     return res.status(422).json({ errors: { role: "Invalid role" } });
   }
 
+  let user;
   try {
-    const user = await User.create({ ...data, roleId: role.id });
-    return res.status(201).json(toPublicUser(user, role.name));
+    user = await User.create({ ...data, roleId: role.id });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       return res.status(409).json({ message: "User already exists" });
@@ -145,6 +149,10 @@ router.post("/", authenticate, authorize("admin"), async (req, res) => {
 
     throw error;
   }
+
+  await notifyWelcomeUser(user);
+
+  return res.status(201).json(toPublicUser(user, role.name));
 });
 
 router.use(listRouter);

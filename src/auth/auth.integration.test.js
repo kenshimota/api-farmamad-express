@@ -239,7 +239,7 @@ describe("GET /auth/setup-status with a real database", () => {
 describe("POST /auth/register-admin with a real database", () => {
   const body = {
     username: "admin",
-    email: "admin@breadking.com",
+    email: "admin@superking.com",
     password: PASSWORD,
     name: "Administrador",
   };
@@ -251,7 +251,7 @@ describe("POST /auth/register-admin with a real database", () => {
     expect(response.body).toEqual({
       id: expect.any(Number),
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@superking.com",
       name: "Administrador",
       role: "admin",
       isBlocked: false,

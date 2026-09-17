@@ -3,6 +3,7 @@ const User = require("../models/user");
 const sequelize = require("../database");
 const { ADMIN_ROLE, findRoleByName } = require("./roles");
 const { toPublicUser } = require("./serializers");
+const { notifyWelcomeUser } = require("./welcome");
 const {
   registerAdminSchema,
   formatValidationErrors,
@@ -54,6 +55,9 @@ router.get("/setup-status", async (req, res) => {
  * /auth/register-admin:
  *   post:
  *     summary: Registers the initial administrator when none exists
+ *     description: >-
+ *       Creates the first administrator and sends a welcome email to the given
+ *       address. A delivery failure does not change the response.
  *     tags:
  *       - Auth
  *     requestBody:
@@ -73,7 +77,7 @@ router.get("/setup-status", async (req, res) => {
  *               email:
  *                 type: string
  *                 format: email
- *                 example: admin@breadking.com
+ *                 example: admin@superking.com
  *               password:
  *                 type: string
  *                 format: password
@@ -172,6 +176,8 @@ router.post("/register-admin", async (req, res) => {
   if (result.status === 500) {
     return res.status(500).json({ message: "Server error" });
   }
+
+  await notifyWelcomeUser(result.user);
 
   return res.status(201).json(toPublicUser(result.user, result.role));
 });
