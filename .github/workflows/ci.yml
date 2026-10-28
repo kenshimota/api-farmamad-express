@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: bread_king_test
+          POSTGRES_USER: bread_king
+          POSTGRES_PASSWORD: bread_king
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bread_king -d bread_king_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_HOST_TEST: localhost
+      DB_PORT: "5432"
+      DB_NAME: bread_king
+      DB_NAME_TEST: bread_king_test
+      DB_USER: bread_king
+      DB_PASSWORD: bread_king
+      JWT_SECRET: ci-test-secret
+      NO_COLOR: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:integration
+
+  build:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: VERSION=${{ github.ref_name }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_IMAGE }}:${{ github.ref_name }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_IMAGE }}:latest
+
+  deploy:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VM_HOSTNAME }}
+          port: ${{ secrets.VM_PORT }}
+          username: ${{ secrets.VM_USERNAME }}
+          password: ${{ secrets.VM_PASSWORD }}
+          script_stop: true
+          script: |
+            export IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_IMAGE }}"
+            export CONTAINER=asic-guanipa-api
+            export TAG="${{ github.ref_name }}"
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            ~/create-container --restart unless-stopped \
+              -e NODE_ENV=production \
+              -e PORT=3000 \
+              -e LOG_LEVEL="${{ vars.LOG_LEVEL }}" \
+              -e DB_HOST="${{ secrets.DB_HOST }}" \
+              -e DB_PORT="${{ secrets.DB_PORT }}" \
+              -e DB_NAME="${{ secrets.DB_NAME }}" \
+              -e DB_USER="${{ secrets.DB_USER }}" \
+              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e JWT_EXPIRES_IN="${{ secrets.JWT_EXPIRES_IN }}" \
+              -e GMAIL_USERNAME="${{ secrets.GMAIL_USERNAME }}" \
+              -e GMAIL_TOKEN="${{ secrets.GMAIL_TOKEN }}" \
+              --network asic-guanipa-network
+            docker exec asic-guanipa-api npm run db:migrate
+            docker exec asic-guanipa-api npm run db:seed
+            sleep 10
+            CONTAINER=asic-guanipa-api bash ~/check-container
+            echo "Deployment successful!"

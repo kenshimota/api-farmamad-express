@@ -1,6 +1,7 @@
-# API Super King
+# API Farmamad Express
 
-REST API de Super King construida con Express 5, Sequelize 6 y PostgreSQL.
+REST API de Farmamad Express (producto Super King) construida con Express 5,
+Sequelize 6 y PostgreSQL.
 
 ## Puesta en marcha
 
@@ -769,15 +770,15 @@ npm run test:coverage    # unitarios + cobertura
 npm run test:integration # contra Postgres real (requiere docker-compose up -d db)
 ```
 
-## CI/CD (GitLab)
+## CI/CD (GitHub Actions)
 
-El pipeline vive en `.gitlab-ci.yml` y tiene tres stages:
+El pipeline vive en `.github/workflows/ci.yml` y tiene tres jobs:
 
-| Stage    | Cuándo corre                    | Qué hace                                                              |
-| -------- | ------------------------------- | --------------------------------------------------------------------- |
-| `test`   | MRs y push a cualquier rama/tag | `npm test` y `npm run test:integration` contra un servicio Postgres.  |
-| `build`  | Solo tags (`v1.2.3`)            | Construye y publica en Docker Hub la imagen con el tag y `latest`.    |
-| `deploy` | Solo tags                       | Despliega en la VM, corre migraciones/seeders y valida el contenedor. |
+| Job      | Cuándo corre        | Qué hace                                                              |
+| -------- | ------------------- | --------------------------------------------------------------------- |
+| `test`   | Push y pull request | `npm test` y `npm run test:integration` contra un servicio Postgres.  |
+| `build`  | Solo tags (`v1.2.3`) | Construye y publica en Docker Hub la imagen con el tag y `latest`.   |
+| `deploy` | Solo tags           | Despliega en la VM, corre migraciones/seeders y valida el contenedor. |
 
 Para desplegar una versión basta con crear un tag:
 
@@ -786,17 +787,18 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Variables de CI/CD requeridas en GitLab (Settings → CI/CD → Variables):
+Secrets y variables requeridos en GitHub (Settings → Secrets and variables →
+Actions):
 
-| Variable                                                  | Uso                                           |
-| --------------------------------------------------------- | --------------------------------------------- |
-| `CI_DOCKERHUB_USERNAME`, `CI_DOCKERHUB_TOKEN`             | Credenciales de Docker Hub.                   |
-| `DOCKERHUB_IMAGE`                                         | Nombre de la imagen, p. ej. `api-bread-king`. |
-| `VM_HOSTNAME`, `VM_PORT`, `VM_USERNAME`, `VM_PASSWORD`    | Acceso SSH a la VM de despliegue.             |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Base de datos de producción.                  |
-| `JWT_SECRET`, `JWT_EXPIRES_IN`                            | Configuración de autenticación.               |
-| `GMAIL_USERNAME`, `GMAIL_TOKEN`                           | Envío de correos de recuperación.             |
-| `LOG_LEVEL`                                               | Nivel de logs del contenedor (opcional).      |
+| Nombre                                                                              | Tipo   | Uso                                           |
+| ----------------------------------------------------------------------------------- | ------ | --------------------------------------------- |
+| `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`                                             | Secret | Credenciales de Docker Hub.                   |
+| `DOCKERHUB_IMAGE`                                                                   | Var    | Nombre de la imagen, p. ej. `api-farmamad-express`. |
+| `VM_HOSTNAME`, `VM_PORT`, `VM_USERNAME`, `VM_PASSWORD`                              | Secret | Acceso SSH a la VM de despliegue.             |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`                           | Secret | Base de datos de producción.                  |
+| `JWT_SECRET`, `JWT_EXPIRES_IN`                                                      | Secret | Configuración de autenticación.               |
+| `GMAIL_USERNAME`, `GMAIL_TOKEN`                                                     | Secret | Envío de correos de recuperación.             |
+| `LOG_LEVEL`                                                                         | Var    | Nivel de logs del contenedor (opcional).      |
 
 El contenedor se llama `bread-king-api`, se une a la red `maseferlat` y se
 recrea con `/app/create-container`; el healthcheck final usa `/app/check-container`.
