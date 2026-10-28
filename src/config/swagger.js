@@ -5,9 +5,9 @@ const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: "3.0.3",
     info: {
-      title: "Bread King API",
+      title: "Farmamad API",
       version: "1.0.0",
-      description: "REST API for Bread King, documented with Swagger.",
+      description: "REST API for Farmamad, documented with Swagger.",
     },
     servers: [{ url: "/" }],
     components: {

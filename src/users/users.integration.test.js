@@ -76,7 +76,7 @@ afterAll(async () => {
 describe("POST /users with a real database", () => {
   const body = {
     username: "maria",
-    email: "maria@breadking.com",
+    email: "maria@farmamad.com",
     password: PASSWORD,
     name: "María",
     role: "seller",
@@ -87,7 +87,7 @@ describe("POST /users with a real database", () => {
     async (role) => {
       await createUser({
         username: "admin",
-        email: "admin@breadking.com",
+        email: "admin@farmamad.com",
         role: "admin",
       });
       const token = await tokenFor("admin");
@@ -101,7 +101,7 @@ describe("POST /users with a real database", () => {
       expect(response.body).toEqual({
         id: expect.any(Number),
         username: "maria",
-        email: "maria@breadking.com",
+        email: "maria@farmamad.com",
         name: "María",
         role,
       });
@@ -137,7 +137,7 @@ describe("POST /users with a real database", () => {
   it("responds 409 when the username or email already exists", async () => {
     await createUser({
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@farmamad.com",
       role: "admin",
     });
     await createUser();
@@ -155,7 +155,7 @@ describe("POST /users with a real database", () => {
   it("responds 422 when the role does not exist", async () => {
     await createUser({
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@farmamad.com",
       role: "admin",
     });
     const token = await tokenFor("admin");
@@ -172,7 +172,7 @@ describe("POST /users with a real database", () => {
   it("responds 400 when required fields are missing", async () => {
     await createUser({
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@farmamad.com",
       role: "admin",
     });
     const token = await tokenFor("admin");

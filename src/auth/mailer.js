@@ -60,13 +60,13 @@ function buildBody(code) {
   return [
     "Hola,",
     "",
-    "Recibimos una solicitud para restablecer tu contraseña en Bread King.",
+    "Recibimos una solicitud para restablecer tu contraseña en Farmamad.",
     `Tu código de recuperación es: ${code}`,
     "",
     "El código es válido durante 5 minutos. Si no solicitaste este cambio, " +
       "ignora este correo.",
     "",
-    "Equipo Bread King",
+    "Equipo Farmamad",
   ].join("\n");
 }
 
@@ -82,7 +82,7 @@ async function sendRecoveryCode(email, code) {
     await getTransport().sendMail({
       from: process.env.GMAIL_USERNAME,
       to: email,
-      subject: "Recuperación de contraseña - Bread King",
+      subject: "Recuperación de contraseña - Farmamad",
       text: buildBody(code),
     });
   } catch (error) {

@@ -92,13 +92,13 @@ describe("sendRecoveryCode", () => {
       [
         "Hola,",
         "",
-        "Recibimos una solicitud para restablecer tu contraseña en Bread King.",
+        "Recibimos una solicitud para restablecer tu contraseña en Farmamad.",
         `Tu código de recuperación es: ${CODE}`,
         "",
         "El código es válido durante 5 minutos. Si no solicitaste este cambio, " +
           "ignora este correo.",
         "",
-        "Equipo Bread King",
+        "Equipo Farmamad",
       ].join("\n"),
     );
   });

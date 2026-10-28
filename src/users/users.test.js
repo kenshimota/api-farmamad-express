@@ -22,7 +22,7 @@ const SECRET = "test-secret";
 const SELLER_ROLE = { id: 2, name: "seller" };
 const validBody = {
   username: "maria",
-  email: "maria@breadking.com",
+  email: "maria@farmamad.com",
   password: "secret123",
   name: "María",
   role: "seller",
@@ -30,7 +30,7 @@ const validBody = {
 const createdUser = {
   id: 2,
   username: "maria",
-  email: "maria@breadking.com",
+  email: "maria@farmamad.com",
   name: "María",
   roleId: SELLER_ROLE.id,
 };
@@ -75,7 +75,7 @@ describe("POST /users", () => {
     expect(response.body).toEqual({
       id: 2,
       username: "maria",
-      email: "maria@breadking.com",
+      email: "maria@farmamad.com",
       name: "María",
       role: "seller",
     });
@@ -86,7 +86,7 @@ describe("POST /users", () => {
     });
     expect(User.create).toHaveBeenCalledWith({
       username: "maria",
-      email: "maria@breadking.com",
+      email: "maria@farmamad.com",
       password: "secret123",
       name: "María",
       role: "seller",
@@ -104,7 +104,7 @@ describe("POST /users", () => {
     expect(response.body).toEqual({
       id: 2,
       username: "maria",
-      email: "maria@breadking.com",
+      email: "maria@farmamad.com",
       name: null,
       role: "seller",
     });

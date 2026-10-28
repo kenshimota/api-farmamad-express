@@ -41,7 +41,7 @@ const router = Router();
  *               email:
  *                 type: string
  *                 format: email
- *                 example: maria@breadking.com
+ *                 example: maria@farmamad.com
  *               password:
  *                 type: string
  *                 format: password

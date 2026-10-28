@@ -73,7 +73,7 @@ router.get("/setup-status", async (req, res) => {
  *               email:
  *                 type: string
  *                 format: email
- *                 example: admin@breadking.com
+ *                 example: admin@farmamad.com
  *               password:
  *                 type: string
  *                 format: password

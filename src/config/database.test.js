@@ -65,9 +65,9 @@ describe("getDatabaseConfig", () => {
     delete process.env.DB_PORT;
 
     expect(getDatabaseConfig()).toEqual({
-      database: "bread_king",
-      username: "bread_king",
-      password: "bread_king",
+      database: "farmamad",
+      username: "farmamad",
+      password: "farmamad",
       host: "localhost",
       port: 5432,
       dialect: "postgres",
@@ -84,31 +84,31 @@ describe("getDatabaseConfig", () => {
 
 describe("getTestDatabaseName", () => {
   it("prefers DB_NAME_TEST when defined", () => {
-    process.env.DB_NAME = "bread_king";
+    process.env.DB_NAME = "farmamad";
     process.env.DB_NAME_TEST = "custom_test";
 
     expect(getTestDatabaseName()).toBe("custom_test");
   });
 
   it("suffixes DB_NAME with _test", () => {
-    process.env.DB_NAME = "bread_king";
+    process.env.DB_NAME = "farmamad";
     delete process.env.DB_NAME_TEST;
 
-    expect(getTestDatabaseName()).toBe("bread_king_test");
+    expect(getTestDatabaseName()).toBe("farmamad_test");
   });
 
   it("does not suffix an already suffixed name twice", () => {
-    process.env.DB_NAME = "bread_king_test";
+    process.env.DB_NAME = "farmamad_test";
     delete process.env.DB_NAME_TEST;
 
-    expect(getTestDatabaseName()).toBe("bread_king_test");
+    expect(getTestDatabaseName()).toBe("farmamad_test");
   });
 
-  it("defaults to bread_king_test when no database name is set", () => {
+  it("defaults to farmamad_test when no database name is set", () => {
     delete process.env.DB_NAME;
     delete process.env.DB_NAME_TEST;
 
-    expect(getTestDatabaseName()).toBe("bread_king_test");
+    expect(getTestDatabaseName()).toBe("farmamad_test");
   });
 });
 
