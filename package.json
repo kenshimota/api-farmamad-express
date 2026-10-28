@@ -1,7 +1,7 @@
 {
-  "name": "api-bread-king",
+  "name": "api-farmamad-express",
   "version": "1.0.0",
-  "description": "To make it easy for you to get started with GitLab, here's a list of recommended next steps.",
+  "description": "API REST de Farmamad Express (Express 5 + Sequelize 6 + PostgreSQL).",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -17,16 +17,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.com/kenshimota/api-bread-king.git"
+    "url": "git+https://github.com/kenshimota/api-farmamad-express.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://gitlab.com/kenshimota/api-bread-king/issues"
+    "url": "https://github.com/kenshimota/api-farmamad-express/issues"
   },
-  "homepage": "https://gitlab.com/kenshimota/api-bread-king#readme",
+  "homepage": "https://github.com/kenshimota/api-farmamad-express#readme",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "express": "^5.2.1",

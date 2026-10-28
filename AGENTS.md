@@ -40,5 +40,5 @@ Express 5 API (CommonJS, Node 24) that talks to Postgres through Sequelize 6 (`p
 ## Gotchas
 
 - `docker-compose` v1 + Docker 28 fails when recreating existing containers (`KeyError: 'ContainerConfig'`); run `docker-compose down` before `up -d` after a rebuild.
-- The `origin` remote URL still embeds a plaintext GitLab personal access token (`glpat-REDACTED`), and it remains in git history even though it was removed from `package.json`. Never print, copy, or commit it; rotate it.
-- Remote is GitLab, so GitHub CLI (`gh`) is not usable here.
+- The legacy GitLab remote is kept locally as `gitlab`; `origin` points to GitHub. Never commit credentials or tokens.
+- GitHub CLI (`gh`) is available and authenticated for this project.
