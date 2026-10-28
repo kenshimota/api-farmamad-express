@@ -14,13 +14,13 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: bread_king_test
-          POSTGRES_USER: bread_king
-          POSTGRES_PASSWORD: bread_king
+          POSTGRES_DB: farmamad_test
+          POSTGRES_USER: farmamad
+          POSTGRES_PASSWORD: farmamad
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U bread_king -d bread_king_test"
+          --health-cmd "pg_isready -U farmamad -d farmamad_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -28,10 +28,10 @@ jobs:
       DB_HOST: localhost
       DB_HOST_TEST: localhost
       DB_PORT: "5432"
-      DB_NAME: bread_king
-      DB_NAME_TEST: bread_king_test
-      DB_USER: bread_king
-      DB_PASSWORD: bread_king
+      DB_NAME: farmamad
+      DB_NAME_TEST: farmamad_test
+      DB_USER: farmamad
+      DB_PASSWORD: farmamad
       JWT_SECRET: ci-test-secret
       NO_COLOR: "1"
     steps:

@@ -31,7 +31,7 @@ const ADMIN_ROLE = { id: 1, name: "admin" };
 const TRANSACTION = { LOCK: { UPDATE: "UPDATE" } };
 const validBody = {
   username: "admin",
-  email: "admin@breadking.com",
+  email: "admin@farmamad.com",
   password: "secret123",
   name: "Administrador",
 };
@@ -89,7 +89,7 @@ describe("POST /auth/register-admin", () => {
     User.create.mockResolvedValue({
       id: 1,
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@farmamad.com",
       name: "Administrador",
       roleId: 1,
     });
@@ -100,7 +100,7 @@ describe("POST /auth/register-admin", () => {
     expect(response.body).toEqual({
       id: 1,
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@farmamad.com",
       name: "Administrador",
       role: "admin",
     });
@@ -119,7 +119,7 @@ describe("POST /auth/register-admin", () => {
     expect(User.create).toHaveBeenCalledWith(
       {
         username: "admin",
-        email: "admin@breadking.com",
+        email: "admin@farmamad.com",
         password: "secret123",
         name: "Administrador",
         roleId: 1,
@@ -134,7 +134,7 @@ describe("POST /auth/register-admin", () => {
     User.create.mockResolvedValue({
       id: 1,
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@farmamad.com",
       name: null,
       roleId: 1,
     });
@@ -146,7 +146,7 @@ describe("POST /auth/register-admin", () => {
     expect(User.create).toHaveBeenCalledWith(
       {
         username: "admin",
-        email: "admin@breadking.com",
+        email: "admin@farmamad.com",
         password: "secret123",
         name: "Administrador",
         roleId: 1,

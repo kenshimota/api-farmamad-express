@@ -25,9 +25,9 @@ function loadEnvironment() {
  */
 function getDatabaseConfig(overrides = {}) {
   return {
-    database: process.env.DB_NAME || "bread_king",
-    username: process.env.DB_USER || "bread_king",
-    password: process.env.DB_PASSWORD || "bread_king",
+    database: process.env.DB_NAME || "farmamad",
+    username: process.env.DB_USER || "farmamad",
+    password: process.env.DB_PASSWORD || "farmamad",
     host: process.env.DB_HOST || "localhost",
     port: Number(process.env.DB_PORT) || 5432,
     dialect: "postgres",
@@ -42,7 +42,7 @@ function getDatabaseConfig(overrides = {}) {
  * @returns {string} DB_NAME_TEST or "<DB_NAME>_test".
  */
 function getTestDatabaseName() {
-  const baseName = process.env.DB_NAME || "bread_king";
+  const baseName = process.env.DB_NAME || "farmamad";
 
   if (process.env.DB_NAME_TEST) {
     return process.env.DB_NAME_TEST;

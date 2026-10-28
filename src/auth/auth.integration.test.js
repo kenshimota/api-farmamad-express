@@ -74,8 +74,8 @@ afterAll(async () => {
 
 describe("test database guardrail", () => {
   it("only allows database names ending in _test", () => {
-    expect(() => assertTestDatabase("bread_king")).toThrow(/_test/);
-    expect(() => assertTestDatabase("bread_king_test")).not.toThrow();
+    expect(() => assertTestDatabase("farmamad")).toThrow(/_test/);
+    expect(() => assertTestDatabase("farmamad_test")).not.toThrow();
   });
 });
 
@@ -237,7 +237,7 @@ describe("GET /auth/setup-status with a real database", () => {
 describe("POST /auth/register-admin with a real database", () => {
   const body = {
     username: "admin",
-    email: "admin@breadking.com",
+    email: "admin@farmamad.com",
     password: PASSWORD,
     name: "Administrador",
   };
@@ -249,7 +249,7 @@ describe("POST /auth/register-admin with a real database", () => {
     expect(response.body).toEqual({
       id: expect.any(Number),
       username: "admin",
-      email: "admin@breadking.com",
+      email: "admin@farmamad.com",
       name: "Administrador",
       role: "admin",
     });

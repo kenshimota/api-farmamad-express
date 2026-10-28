@@ -1,6 +1,6 @@
-# API Bread King
+# API Farmamad
 
-REST API de Bread King construida con Express 5, Sequelize 6 y PostgreSQL.
+REST API de Farmamad construida con Express 5, Sequelize 6 y PostgreSQL.
 
 ## Puesta en marcha
 
@@ -100,7 +100,7 @@ Campos: `username`, `email`, `password` (mínimo 8 caracteres, requeridos) y
 ```bash
 curl -X POST http://localhost:3001/auth/register-admin \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","email":"admin@breadking.com","password":"secreto123","name":"Administrador"}'
+  -d '{"username":"admin","email":"admin@farmamad.com","password":"secreto123","name":"Administrador"}'
 ```
 
 Respuesta `201`:
@@ -109,7 +109,7 @@ Respuesta `201`:
 {
   "id": 1,
   "username": "admin",
-  "email": "admin@breadking.com",
+  "email": "admin@farmamad.com",
   "name": "Administrador",
   "role": "admin"
 }
@@ -130,7 +130,7 @@ Público. Autentica con `identifier` (email o username) y `password`.
 ```bash
 curl -X POST http://localhost:3001/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"identifier":"admin@breadking.com","password":"secreto123"}'
+  -d '{"identifier":"admin@farmamad.com","password":"secreto123"}'
 ```
 
 Respuesta `200`:
@@ -141,7 +141,7 @@ Respuesta `200`:
   "user": {
     "id": 1,
     "username": "admin",
-    "email": "admin@breadking.com",
+    "email": "admin@farmamad.com",
     "name": "Administrador",
     "role": "admin"
   }
@@ -269,7 +269,7 @@ Campos: `username`, `email`, `password` (mínimo 8 caracteres) y `role`
 curl -X POST http://localhost:3001/users \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"username":"maria","email":"maria@breadking.com","password":"secreto123","name":"María","role":"seller"}'
+  -d '{"username":"maria","email":"maria@farmamad.com","password":"secreto123","name":"María","role":"seller"}'
 ```
 
 Respuesta `201`:
@@ -278,7 +278,7 @@ Respuesta `201`:
 {
   "id": 2,
   "username": "maria",
-  "email": "maria@breadking.com",
+  "email": "maria@farmamad.com",
   "name": "María",
   "role": "seller"
 }
