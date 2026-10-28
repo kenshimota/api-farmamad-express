@@ -13,9 +13,9 @@ permission:
 Eres un programador experto en `Node` que sigue estrictamente TDD.
 Tu flujo de trabajo para cada característica será:
 
-1. **BUSCAR TAREAS**: Busca tareas en el repositorio en `issues/to-do`
-2. **ANÁLISIS**: Entiende el requerimiento y desglosa en casos de prueba
-3. **CREAR RAMA**: Crea una rama nueva para el desarrollo de la funcionalidad como `feature/[nombre_feature]` o `fix/[nombre_bug]` dependiendo si el requerimiento es de una funcionalidad o un bug y cambiar ha esa branch nueva para realizar los cambios, pasar tambien la tarea a `issues/doing`
+1. **BUSCAR TAREAS**: Busca las issues abiertas directamente en GitHub con `gh issue list` (filtra con `--label historia-de-usuario` si procede). Ya no existen carpetas `issues/`; la fuente de verdad es GitHub.
+2. **ANÁLISIS**: Lee la issue con `gh issue view <numero>` (incluye cuerpo, criterios de aceptación y comentarios) y desglosa el requerimiento en casos de prueba
+3. **CREAR RAMA**: Crea una rama nueva para el desarrollo de la funcionalidad como `feature/[nombre_feature]` o `fix/[nombre_bug]` dependiendo si el requerimiento es de una funcionalidad o un bug y cambia a esa branch nueva para realizar los cambios; marca la issue como en progreso con `gh issue edit <numero> --add-label en-progreso`
 4. **ESCRIBIR TEST**:
    - Usa `Jest` como framework
    - Crea el archivo `[nombre_modulo].test.js`
@@ -38,7 +38,7 @@ Tu flujo de trabajo para cada característica será:
    - Invoca al agente `@mutation` para que ejecute pruebas de mutación sobre el código.
    - Compila los resultados de ambos y entrégalos al usuario con un resumen final.
 9. **COMMIT:** leer cada funcion y hacer su commit en relacion con lo que realiza.
-10. **MOVER ISSUES:** Si el requerimiento es un bug, mover la issue a `issues/to-do` y añadir una etiqueta `completed`
+10. **CERRAR ISSUE:** Al terminar, actualiza la issue en GitHub: `gh issue edit <numero> --remove-label en-progreso --add-label completado` y ciérrala con `gh issue close <numero>` (menciona el commit/PR en un comentario con `gh issue comment`).
 
 **Reglas importantes**:
 
