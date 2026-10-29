@@ -1,6 +1,5 @@
 process.env.JWT_SECRET = process.env.JWT_SECRET || "integration-test-secret";
 
-const { DataTypes } = require("sequelize");
 const request = require("supertest");
 const app = require("../app");
 const sequelize = require("../database");
@@ -14,8 +13,7 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/images");
-
-const PROBE_TABLE = "image_usage_probe";
+const { createProduct } = require("../../test/helpers/products");
 
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
@@ -28,48 +26,9 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await resetDatabase();
   await sequelize.close();
 });
-
-/**
- * Drops the temporary probe table when it exists, so cleanup is idempotent
- * even after a failed assertion or a partially created table.
- * @param {object} queryInterface - Sequelize query interface.
- * @returns {Promise<void>} Resolves once the table is gone.
- */
-async function dropProbeTable(queryInterface) {
-  if (await queryInterface.tableExists(PROBE_TABLE)) {
-    await queryInterface.dropTable(PROBE_TABLE);
-  }
-}
-
-/**
- * Creates a temporary table with a foreign key to `images`. It stands in for
- * the future `products.imageId` constraint so the 409 path can be exercised
- * against Postgres before the products module exists. Only Sequelize query
- * interface calls are used, never raw SQL.
- * @param {object} queryInterface - Sequelize query interface.
- * @returns {Promise<void>} Resolves once the table is ready.
- */
-async function createProbeTable(queryInterface) {
-  await dropProbeTable(queryInterface);
-
-  await queryInterface.createTable(PROBE_TABLE, {
-    id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    imageId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: { model: "images", key: "id" },
-      onDelete: "RESTRICT",
-      onUpdate: "CASCADE",
-    },
-  });
-}
 
 describe("PUT /images/:id with a real database", () => {
   it.each(["admin", "seller"])(
@@ -219,19 +178,19 @@ describe("DELETE /images/:id with a real database", () => {
   it("responds 409 and keeps the image when a product references it", async () => {
     const image = await createImage();
     const token = await tokenFor("admin");
-    const queryInterface = sequelize.getQueryInterface();
+    const product = await createProduct({
+      image_id: image.id,
+      reference: "image-usage",
+    });
 
     try {
-      await createProbeTable(queryInterface);
-      await queryInterface.bulkInsert(PROBE_TABLE, [{ imageId: image.id }]);
-
       const response = await as("delete", `/images/${image.id}`, token);
 
       expect(response.status).toBe(409);
       expect(response.body).toEqual({ message: "Image is in use" });
       await expect(Image.findByPk(image.id)).resolves.not.toBeNull();
     } finally {
-      await dropProbeTable(queryInterface);
+      await product.destroy();
     }
   });
 

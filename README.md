@@ -1247,6 +1247,192 @@ Errores:
 | `409`  | `{ "message": "Image is in use" }`           |
 | `422`  | `{ "errors": { "id": "Invalid image id" } }` |
 
+## Productos
+
+Los productos viven en la tabla `products` (modelo `Product`). `name` admite
+hasta 150 caracteres, `description` es texto libre obligatorio y `reference` es
+obligatoria, única y de hasta 100 caracteres. `category_id` e `image_id` son
+obligatorios y referencian `categories.id` e `images.id`; ambas FKs usan
+`ON DELETE RESTRICT`, así que no se puede borrar una categoría o una imagen que
+tenga productos asociados. Los textos se recortan antes de guardarse. Ninguna
+respuesta incluye `createdAt` ni `updatedAt`: solo se exponen `id`, `name`,
+`description`, `reference`, `category_id` e `image_id`.
+
+Permisos por endpoint:
+
+| Endpoint                | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ----------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /products`        | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /products`         | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `GET /products/:id`     | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `PUT /products/:id`     | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /products/:id`  | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` en
+todos los endpoints, y sin token (o con token inválido/expirado) la respuesta es
+`401` con `{ "message": "Unauthorized" }`.
+
+### `POST /products`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos:
+`name`, `description`, `reference`, `category_id` e `image_id`. Los campos
+desconocidos y de auditoría se descartan. Antes de insertar se verifica que la
+categoría y la imagen existan; si alguna no existe responde `422` con el error
+de su campo. La restricción única de `reference` y las FKs de Postgres actúan
+como salvaguarda ante peticiones concurrentes.
+
+```bash
+curl -X POST http://localhost:3001/products \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ibuprofeno 400 mg","description":"Analgésico y antiinflamatorio","reference":"IBU-400","category_id":1,"image_id":1}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 1,
+  "image_id": 1
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                                                   |
+| ------ | ---------------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }`    |
+| `401`  | `{ "message": "Unauthorized" }`                                                          |
+| `403`  | `{ "message": "Forbidden" }`                                                             |
+| `409`  | `{ "message": "Product already exists" }`                                                |
+| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                                 |
+| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                       |
+
+### `GET /products`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve la colección
+completa ordenada por `id` ascendente. Si no hay productos responde `200` con
+`[]` (nunca `404`).
+
+```bash
+curl http://localhost:3001/products -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Ibuprofeno 400 mg",
+    "description": "Analgésico y antiinflamatorio",
+    "reference": "IBU-400",
+    "category_id": 1,
+    "image_id": 1
+  }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                             |
+| ------ | ---------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`    |
+| `403`  | `{ "message": "User is blocked" }` |
+
+### `GET /products/:id`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve un único producto.
+
+```bash
+curl http://localhost:3001/products/1 -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 1,
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 1,
+  "image_id": 1
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "User is blocked" }`              |
+| `404`  | `{ "message": "Product not found" }`            |
+| `422`  | `{ "errors": { "id": "Invalid product id" } }`  |
+
+### `PUT /products/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Reemplaza el recurso y
+exige los cinco campos, con las mismas validaciones, el `409` por `reference`
+duplicada y la verificación de `category_id`/`image_id` que la creación.
+
+```bash
+curl -X PUT http://localhost:3001/products/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Ibuprofeno 800 mg","description":"Analgésico y antiinflamatorio","reference":"IBU-800","category_id":1,"image_id":1}'
+```
+
+Respuesta `202`:
+
+```json
+{
+  "id": 1,
+  "name": "Ibuprofeno 800 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-800",
+  "category_id": 1,
+  "image_id": 1
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                                                   |
+| ------ | ---------------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }`    |
+| `401`  | `{ "message": "Unauthorized" }`                                                          |
+| `403`  | `{ "message": "Forbidden" }`                                                             |
+| `404`  | `{ "message": "Product not found" }`                                                     |
+| `409`  | `{ "message": "Product already exists" }`                                                |
+| `422`  | `{ "errors": { "id": "Invalid product id" } }`                                           |
+| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                                 |
+| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                       |
+
+### `DELETE /products/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Elimina el producto de
+forma permanente y responde `204` sin cuerpo. No elimina la categoría ni la
+imagen asociadas; permanecen disponibles para otros productos.
+
+```bash
+curl -X DELETE http://localhost:3001/products/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "Forbidden" }`                    |
+| `404`  | `{ "message": "Product not found" }`            |
+| `422`  | `{ "errors": { "id": "Invalid product id" } }`  |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
