@@ -5,11 +5,13 @@ jest.mock("../models/supplier", () => ({
 }));
 jest.mock("../models/city", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/state", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/purchase", () => ({ findOne: jest.fn() }));
 
 const { Op } = require("sequelize");
 const Supplier = require("../models/supplier");
 const City = require("../models/city");
 const State = require("../models/state");
+const Purchase = require("../models/purchase");
 const {
   createSupplierRepository,
   LIST_ORDER,
@@ -35,6 +37,7 @@ beforeEach(() => {
   Supplier.findByPk.mockReset();
   City.findByPk.mockReset();
   State.findByPk.mockReset();
+  Purchase.findOne.mockReset();
 });
 
 describe("supplierRepository", () => {
@@ -167,8 +170,17 @@ describe("supplierRepository", () => {
     expect(State.findByPk).toHaveBeenCalledWith(999);
   });
 
-  it("reports no purchases until the purchases table exists", async () => {
-    await expect(repository.hasPurchases(1)).resolves.toBe(false);
+  it("reports whether a purchase references the supplier", async () => {
+    Purchase.findOne.mockResolvedValueOnce({ id: 5 });
+
+    await expect(repository.hasPurchases(1)).resolves.toBe(true);
+    expect(Purchase.findOne).toHaveBeenCalledWith({
+      where: { supplier_id: 1 },
+    });
+
+    Purchase.findOne.mockResolvedValueOnce(null);
+
+    await expect(repository.hasPurchases(2)).resolves.toBe(false);
     expect(Supplier.findByPk).not.toHaveBeenCalled();
     expect(Supplier.findAll).not.toHaveBeenCalled();
   });

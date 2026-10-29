@@ -63,6 +63,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Read-only inventory per product and item state, including the sellable stock with its current cost.",
       },
+      {
+        name: "Purchases",
+        description:
+          "Purchase orders with their lines, server-side totals and the draft-to-confirmed flow that updates costs and stocks.",
+      },
     ],
     components: {
       securitySchemes: {

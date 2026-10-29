@@ -18,8 +18,8 @@ La documentación interactiva (Swagger UI) está disponible en
 
 Variables de entorno relevantes: `PORT`, `NODE_ENV`, `LOG_LEVEL`, `NO_COLOR`,
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`,
-`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME` y
-`APP_URL` (ver `.env.example`).
+`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME`,
+`APP_URL` y `PURCHASE_TAX_RATE` (ver `.env.example`).
 
 `APP_NAME` es el nombre del producto que aparece en los correos (por defecto
 `Super King`) y `APP_URL` es el link de ingreso incluido en el correo de
@@ -1919,9 +1919,8 @@ Errores:
 
 Protegido: requiere un JWT con rol `admin` o `seller`. Elimina el proveedor y
 responde `204` sin cuerpo. Si tiene compras asociadas responde `409` con
-`{ "message": "Supplier is in use" }` y no lo elimina. La tabla `purchases`
-llega con HU-21; hasta entonces la comprobación del repositorio devuelve
-`false` y la FK restrictiva queda preparada para el mismo `409`.
+`{ "message": "Supplier is in use" }` y no lo elimina. La comprobación consulta
+`purchases.supplier_id` y la FK restrictiva actúa como salvaguarda final.
 
 ```bash
 curl -X DELETE http://localhost:3001/suppliers/1 \
@@ -2042,8 +2041,8 @@ con el recurso actualizado. `description: null` borra la descripción.
 `name` es la clave estable: solo se puede cambiar si el registro **no** está
 referenciado por costos (HU-19), stocks (HU-20) ni ítems de compra (HU-21); si
 lo está, responde `409` con `{ "message": "Item state is in use" }`. La
-comprobación consulta las tablas `costs` y `stocks`; las claves foráneas
-restrictivas cubren las compras cuando se creen en HU-21.
+comprobación consulta las tablas `costs`, `stocks` y `purchase_items`; las
+claves foráneas restrictivas son la salvaguarda final ante concurrencia.
 
 ```bash
 curl -X PUT http://localhost:3001/item-states/1 \
@@ -2065,8 +2064,8 @@ Errores: `400` cuando no se envía ningún campo, `401`, `403`, `404`
 Protegido: requiere rol `admin` o `seller`. Elimina el estado y responde `204`
 sin cuerpo. Si está referenciado por costos, stocks o ítems de compra responde
 `409` con `{ "message": "Item state is in use" }` y no lo elimina. Las tablas
-`costs` y `stocks` ya aplican esa restricción; las compras se sumarán con
-HU-21. Un estado inexistente responde `404` y un id inválido `422`.
+`costs`, `stocks` y `purchase_items` aplican esa restricción. Un estado
+inexistente responde `404` y un id inválido `422`.
 
 ```bash
 curl -X DELETE http://localhost:3001/item-states/1 \
@@ -2352,6 +2351,184 @@ crea la fila si no existe (`findOrCreate`) o incrementa la existente con
 recibida. Si un ítem falla, la transacción revierte todos los cambios; dos
 compras concurrentes no pierden incrementos. No hay endpoint público que llame
 a esta función.
+
+## Compras (purchases)
+
+Las compras guardan la cabecera en `purchases` y sus líneas en
+`purchase_items`. El servidor asigna el `number` ascendente desde la secuencia
+PostgreSQL `purchases_number_seq`, ignora cualquier `number`, `status`,
+totales o `confirmed_at` enviado por el cliente y calcula siempre:
+
+- `subtotal = Σ(quantity × unit_cost)`
+- `tax_amount = round(subtotal × tax_rate / 100, 2)`
+- `total = subtotal + tax_amount`
+
+El dinero usa `DECIMAL(12,2)` y el cálculo interno se hace en centavos para no
+arrastrar errores de coma flotante. `tax_rate` es configurable entre `0` y
+`100` con máximo dos decimales y toma `PURCHASE_TAX_RATE` (16 por defecto)
+cuando no se envía. Los timestamps de auditoría nunca se exponen.
+
+### Ciclo de vida
+
+| Estado      | Editar | Líneas | Cancelar | Eliminar | Confirmar |
+| ----------- | ------ | ------ | -------- | -------- | --------- |
+| `draft`     | ✅ 202 | ✅     | ✅ 200   | ✅ 204   | ✅ 200    |
+| `confirmed` | ❌ 409 | ❌ 409 | ❌ 409   | ❌ 409   | ❌ 409    |
+| `cancelled` | ❌ 409 | ❌ 409 | ❌ 409   | ❌ 409   | ❌ 409    |
+
+Confirmar es irreversible en esta historia: una compra confirmada no se edita,
+cancela ni borra; las correcciones se hacen con una compra nueva. Confirmar no
+es idempotente: repetir la confirmación responde `409`.
+
+### Roles
+
+| Endpoint                                                       | admin | seller | manager_warehouse | dispatcher | support | customer |
+| -------------------------------------------------------------- | ----- | ------ | ----------------- | ---------- | ------- | -------- |
+| `POST /purchases` y escrituras `/purchases/...`                | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403`| ❌ `403` |
+| `GET /purchases`, `GET /purchases/:id`, `GET .../items`        | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403`| ❌ `403` |
+
+### `POST /purchases`
+
+Protegido para `admin` y `seller`. `supplier_id` es obligatorio; `tax_rate`,
+`notes` e `items` son opcionales. Las líneas se validan contra `products` e
+`item_states` y no se repite `(product_id, item_state_id)` en una misma compra
+(`409`). Responde `201` con la compra y sus líneas.
+
+```bash
+curl -X POST http://localhost:3001/purchases \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "supplier_id": 1,
+    "tax_rate": 16,
+    "notes": "Reposición mensual",
+    "items": [
+      { "product_id": 15, "item_state_id": 1, "quantity": 40, "unit_cost": 20.0 },
+      { "product_id": 15, "item_state_id": 2, "quantity": 3, "unit_cost": 12.5 }
+    ]
+  }'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "number": 1,
+  "supplier_id": 1,
+  "status": "draft",
+  "subtotal": 837.5,
+  "tax_rate": 16,
+  "tax_amount": 134,
+  "total": 971.5,
+  "notes": "Reposición mensual",
+  "items": [
+    { "id": 1, "product_id": 15, "item_state_id": 1, "quantity": 40, "unit_cost": 20, "subtotal": 800 },
+    { "id": 2, "product_id": 15, "item_state_id": 2, "quantity": 3, "unit_cost": 12.5, "subtotal": 37.5 }
+  ]
+}
+```
+
+### `GET /purchases` y `GET /purchases/:id`
+
+`GET /purchases` lista por `number` descendente y acepta los filtros exactos
+`?supplier_id=`, `?status=draft|confirmed|cancelled` y `?number=`. Con
+`?include=items` cada compra incluye sus líneas. `GET /purchases/:id` devuelve
+siempre `items` y el `supplier` anidado, o `404` con
+`{ "message": "Purchase not found" }`.
+
+```bash
+curl "http://localhost:3001/purchases?status=draft&include=items" \
+  -H "Authorization: Bearer <jwt>"
+
+curl http://localhost:3001/purchases/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /purchases/:id`, `DELETE /purchases/:id` y `POST /purchases/:id/cancel`
+
+`PUT` acepta `supplier_id`, `tax_rate` y/o `notes`, recalcula los totales y
+responde `202`. No acepta `items`. `DELETE` solo borra borradores (`204`, con
+cascada a las líneas) y `POST /purchases/:id/cancel` cambia el estado a
+`cancelled` (`200`) sin tocar `costs` ni `stocks`. Cualquier intento sobre una
+compra confirmada o cancelada responde `409` con
+`{ "message": "Purchase is not editable" }`.
+
+```bash
+curl -X PUT http://localhost:3001/purchases/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{ "tax_rate": 8.25, "notes": "Reposición ajustada" }'
+
+curl -X POST http://localhost:3001/purchases/1/cancel \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Líneas: `/purchases/:id/items`
+
+- `GET /purchases/:id/items` lista las líneas de un borrador.
+- `POST /purchases/:id/items` agrega una línea (`product_id`,
+  `item_state_id`, `quantity` y `unit_cost`) y responde `201`.
+- `PUT /purchases/:purchase_id/items/:item_id` actualiza cualquier combinación
+  de esos cuatro campos y responde `202`.
+- `DELETE /purchases/:purchase_id/items/:item_id` elimina la línea y responde
+  `204`.
+
+Cada alta, edición o baja recalcula la cabecera; al borrar la última línea los
+totales quedan en `0`. Solo se permiten sobre borradores. Si la línea no
+pertenece a la compra responde `404` con `{ "message": "Item not found" }` y un
+producto/estado repetido responde `409` con
+`{ "message": "Item already exists" }`.
+
+```bash
+curl -X POST http://localhost:3001/purchases/1/items \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{ "product_id": 15, "item_state_id": 1, "quantity": 10, "unit_cost": 15.5 }'
+
+curl -X PUT http://localhost:3001/purchases/1/items/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{ "quantity": 12, "unit_cost": 18.75 }'
+
+curl -X DELETE http://localhost:3001/purchases/1/items/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `POST /purchases/:id/confirm`
+
+Protegido para `admin` y `seller`. En **una sola transacción** recalcula los
+totales, hace *upsert* en `costs` por `(product_id, item_state_id)` (la última
+compra confirmada gana), incrementa `stocks.quantity` con
+`stockRepository.applyPurchaseItems(items, { transaction })` y marca
+`status = confirmed` con `confirmed_at`. Si cualquier paso falla se revierte
+todo: ni costos ni stocks cambian. Sin líneas responde `422` con
+`{ "message": "Purchase has no items" }`; si ya estaba confirmada responde
+`409` con `{ "message": "Purchase already confirmed" }`.
+
+```bash
+curl -X POST http://localhost:3001/purchases/1/confirm \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Errores del módulo
+
+| Código | Cuerpo                                                                 |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | `{ "message": "supplier_id is required" }` / `{ "message": "At least one field is required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                                        |
+| `403`  | `{ "message": "Forbidden" }`                                           |
+| `404`  | `{ "message": "Purchase not found" }` / `{ "message": "Item not found" }` |
+| `409`  | `{ "message": "Purchase is not editable" }` / `"Purchase already confirmed"` / `"Item already exists"` |
+| `422`  | `{ "errors": { ... } }` / `{ "message": "Purchase has no items" }`      |
+
+### Referencias activadas
+
+Borrar un proveedor con compras responde `409` con
+`{ "message": "Supplier is in use" }`. Borrar un estado de ítem usado por una
+línea de compra (además de `costs` o `stocks`) responde `409` con
+`{ "message": "Item state is in use" }`. Los productos usados por una línea de
+compra tampoco se pueden borrar (`409 Product is in use`).
 
 ## Logs y manejo de errores
 

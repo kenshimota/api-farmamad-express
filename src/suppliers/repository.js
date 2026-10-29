@@ -134,19 +134,19 @@ function createSupplierRepository(
     },
 
     /**
-     * Tells whether the supplier has purchases. The `purchases` table belongs
-     * to HU-21 and does not exist yet, so this always resolves to false. When
-     * that table is created, this method must query `purchases.supplier_id`;
-     * the restrictive foreign key will also raise a
-     * `SequelizeForeignKeyConstraintError`, which `handleDeleteError` already
-     * maps to 409 `Supplier is in use`.
+     * Tells whether a purchase references the supplier. The restrictive
+     * foreign key also raises a `SequelizeForeignKeyConstraintError`, which
+     * `handleDeleteError` maps to 409 `Supplier is in use`.
      * @param {number} supplierId - Supplier id.
-     * @returns {Promise<boolean>} False until purchases exist.
+     * @returns {Promise<boolean>} True when a purchase references it.
      */
     async hasPurchases(supplierId) {
-      void supplierId;
+      const Purchase = require("../models/purchase");
+      const purchase = await Purchase.findOne({
+        where: { supplier_id: supplierId },
+      });
 
-      return false;
+      return purchase !== null && purchase !== undefined;
     },
   };
 }

@@ -28,6 +28,12 @@ describe("swagger spec", () => {
         "/stocks/product/{product_id}",
         "/stocks/available",
         "/stocks/available/{product_id}",
+        "/purchases",
+        "/purchases/{id}",
+        "/purchases/{id}/items",
+        "/purchases/{purchase_id}/items/{item_id}",
+        "/purchases/{id}/confirm",
+        "/purchases/{id}/cancel",
       ]),
     );
   });
@@ -193,6 +199,34 @@ describe("swagger spec", () => {
     });
     expect(swaggerSpec.tags).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "Stocks" })]),
+    );
+  });
+
+  it("documents the Purchase schemas without audit fields", () => {
+    expect(swaggerSpec.components.schemas.Purchase).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        number: { type: "integer" },
+        supplier_id: { type: "integer" },
+        status: { type: "string" },
+        subtotal: { type: "number" },
+        tax_rate: { type: "number" },
+        tax_amount: { type: "number" },
+        total: { type: "number" },
+      },
+    });
+    expect(
+      swaggerSpec.components.schemas.Purchase.properties,
+    ).not.toHaveProperty("createdAt");
+    expect(
+      swaggerSpec.components.schemas.PurchaseItem.properties,
+    ).not.toHaveProperty("createdAt");
+    expect(
+      swaggerSpec.components.schemas.PurchaseItemUpdate.required,
+    ).toBeUndefined();
+    expect(swaggerSpec.tags).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "Purchases" })]),
     );
   });
 

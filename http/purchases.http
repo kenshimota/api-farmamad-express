@@ -1,0 +1,215 @@
+# Archivo: purchases.http
+# Módulo: purchases  ->  POST /purchases, GET /purchases, GET /purchases/:id,
+#                       PUT /purchases/:id, DELETE /purchases/:id,
+#                       POST /purchases/:id/cancel, POST /purchases/:id/confirm,
+#                       GET/POST /purchases/:id/items,
+#                       PUT/DELETE /purchases/:purchase_id/items/:item_id
+# Protegido: lectura para admin, seller y manager_warehouse;
+#            escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+# Ajusta supplier_id, product_id e item_state_id por los ids reales de tu base.
+
+### POST /purchases — crea una compra en borrador con líneas (201)
+# El servidor asigna number, status draft y calcula subtotal, impuesto y total.
+# Si omites tax_rate se usa PURCHASE_TAX_RATE (16 por defecto).
+POST {{baseUrl}}/purchases
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "supplier_id": 1,
+  "tax_rate": 16,
+  "notes": "Reposición mensual",
+  "items": [
+    { "product_id": 1, "item_state_id": 1, "quantity": 40, "unit_cost": 20.0 },
+    { "product_id": 1, "item_state_id": 2, "quantity": 3, "unit_cost": 12.5 }
+  ]
+}
+
+### POST /purchases — crea un borrador vacío (201)
+# Las líneas se agregan después con POST /purchases/:id/items.
+POST {{baseUrl}}/purchases
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "supplier_id": 1
+}
+
+### POST /purchases — sin token (401 Unauthorized)
+POST {{baseUrl}}/purchases
+Content-Type: application/json
+
+{
+  "supplier_id": 1
+}
+
+### POST /purchases — falta supplier_id (400)
+POST {{baseUrl}}/purchases
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /purchases — proveedor inexistente (422)
+POST {{baseUrl}}/purchases
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "supplier_id": 99999
+}
+
+### POST /purchases — línea duplicada (409)
+POST {{baseUrl}}/purchases
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "supplier_id": 1,
+  "items": [
+    { "product_id": 1, "item_state_id": 1, "quantity": 1, "unit_cost": 1 },
+    { "product_id": 1, "item_state_id": 1, "quantity": 2, "unit_cost": 2 }
+  ]
+}
+
+### GET /purchases — lista ordenada por number descendente (200, [] si no hay)
+GET {{baseUrl}}/purchases
+Authorization: Bearer {{token}}
+
+### GET /purchases?include=items — incluye las líneas (200)
+GET {{baseUrl}}/purchases?include=items
+Authorization: Bearer {{token}}
+
+### GET /purchases?supplier_id=1&status=draft&number=1 — filtros exactos (200)
+GET {{baseUrl}}/purchases?supplier_id=1&status=draft&number=1
+Authorization: Bearer {{token}}
+
+### GET /purchases?status=paid — filtro inválido (422)
+GET {{baseUrl}}/purchases?status=paid
+Authorization: Bearer {{token}}
+
+### GET /purchases/:id — detalle con items y supplier anidado (200)
+GET {{baseUrl}}/purchases/1
+Authorization: Bearer {{token}}
+
+### GET /purchases/:id — id inexistente (404)
+GET {{baseUrl}}/purchases/99999
+Authorization: Bearer {{token}}
+
+### PUT /purchases/:id — actualiza proveedor, impuesto y notas en borrador (202)
+# No acepta items: las líneas se gestionan con los endpoints /items.
+PUT {{baseUrl}}/purchases/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "supplier_id": 1,
+  "tax_rate": 8.25,
+  "notes": "Reposición ajustada"
+}
+
+### PUT /purchases/:id — sin campos editables (400)
+PUT {{baseUrl}}/purchases/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /purchases/:id — compra confirmada o cancelada (409)
+PUT {{baseUrl}}/purchases/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "notes": "No permitido"
+}
+
+### DELETE /purchases/:id — elimina un borrador y sus líneas (204)
+DELETE {{baseUrl}}/purchases/1
+Authorization: Bearer {{token}}
+
+### DELETE /purchases/:id — compra no editable (409)
+DELETE {{baseUrl}}/purchases/1
+Authorization: Bearer {{token}}
+
+### POST /purchases/:id/cancel — cancela un borrador (200)
+# No toca costs ni stocks. Una compra confirmada responde 409.
+POST {{baseUrl}}/purchases/1/cancel
+Authorization: Bearer {{token}}
+
+### GET /purchases/:id/items — lista las líneas de un borrador (200)
+GET {{baseUrl}}/purchases/1/items
+Authorization: Bearer {{token}}
+
+### POST /purchases/:id/items — agrega una línea y recalcula (201)
+POST {{baseUrl}}/purchases/1/items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 1,
+  "quantity": 10,
+  "unit_cost": 15.5
+}
+
+### POST /purchases/:id/items — línea duplicada (409)
+POST {{baseUrl}}/purchases/1/items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 1,
+  "quantity": 1,
+  "unit_cost": 1
+}
+
+### PUT /purchases/:purchase_id/items/:item_id — actualiza cantidad y costo (202)
+PUT {{baseUrl}}/purchases/1/items/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantity": 12,
+  "unit_cost": 18.75
+}
+
+### PUT /purchases/:purchase_id/items/:item_id — sin campos (400)
+PUT {{baseUrl}}/purchases/1/items/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /purchases/:purchase_id/items/:item_id — línea inexistente (404)
+PUT {{baseUrl}}/purchases/1/items/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantity": 2
+}
+
+### DELETE /purchases/:purchase_id/items/:item_id — elimina la línea (204)
+# Si era la última, la compra queda con subtotal, impuesto y total en 0.
+DELETE {{baseUrl}}/purchases/1/items/1
+Authorization: Bearer {{token}}
+
+### POST /purchases/:id/confirm — confirma y actualiza costs y stocks (200)
+# En una sola transacción: recalcula, hace upsert en costs, incrementa stocks
+# y marca status confirmed con confirmed_at. Si falla, revierte todo.
+POST {{baseUrl}}/purchases/1/confirm
+Authorization: Bearer {{token}}
+
+### POST /purchases/:id/confirm — compra sin líneas (422)
+POST {{baseUrl}}/purchases/1/confirm
+Authorization: Bearer {{token}}
+
+### POST /purchases/:id/confirm — compra ya confirmada (409)
+POST {{baseUrl}}/purchases/1/confirm
+Authorization: Bearer {{token}}

@@ -88,6 +88,19 @@ jest.mock("./models/stock", () => ({
   findOrCreate: jest.fn(),
 }));
 
+jest.mock("./models/purchase", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
+
+jest.mock("./models/purchase-item", () => ({
+  create: jest.fn(),
+  bulkCreate: jest.fn(),
+  findAll: jest.fn(),
+  findOne: jest.fn(),
+}));
+
 const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");
@@ -203,6 +216,20 @@ describe("app", () => {
 
   it("exposes GET /stocks behind authentication", async () => {
     const response = await request(app).get("/stocks");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: "Unauthorized" });
+  });
+
+  it("exposes GET /purchases behind authentication", async () => {
+    const response = await request(app).get("/purchases");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: "Unauthorized" });
+  });
+
+  it("exposes POST /purchases behind authentication", async () => {
+    const response = await request(app).post("/purchases").send({});
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Unauthorized" });
