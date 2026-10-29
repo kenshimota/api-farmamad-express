@@ -24,6 +24,12 @@ app.use((error, req, res, next) => {
 
 const SECRET = "test-secret";
 const AUTH_USER = { id: 1, username: "admin", isBlocked: false };
+const CURRENCY = {
+  id: 1,
+  code: "USD_BCV",
+  name: "Dólar BCV",
+  symbol: "$",
+};
 
 /**
  * Signs a JWT for the given role.
@@ -47,6 +53,8 @@ function cost(overrides = {}) {
     product_id: 15,
     item_state_id: 2,
     cost: "12.50",
+    currency_id: 1,
+    currency: CURRENCY,
     item_state: {
       id: 2,
       name: "damaged",
@@ -95,6 +103,8 @@ describe("GET /costs", () => {
           product_id: 15,
           item_state_id: 2,
           cost: 12.5,
+          currency_id: 1,
+          currency: CURRENCY,
           item_state: {
             id: 2,
             name: "damaged",
@@ -118,11 +128,11 @@ describe("GET /costs", () => {
   it("passes the optional filters to the repository", async () => {
     Cost.findAll.mockResolvedValue([]);
 
-    await get("/costs?product_id=15&item_state_id=2");
+    await get("/costs?product_id=15&item_state_id=2&currency_id=3");
 
     expect(Cost.findAll).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { product_id: 15, item_state_id: 2 },
+        where: { product_id: 15, item_state_id: 2, currency_id: 3 },
       }),
     );
   });
@@ -130,6 +140,7 @@ describe("GET /costs", () => {
   it.each([
     [{ product_id: "abc" }, "Invalid product id"],
     [{ item_state_id: "abc" }, "Invalid item state id"],
+    [{ currency_id: "abc" }, "Invalid currency id"],
   ])("responds 422 for an invalid filter in %p", async (query, message) => {
     const key = Object.keys(query)[0];
     const response = await get(
@@ -222,6 +233,8 @@ describe("GET /costs/:id", () => {
       product_id: 15,
       item_state_id: 2,
       cost: 12.5,
+      currency_id: 1,
+      currency: CURRENCY,
       item_state: {
         id: 2,
         name: "damaged",

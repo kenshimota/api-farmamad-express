@@ -7,6 +7,7 @@ const Product = require("../../src/models/product");
 const Category = require("../../src/models/category");
 const Image = require("../../src/models/image");
 const ItemState = require("../../src/models/item-state");
+const { ensureDefaultTransactionCurrency } = require("./currency-default");
 const { createProduct } = require("./products");
 
 const PASSWORD = "secret123";
@@ -120,6 +121,10 @@ async function createCost(overrides = {}) {
     values.item_state_id = itemState.id;
   }
 
+  if (values.currency_id === undefined) {
+    values.currency_id = (await ensureDefaultTransactionCurrency()).id;
+  }
+
   return Cost.create(values);
 }
 
@@ -164,6 +169,7 @@ async function resetDatabase() {
     where: {},
     truncate: { cascade: true, restartIdentity: true },
   });
+  await ensureDefaultTransactionCurrency();
 }
 
 module.exports = {

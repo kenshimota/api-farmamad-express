@@ -20,6 +20,9 @@ describe("Currency model", () => {
     expect(attributes.is_active.type.key).toBe("BOOLEAN");
     expect(attributes.is_active.allowNull).toBe(false);
     expect(attributes.is_active.defaultValue).toBe(true);
+    expect(attributes.is_default_for_transactions.type.key).toBe("BOOLEAN");
+    expect(attributes.is_default_for_transactions.allowNull).toBe(false);
+    expect(attributes.is_default_for_transactions.defaultValue).toBe(false);
   });
 
   it("uses the documented model and table names", () => {

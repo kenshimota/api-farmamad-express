@@ -1,4 +1,14 @@
 const schemas = {
+  CurrencySummary: {
+    type: "object",
+    description: "Compact currency nested in costs, purchases and stocks",
+    properties: {
+      id: { type: "integer", example: 3 },
+      code: { type: "string", example: "USD_BCV" },
+      name: { type: "string", example: "Dólar BCV" },
+      symbol: { type: "string", example: "$" },
+    },
+  },
   Currency: {
     type: "object",
     properties: {
@@ -23,6 +33,12 @@ const schemas = {
         example: false,
       },
       is_active: { type: "boolean", example: true },
+      is_default_for_transactions: {
+        type: "boolean",
+        description:
+          "At most one active currency is the default for costs and purchases; only USD_BCV in this HU",
+        example: true,
+      },
     },
   },
   CurrencyRateHistory: {

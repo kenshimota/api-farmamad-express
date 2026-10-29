@@ -70,6 +70,7 @@ const PUBLIC = {
   rate: 1000.29,
   is_base: false,
   is_active: true,
+  is_default_for_transactions: false,
 };
 
 beforeEach(() => {

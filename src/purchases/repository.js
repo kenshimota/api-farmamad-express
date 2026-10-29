@@ -6,6 +6,8 @@ const Supplier = require("../models/supplier");
 const Product = require("../models/product");
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
+const Currency = require("../models/currency");
+const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 const { ITEM_ORDER } = require("./item-repository");
 
 const LIST_ORDER = Object.freeze([["number", "DESC"]]);
@@ -19,6 +21,11 @@ const SUPPLIER_INCLUDE = Object.freeze({
   model: Supplier,
   as: "supplier",
 });
+const CURRENCY_INCLUDE = Object.freeze({
+  model: Currency,
+  as: "currency",
+  attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
+});
 
 /**
  * Builds the Sequelize options for the purchase listing.
@@ -26,6 +33,7 @@ const SUPPLIER_INCLUDE = Object.freeze({
  * @param {number} [filters.supplierId] - Exact supplier id.
  * @param {string} [filters.status] - Exact status.
  * @param {number} [filters.number] - Exact purchase number.
+ * @param {number} [filters.currencyId] - Exact currency id.
  * @param {boolean} [filters.includeItems] - Nest the purchase lines.
  * @returns {object} Options accepted by `Purchase.findAll`.
  */
@@ -33,6 +41,7 @@ function buildListOptions({
   supplierId,
   status,
   number,
+  currencyId,
   includeItems = false,
 } = {}) {
   const options = { order: LIST_ORDER };
@@ -50,12 +59,18 @@ function buildListOptions({
     where.number = number;
   }
 
+  if (currencyId !== undefined) {
+    where.currency_id = currencyId;
+  }
+
   if (Object.keys(where).length > 0) {
     options.where = where;
   }
 
+  options.include = [{ ...CURRENCY_INCLUDE }];
+
   if (includeItems) {
-    options.include = [{ ...ITEM_INCLUDE }];
+    options.include.push({ ...ITEM_INCLUDE });
   }
 
   return options;
@@ -98,7 +113,7 @@ function createPurchaseRepository({
     id,
     { includeItems = false, includeSupplier = false, transaction, lock } = {},
   ) {
-    const include = [];
+    const include = [{ ...CURRENCY_INCLUDE }];
 
     if (includeItems) {
       include.push({ ...ITEM_INCLUDE });
@@ -109,7 +124,7 @@ function createPurchaseRepository({
     }
 
     return model.findByPk(id, {
-      include: include.length > 0 ? include : undefined,
+      include,
       transaction,
       lock,
     });
@@ -171,7 +186,10 @@ function createPurchaseRepository({
      * @returns {Promise<object|null>} The locked instance or null.
      */
     findByIdForUpdate(id, transaction) {
-      return findById(id, {
+      // Lock only the purchase row: `FOR UPDATE` cannot be combined with the
+      // nullable side of the currency outer join. The caller reloads the
+      // associations after the update.
+      return model.findByPk(id, {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
@@ -236,7 +254,7 @@ function createPurchaseRepository({
     /**
      * Upserts the current cost of the product/item state pair; the latest
      * confirmed purchase wins.
-     * @param {object} values - Product, item state and unit cost.
+     * @param {object} values - Product, item state, unit cost and currency.
      * @param {object} options - Persistence options.
      * @param {object} options.transaction - Open transaction.
      * @returns {Promise<unknown>} The upsert result.
@@ -247,6 +265,7 @@ function createPurchaseRepository({
           product_id: values.product_id,
           item_state_id: values.item_state_id,
           cost: values.unit_cost,
+          currency_id: values.currency_id,
         },
         { transaction, conflictFields: ["product_id", "item_state_id"] },
       );
@@ -257,6 +276,7 @@ function createPurchaseRepository({
 const purchaseRepository = createPurchaseRepository();
 
 module.exports = {
+  CURRENCY_INCLUDE,
   ITEM_INCLUDE,
   LIST_ORDER,
   SUPPLIER_INCLUDE,

@@ -1,12 +1,5 @@
-/**
- * Reads a field from a Sequelize instance or a plain object.
- * @param {object} record - Sequelize instance or plain object.
- * @param {string} field - Field name.
- * @returns {unknown} The raw value.
- */
-function readField(record, field) {
-  return typeof record.get === "function" ? record.get(field) : record[field];
-}
+const { toPublicCurrencySummary } = require("../currencies/serializer");
+const { readField, toDecimalNumber } = require("../shared/serializer");
 
 /**
  * Converts the DECIMAL value returned by Sequelize (usually a string) into a
@@ -15,21 +8,7 @@ function readField(record, field) {
  * @returns {number|null} The numeric cost or null when it is not numeric.
  */
 function toCostNumber(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    (typeof value === "string" && value.trim() === "")
-  ) {
-    return null;
-  }
-
-  const numeric = Number(value);
-
-  if (!Number.isFinite(numeric)) {
-    return null;
-  }
-
-  return Number(numeric.toFixed(2));
+  return toDecimalNumber(value, 2);
 }
 
 /**
@@ -51,19 +30,27 @@ function toPublicCostItemState(itemState) {
 
 /**
  * Builds the public representation of a cost: only `id`, `product_id`,
- * `item_state_id`, the numeric `cost` and the nested `item_state`, with no
- * audit columns.
+ * `item_state_id`, the numeric `cost`, the currency and the nested item state,
+ * with no audit columns.
  * @param {object} cost - Cost instance or plain object.
  * @param {object} [itemState] - Nested item state when it is passed apart.
+ * @param {object} [currency] - Nested currency when it is passed apart.
  * @returns {{ id: number, product_id: number, item_state_id: number,
- *   cost: number|null, item_state: object|null }} Public data.
+ *   cost: number|null, currency_id: number|null, currency: object|null,
+ *   item_state: object|null }} Public data.
  */
-function toPublicCost(cost, itemState = readField(cost, "item_state")) {
+function toPublicCost(
+  cost,
+  itemState = readField(cost, "item_state"),
+  currency = readField(cost, "currency"),
+) {
   return {
     id: readField(cost, "id"),
     product_id: readField(cost, "product_id"),
     item_state_id: readField(cost, "item_state_id"),
     cost: toCostNumber(readField(cost, "cost")),
+    currency_id: readField(cost, "currency_id") ?? null,
+    currency: currency ? toPublicCurrencySummary(currency) : null,
     item_state: itemState ? toPublicCostItemState(itemState) : null,
   };
 }

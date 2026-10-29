@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
 const Supplier = require("./supplier");
+const Currency = require("./currency");
 
 /**
  * Sequelize model that represents a purchase order. The server assigns the
@@ -19,6 +20,10 @@ const Purchase = sequelize.define(
       unique: true,
     },
     supplier_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    currency_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -63,5 +68,7 @@ const Purchase = sequelize.define(
 
 Purchase.belongsTo(Supplier, { foreignKey: "supplier_id", as: "supplier" });
 Supplier.hasMany(Purchase, { foreignKey: "supplier_id", as: "purchases" });
+Purchase.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
+Currency.hasMany(Purchase, { foreignKey: "currency_id", as: "purchases" });
 
 module.exports = Purchase;

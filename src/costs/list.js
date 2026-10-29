@@ -4,13 +4,69 @@ const { loadCost } = require("./shared");
 const { readAccess } = require("./guards");
 const { costRepository } = require("./repository");
 const {
+  CURRENCY_FILTER_MESSAGE,
   ITEM_STATE_FILTER_MESSAGE,
   PRODUCT_FILTER_MESSAGE,
+  parseCurrencyId,
   parseItemStateId,
   parseProductId,
 } = require("./validators");
 
 const router = Router();
+
+const FILTER_SPECS = Object.freeze([
+  {
+    query: "product_id",
+    key: "productId",
+    parse: parseProductId,
+    message: PRODUCT_FILTER_MESSAGE,
+  },
+  {
+    query: "item_state_id",
+    key: "itemStateId",
+    parse: parseItemStateId,
+    message: ITEM_STATE_FILTER_MESSAGE,
+  },
+  {
+    query: "currency_id",
+    key: "currencyId",
+    parse: parseCurrencyId,
+    message: CURRENCY_FILTER_MESSAGE,
+  },
+]);
+
+/**
+ * Parses the optional exact filters in documented order.
+ * @param {object} query - Express query object.
+ * @returns {{ filters: object }|{ error: { status: number, body: object } }}
+ *   The repository filters or the HTTP error to answer.
+ */
+function resolveFilters(query) {
+  const filters = {};
+
+  for (const spec of FILTER_SPECS) {
+    const raw = query[spec.query];
+
+    if (raw === undefined) {
+      continue;
+    }
+
+    const value = spec.parse(raw);
+
+    if (value === null) {
+      return {
+        error: {
+          status: 422,
+          body: { errors: { [spec.query]: spec.message } },
+        },
+      };
+    }
+
+    filters[spec.key] = value;
+  }
+
+  return { filters };
+}
 
 /**
  * @openapi
@@ -19,8 +75,9 @@ const router = Router();
  *     summary: Lists costs; administrators, sellers and warehouse managers can do it
  *     description: >
  *       Returns every cost ordered by `product_id` and `item_state_id`
- *       ascending. The optional `product_id` and `item_state_id` filters are
- *       exact. Every row includes the nested item state without timestamps.
+ *       ascending. The optional `product_id`, `item_state_id` and
+ *       `currency_id` filters are exact. Every row includes the nested item
+ *       state and currency without timestamps.
  *     tags:
  *       - Costs
  *     security:
@@ -40,6 +97,13 @@ const router = Router();
  *           type: integer
  *           minimum: 1
  *         example: 2
+ *       - in: query
+ *         name: currency_id
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         example: 3
  *     responses:
  *       200:
  *         description: Costs ordered by product and item state
@@ -80,32 +144,13 @@ const router = Router();
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", ...readAccess(), async (req, res) => {
-  const rawProductId = req.query.product_id;
-  const rawItemStateId = req.query.item_state_id;
-  let productId;
-  let itemStateId;
+  const { filters, error } = resolveFilters(req.query);
 
-  if (rawProductId !== undefined) {
-    productId = parseProductId(rawProductId);
-
-    if (productId === null) {
-      return res.status(422).json({
-        errors: { product_id: PRODUCT_FILTER_MESSAGE },
-      });
-    }
+  if (error) {
+    return res.status(error.status).json(error.body);
   }
 
-  if (rawItemStateId !== undefined) {
-    itemStateId = parseItemStateId(rawItemStateId);
-
-    if (itemStateId === null) {
-      return res.status(422).json({
-        errors: { item_state_id: ITEM_STATE_FILTER_MESSAGE },
-      });
-    }
-  }
-
-  const costs = await costRepository.list({ productId, itemStateId });
+  const costs = await costRepository.list(filters);
 
   return res.json(costs.map((cost) => toPublicCost(cost)));
 });

@@ -8,6 +8,7 @@ const Product = require("../../src/models/product");
 const Category = require("../../src/models/category");
 const Image = require("../../src/models/image");
 const ItemState = require("../../src/models/item-state");
+const { ensureDefaultTransactionCurrency } = require("./currency-default");
 
 const PASSWORD = "secret123";
 const STOCK_BODY = { quantity: 10 };
@@ -170,8 +171,14 @@ async function createStock(overrides = {}) {
  * @param {object} [overrides] - Attribute overrides.
  * @returns {Promise<object>} The created Sequelize instance.
  */
-function createCost(overrides = {}) {
-  return Cost.create({ cost: 12.5, ...overrides });
+async function createCost(overrides = {}) {
+  const currencyId = (await ensureDefaultTransactionCurrency()).id;
+
+  return Cost.create({
+    cost: 12.5,
+    currency_id: currencyId,
+    ...overrides,
+  });
 }
 
 /**
@@ -233,6 +240,7 @@ async function resetDatabase() {
     where: {},
     truncate: { cascade: true, restartIdentity: true },
   });
+  await ensureDefaultTransactionCurrency();
 }
 
 module.exports = {

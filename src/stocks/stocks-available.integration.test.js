@@ -5,6 +5,10 @@ const app = require("../app");
 const sequelize = require("../database");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 const {
+  ensureDefaultTransactionCurrency,
+  publicCurrencySummary,
+} = require("../../test/helpers/currency-default");
+const {
   as,
   createCost,
   createItemState,
@@ -68,6 +72,7 @@ describe("GET /stocks/available with a real database", () => {
       item_state_id: sellable.id,
       cost: 20,
     });
+    const currency = await ensureDefaultTransactionCurrency();
     const token = await tokenFor("manager_warehouse");
 
     const response = await as(
@@ -83,6 +88,8 @@ describe("GET /stocks/available with a real database", () => {
         item_state_id: intact.id,
         quantity: 5,
         cost: null,
+        currency_id: null,
+        currency: null,
         item_state: publicItemState(intact),
       },
       {
@@ -90,6 +97,8 @@ describe("GET /stocks/available with a real database", () => {
         item_state_id: sellable.id,
         quantity: 40,
         cost: 20,
+        currency_id: currency.id,
+        currency: publicCurrencySummary(currency),
         item_state: publicItemState(sellable),
       },
     ]);

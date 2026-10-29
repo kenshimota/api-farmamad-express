@@ -1,14 +1,6 @@
 const { toPublicSupplier } = require("../suppliers/serializer");
-
-/**
- * Reads a field from a Sequelize instance or a plain object.
- * @param {object} record - Sequelize instance or plain object.
- * @param {string} field - Field name.
- * @returns {unknown} The raw value.
- */
-function readField(record, field) {
-  return typeof record.get === "function" ? record.get(field) : record[field];
-}
+const { toPublicCurrencySummary } = require("../currencies/serializer");
+const { readField, toDecimalNumber } = require("../shared/serializer");
 
 /**
  * Converts a DECIMAL value (usually a string) into a JSON number with two
@@ -17,21 +9,7 @@ function readField(record, field) {
  * @returns {number|null} The numeric value or null.
  */
 function toMoneyNumber(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    (typeof value === "string" && value.trim() === "")
-  ) {
-    return null;
-  }
-
-  const numeric = Number(value);
-
-  if (!Number.isFinite(numeric)) {
-    return null;
-  }
-
-  return Number(numeric.toFixed(2));
+  return toDecimalNumber(value, 2);
 }
 
 /**
@@ -81,10 +59,12 @@ function toPublicPurchase(
   purchase,
   { includeItems = false, includeSupplier = false } = {},
 ) {
+  const currency = readField(purchase, "currency");
   const data = {
     id: readField(purchase, "id"),
     number: readField(purchase, "number"),
     supplier_id: readField(purchase, "supplier_id"),
+    currency_id: readField(purchase, "currency_id") ?? null,
     status: readField(purchase, "status"),
     subtotal: toMoneyNumber(readField(purchase, "subtotal")),
     tax_rate: toMoneyNumber(readField(purchase, "tax_rate")),
@@ -95,6 +75,10 @@ function toPublicPurchase(
   const confirmedAt = toConfirmedAt(readField(purchase, "confirmed_at"));
   const items = readField(purchase, "items");
   const supplier = readField(purchase, "supplier");
+
+  if (currency) {
+    data.currency = toPublicCurrencySummary(currency);
+  }
 
   if (confirmedAt !== undefined) {
     data.confirmed_at = confirmedAt;

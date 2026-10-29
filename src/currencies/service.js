@@ -1,5 +1,9 @@
 const { currencyRepository } = require("./repository");
-const { baseCannotBeDeactivated, baseRateLocked } = require("./errors");
+const {
+  baseCannotBeDeactivated,
+  baseRateLocked,
+  defaultCannotBeDeactivated,
+} = require("./errors");
 
 const EDITABLE_FIELDS = Object.freeze(["name", "symbol", "is_active"]);
 
@@ -109,6 +113,13 @@ function createCurrencyService({ repository = currencyRepository } = {}) {
         throw baseCannotBeDeactivated();
       }
 
+      if (
+        currency.is_default_for_transactions === true &&
+        values.is_active === false
+      ) {
+        throw defaultCannotBeDeactivated();
+      }
+
       const updates = pickDefined(values, EDITABLE_FIELDS);
 
       if (!base && rateChanged) {
@@ -147,6 +158,10 @@ function createCurrencyService({ repository = currencyRepository } = {}) {
     async deactivateCurrency(currency) {
       if (currency.is_base === true) {
         throw baseCannotBeDeactivated();
+      }
+
+      if (currency.is_default_for_transactions === true) {
+        throw defaultCannotBeDeactivated();
       }
 
       return repository.update(currency, { is_active: false });

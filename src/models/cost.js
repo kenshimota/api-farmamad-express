@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
 const Product = require("./product");
 const ItemState = require("./item-state");
+const Currency = require("./currency");
 
 /**
  * Sequelize model that represents the current cost of a product for a given
@@ -26,6 +27,10 @@ const Cost = sequelize.define(
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
     },
+    currency_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     tableName: "costs",
@@ -36,5 +41,7 @@ Cost.belongsTo(Product, { foreignKey: "product_id", as: "product" });
 Product.hasMany(Cost, { foreignKey: "product_id", as: "costs" });
 Cost.belongsTo(ItemState, { foreignKey: "item_state_id", as: "item_state" });
 ItemState.hasMany(Cost, { foreignKey: "item_state_id", as: "costs" });
+Cost.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
+Currency.hasMany(Cost, { foreignKey: "currency_id", as: "costs" });
 
 module.exports = Cost;

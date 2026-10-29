@@ -86,3 +86,25 @@ describe("DELETE /currencies/:id with a real database", () => {
     expect(forbidden.body).toEqual({ message: "Forbidden" });
   });
 });
+
+describe("default transaction currency protection", () => {
+  it("does not deactivate the default currency with DELETE", async () => {
+    const currency = await createCurrency({
+      code: "USD_BCV",
+      name: "Dólar BCV",
+      symbol: "$",
+      rate: "889.890000",
+      is_default_for_transactions: true,
+    });
+    const token = await tokenFor("admin");
+
+    const response = await as("delete", `/currencies/${currency.id}`, token);
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      message: "Default transaction currency cannot be deactivated",
+    });
+    const stored = await Currency.findByPk(currency.id);
+    expect(stored.is_active).toBe(true);
+  });
+});

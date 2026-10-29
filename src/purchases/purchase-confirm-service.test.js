@@ -41,6 +41,7 @@ function purchase(overrides = {}) {
     id: 1,
     number: 1,
     supplier_id: 2,
+    currency_id: 3,
     status: "draft",
     subtotal: "0.00",
     tax_rate: "16.00",
@@ -87,12 +88,22 @@ describe("confirmPurchase", () => {
     );
     expect(repository.upsertCost).toHaveBeenNthCalledWith(
       1,
-      { product_id: 15, item_state_id: 1, unit_cost: "20.00" },
+      {
+        product_id: 15,
+        item_state_id: 1,
+        unit_cost: "20.00",
+        currency_id: 3,
+      },
       { transaction: TRANSACTION },
     );
     expect(repository.upsertCost).toHaveBeenNthCalledWith(
       2,
-      { product_id: 15, item_state_id: 2, unit_cost: "12.50" },
+      {
+        product_id: 15,
+        item_state_id: 2,
+        unit_cost: "12.50",
+        currency_id: 3,
+      },
       { transaction: TRANSACTION },
     );
     expect(stocks.applyPurchaseItems).toHaveBeenCalledWith(LINES, {

@@ -3,13 +3,21 @@ const {
   UniqueConstraintError,
 } = require("sequelize");
 const { costRepository } = require("./repository");
+const { resolveTransactionCurrency } = require("../currencies/default");
+const { foreignKeyField } = require("../shared/foreign-key");
+const { isHttpError, sendHttpError } = require("../shared/http-error");
 const {
+  CURRENCY_ID_MESSAGE,
   ITEM_STATE_ID_MESSAGE,
   PRODUCT_ID_MESSAGE,
   parseCostId,
 } = require("./validators");
 
-const FOREIGN_KEY_FIELDS = Object.freeze(["product_id", "item_state_id"]);
+const FOREIGN_KEY_FIELDS = Object.freeze([
+  "product_id",
+  "item_state_id",
+  "currency_id",
+]);
 
 /**
  * Express middleware for the routes that address a single cost. It parses the
@@ -72,26 +80,40 @@ async function ensureReferences(req, res, next) {
 }
 
 /**
- * Reads the foreign key field named by a Sequelize constraint error. The field
- * can come as an object, an array or only inside the driver message.
- * @param {ForeignKeyConstraintError} error - Sequelize constraint error.
- * @returns {string|null} The matching field name or null.
+ * Builds the middleware that resolves the currency of a create or update. A
+ * create without `currency_id` receives the active default currency; an update
+ * keeps the stored currency when the field is omitted. An explicit currency
+ * must exist and be active.
+ * @param {object} [options] - Resolver options.
+ * @param {boolean} [options.forUpdate] - Keep the stored currency when omitted.
+ * @returns {import("express").RequestHandler} The resolver middleware.
  */
-function foreignKeyField(error) {
-  const fields = error.fields;
-  const candidates = Array.isArray(fields) ? fields : Object.keys(fields ?? {});
-  const direct = candidates.find((field) => FOREIGN_KEY_FIELDS.includes(field));
+function createCurrencyResolver({ forUpdate = false } = {}) {
+  return async function resolveCurrency(req, res, next) {
+    if (forUpdate && req.validated.currency_id === undefined) {
+      return next();
+    }
 
-  if (direct) {
-    return direct;
-  }
+    try {
+      const currency = await resolveTransactionCurrency(
+        req.validated.currency_id,
+      );
 
-  const message = `${error.message ?? ""} ${
-    error.parent?.detail ?? ""
-  }`.toLowerCase();
+      req.validated.currency_id = currency.id;
 
-  return FOREIGN_KEY_FIELDS.find((field) => message.includes(field)) ?? null;
+      return next();
+    } catch (error) {
+      if (isHttpError(error)) {
+        return sendHttpError(res, error);
+      }
+
+      throw error;
+    }
+  };
 }
+
+const resolveCreateCurrency = createCurrencyResolver();
+const resolveUpdateCurrency = createCurrencyResolver({ forUpdate: true });
 
 /**
  * Translates the persistence errors of the create and update handlers into
@@ -109,7 +131,7 @@ function handleWriteError(error, res) {
   }
 
   if (error instanceof ForeignKeyConstraintError) {
-    const field = foreignKeyField(error);
+    const field = foreignKeyField(error, FOREIGN_KEY_FIELDS);
 
     if (field === "product_id") {
       return res
@@ -121,6 +143,12 @@ function handleWriteError(error, res) {
       return res
         .status(422)
         .json({ errors: { item_state_id: ITEM_STATE_ID_MESSAGE } });
+    }
+
+    if (field === "currency_id") {
+      return res
+        .status(422)
+        .json({ errors: { currency_id: CURRENCY_ID_MESSAGE } });
     }
   }
 
@@ -145,8 +173,11 @@ function handleDeleteError(error, res) {
 }
 
 module.exports = {
+  createCurrencyResolver,
   ensureReferences,
   handleDeleteError,
   handleWriteError,
   loadCost,
+  resolveCreateCurrency,
+  resolveUpdateCurrency,
 };

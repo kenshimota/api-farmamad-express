@@ -18,7 +18,6 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/currencies");
-
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
   await sequelize.authenticate();
@@ -57,6 +56,7 @@ describe("POST /currencies with a real database", () => {
       rate: 970.5,
       is_base: false,
       is_active: true,
+      is_default_for_transactions: false,
     });
     expect(response.body).not.toHaveProperty("createdAt");
     expect(response.body).not.toHaveProperty("updatedAt");
@@ -260,6 +260,7 @@ describe("GET /currencies with a real database", () => {
         rate: 970.5,
         is_base: false,
         is_active: true,
+        is_default_for_transactions: false,
       });
     },
   );

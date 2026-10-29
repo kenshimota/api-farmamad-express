@@ -53,7 +53,18 @@ function available(overrides = {}) {
     product_id: 15,
     item_state_id: 1,
     quantity: 40,
-    cost: { product_id: 15, item_state_id: 1, cost: "20.00" },
+    cost: {
+      product_id: 15,
+      item_state_id: 1,
+      cost: "20.00",
+      currency_id: 3,
+      currency: {
+        id: 3,
+        code: "USD_BCV",
+        name: "Dólar BCV",
+        symbol: "$",
+      },
+    },
     item_state: SELLABLE,
     ...overrides,
   };
@@ -95,6 +106,13 @@ describe("GET /stocks/available", () => {
           item_state_id: 1,
           quantity: 40,
           cost: 20,
+          currency_id: 3,
+          currency: {
+            id: 3,
+            code: "USD_BCV",
+            name: "Dólar BCV",
+            symbol: "$",
+          },
           item_state: SELLABLE,
         },
       ]);

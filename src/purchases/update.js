@@ -17,8 +17,9 @@ const router = Router();
  *   put:
  *     summary: Updates a draft purchase; only administrators and sellers can do it
  *     description: >
- *       Accepts `supplier_id`, `tax_rate` and/or `notes` and recalculates the
- *       totals. Lines are managed through `/purchases/{id}/items`; an `items`
+ *       Accepts `supplier_id`, `currency_id`, `tax_rate` and/or `notes` and
+ *       recalculates the totals. Changing the currency never converts the
+ *       amounts. Lines are managed through `/purchases/{id}/items`; an `items`
  *       field in this body is ignored. Confirmed or cancelled purchases
  *       answer 409. A successful update responds 202.
  *     tags:
@@ -38,6 +39,7 @@ const router = Router();
  *             type: object
  *             properties:
  *               supplier_id: { type: integer, minimum: 1, example: 1 }
+ *               currency_id: { type: integer, minimum: 1, example: 3 }
  *               tax_rate: { type: number, minimum: 0, maximum: 100, example: 8.25 }
  *               notes: { type: string, maxLength: 1000, nullable: true }
  *     responses:

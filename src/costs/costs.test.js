@@ -7,6 +7,7 @@ jest.mock("../models/cost", () => ({
 }));
 jest.mock("../models/product", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/item-state", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/currency", () => ({ findOne: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");
@@ -16,6 +17,7 @@ const { UniqueConstraintError } = require("sequelize");
 const Cost = require("../models/cost");
 const Product = require("../models/product");
 const ItemState = require("../models/item-state");
+const Currency = require("../models/currency");
 const User = require("../models/user");
 const costsRouter = require("./index");
 
@@ -34,6 +36,12 @@ const ITEM_STATE = {
   name: "damaged",
   label: "Maltratado",
   is_sellable: false,
+};
+const CURRENCY = {
+  id: 1,
+  code: "USD_BCV",
+  name: "Dólar BCV",
+  symbol: "$",
 };
 
 /**
@@ -56,6 +64,8 @@ function storedCost(overrides = {}) {
   return {
     id: 3,
     ...BODY,
+    currency_id: 1,
+    currency: CURRENCY,
     item_state: ITEM_STATE,
     ...overrides,
   };
@@ -81,9 +91,11 @@ beforeEach(() => {
   Cost.findByPk.mockReset();
   Product.findByPk.mockReset();
   ItemState.findByPk.mockReset();
+  Currency.findOne.mockReset();
   User.findByPk.mockReset();
   Product.findByPk.mockResolvedValue({ id: 15 });
   ItemState.findByPk.mockResolvedValue(ITEM_STATE);
+  Currency.findOne.mockResolvedValue(CURRENCY);
   User.findByPk.mockResolvedValue(AUTH_USER);
   Cost.create.mockImplementation(async (values) => ({ id: 3, ...values }));
   Cost.findByPk.mockResolvedValue(storedCost());
@@ -101,9 +113,11 @@ describe("POST /costs", () => {
         product_id: 15,
         item_state_id: 2,
         cost: 12.5,
+        currency_id: 1,
+        currency: CURRENCY,
         item_state: ITEM_STATE,
       });
-      expect(Cost.create).toHaveBeenCalledWith(BODY);
+      expect(Cost.create).toHaveBeenCalledWith({ ...BODY, currency_id: 1 });
       expect(response.body).not.toHaveProperty("createdAt");
       expect(response.body).not.toHaveProperty("updatedAt");
     },
@@ -115,7 +129,11 @@ describe("POST /costs", () => {
     const response = await post({ ...BODY, cost: "20.00" });
 
     expect(response.status).toBe(201);
-    expect(Cost.create).toHaveBeenCalledWith({ ...BODY, cost: 20 });
+    expect(Cost.create).toHaveBeenCalledWith({
+      ...BODY,
+      cost: 20,
+      currency_id: 1,
+    });
     expect(response.body.cost).toBe(20);
   });
 
@@ -129,7 +147,7 @@ describe("POST /costs", () => {
     });
 
     expect(response.status).toBe(201);
-    expect(Cost.create).toHaveBeenCalledWith(BODY);
+    expect(Cost.create).toHaveBeenCalledWith({ ...BODY, currency_id: 1 });
   });
 
   it("responds 409 when the product and item state combination exists", async () => {

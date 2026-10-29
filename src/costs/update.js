@@ -1,13 +1,23 @@
 const { Router } = require("express");
 const { toPublicCost } = require("./serializer");
 const { updateCostSchema } = require("./validators");
-const { ensureReferences, handleWriteError, loadCost } = require("./shared");
+const {
+  ensureReferences,
+  handleWriteError,
+  loadCost,
+  resolveUpdateCurrency,
+} = require("./shared");
 const { requireAnyField, validatedBody, writeAccess } = require("./guards");
 const { costRepository } = require("./repository");
 
 const router = Router();
 
-const UPDATE_FIELDS = Object.freeze(["product_id", "item_state_id", "cost"]);
+const UPDATE_FIELDS = Object.freeze([
+  "product_id",
+  "item_state_id",
+  "cost",
+  "currency_id",
+]);
 
 /**
  * @openapi
@@ -15,11 +25,13 @@ const UPDATE_FIELDS = Object.freeze(["product_id", "item_state_id", "cost"]);
  *   put:
  *     summary: Updates a cost; only administrators and sellers can do it
  *     description: >
- *       Accepts any combination of `cost`, `product_id` and `item_state_id`
- *       (at least one) and responds 202 with the updated resource. New
- *       references must exist and the resulting combination must stay unique;
- *       changing it to an existing one answers 409. The updated response
- *       includes the nested item state without timestamps.
+ *       Accepts any combination of `cost`, `product_id`, `item_state_id` and
+ *       `currency_id` (at least one) and responds 202 with the updated
+ *       resource. Changing the currency never converts the amount: the same
+ *       number is interpreted in the new currency. New references must exist
+ *       and the resulting combination must stay unique; changing it to an
+ *       existing one answers 409. The updated response includes the nested item
+ *       state and currency without timestamps.
  *     tags:
  *       - Costs
  *     security:
@@ -54,6 +66,10 @@ const UPDATE_FIELDS = Object.freeze(["product_id", "item_state_id", "cost"]);
  *                 maximum: 999999999.99
  *                 multipleOf: 0.01
  *                 example: 20
+ *               currency_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 example: 3
  *     responses:
  *       202:
  *         description: Updated public cost data
@@ -120,6 +136,7 @@ router.put(
   requireAnyField([...UPDATE_FIELDS], "at least one field is required"),
   loadCost,
   ensureReferences,
+  resolveUpdateCurrency,
   async (req, res) => {
     try {
       const cost = await costRepository.update(req.cost, req.validated);

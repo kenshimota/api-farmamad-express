@@ -4,9 +4,11 @@ const { readAccess } = require("./guards");
 const { purchaseService } = require("./purchase-service");
 const { handlePurchaseError } = require("./shared");
 const {
+  CURRENCY_FILTER_MESSAGE,
   NUMBER_FILTER_MESSAGE,
   STATUS_MESSAGE,
   SUPPLIER_FILTER_MESSAGE,
+  parseCurrencyFilter,
   parseNumberFilter,
   parsePurchaseId,
   parseStatusFilter,
@@ -15,6 +17,66 @@ const {
 
 const router = Router();
 
+const FILTER_SPECS = Object.freeze([
+  {
+    query: "supplier_id",
+    key: "supplierId",
+    parse: parseSupplierFilter,
+    message: SUPPLIER_FILTER_MESSAGE,
+  },
+  {
+    query: "status",
+    key: "status",
+    parse: parseStatusFilter,
+    message: STATUS_MESSAGE,
+  },
+  {
+    query: "number",
+    key: "number",
+    parse: parseNumberFilter,
+    message: NUMBER_FILTER_MESSAGE,
+  },
+  {
+    query: "currency_id",
+    key: "currencyId",
+    parse: parseCurrencyFilter,
+    message: CURRENCY_FILTER_MESSAGE,
+  },
+]);
+
+/**
+ * Parses the optional exact filters in documented order.
+ * @param {object} query - Express query object.
+ * @returns {{ filters: object }|{ error: { status: number, body: object } }}
+ *   The service filters or the HTTP error to answer.
+ */
+function resolveFilters(query) {
+  const filters = {};
+
+  for (const spec of FILTER_SPECS) {
+    const raw = query[spec.query];
+
+    if (raw === undefined) {
+      continue;
+    }
+
+    const value = spec.parse(raw);
+
+    if (value === null) {
+      return {
+        error: {
+          status: 422,
+          body: { errors: { [spec.query]: spec.message } },
+        },
+      };
+    }
+
+    filters[spec.key] = value;
+  }
+
+  return { filters };
+}
+
 /**
  * @openapi
  * /purchases:
@@ -22,8 +84,9 @@ const router = Router();
  *     summary: Lists purchases; admin, seller and manager_warehouse can do it
  *     description: >
  *       Returns purchases ordered by `number` descending. Optional exact
- *       filters: `supplier_id`, `status` and `number`. Send `?include=items`
- *       to nest the purchase lines. Timestamps are never exposed.
+ *       filters: `supplier_id`, `status`, `number` and `currency_id`. Send
+ *       `?include=items` to nest the purchase lines. Timestamps are never
+ *       exposed.
  *     tags:
  *       - Purchases
  *     security:
@@ -37,6 +100,9 @@ const router = Router();
  *         schema: { type: string, enum: [draft, confirmed, cancelled] }
  *       - in: query
  *         name: number
+ *         schema: { type: integer, minimum: 1 }
+ *       - in: query
+ *         name: currency_id
  *         schema: { type: integer, minimum: 1 }
  *       - in: query
  *         name: include
@@ -71,37 +137,10 @@ const router = Router();
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", ...readAccess(), async (req, res) => {
-  const filters = {};
-  const rawSupplier = req.query.supplier_id;
-  const rawStatus = req.query.status;
-  const rawNumber = req.query.number;
+  const { filters, error } = resolveFilters(req.query);
 
-  if (rawSupplier !== undefined) {
-    filters.supplierId = parseSupplierFilter(rawSupplier);
-
-    if (filters.supplierId === null) {
-      return res
-        .status(422)
-        .json({ errors: { supplier_id: SUPPLIER_FILTER_MESSAGE } });
-    }
-  }
-
-  if (rawStatus !== undefined) {
-    filters.status = parseStatusFilter(rawStatus);
-
-    if (filters.status === null) {
-      return res.status(422).json({ errors: { status: STATUS_MESSAGE } });
-    }
-  }
-
-  if (rawNumber !== undefined) {
-    filters.number = parseNumberFilter(rawNumber);
-
-    if (filters.number === null) {
-      return res
-        .status(422)
-        .json({ errors: { number: NUMBER_FILTER_MESSAGE } });
-    }
+  if (error) {
+    return res.status(error.status).json(error.body);
   }
 
   const includeItems = req.query.include === "items";

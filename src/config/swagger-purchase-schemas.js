@@ -60,6 +60,8 @@ const purchaseSchemas = {
         example: 1,
       },
       supplier_id: { type: "integer", example: 1 },
+      currency_id: { type: "integer", example: 3 },
+      currency: { $ref: "#/components/schemas/CurrencySummary" },
       status: {
         type: "string",
         enum: ["draft", "confirmed", "cancelled"],

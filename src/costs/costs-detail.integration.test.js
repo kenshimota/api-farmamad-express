@@ -55,6 +55,8 @@ describe("GET /costs/:id and /costs/product/:product_id with a real database", (
       product_id: product.id,
       item_state_id: sellable.id,
       cost: 12.5,
+      currency_id: expect.any(Number),
+      currency: expect.objectContaining({ code: "USD_BCV" }),
       item_state: publicItemState(sellable),
     });
 
@@ -115,6 +117,8 @@ describe("PUT /costs/:id with a real database", () => {
         product_id: cost.product_id,
         item_state_id: cost.item_state_id,
         cost: 20,
+        currency_id: expect.any(Number),
+        currency: expect.objectContaining({ code: "USD_BCV" }),
         item_state: expect.objectContaining({
           id: cost.item_state_id,
           is_sellable: true,

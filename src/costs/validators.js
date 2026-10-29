@@ -6,8 +6,10 @@ const POSITIVE_INTEGER_PATTERN = /^\d+$/;
 
 const PRODUCT_ID_MESSAGE = "Invalid product";
 const ITEM_STATE_ID_MESSAGE = "Invalid item state";
+const CURRENCY_ID_MESSAGE = "Invalid currency";
 const PRODUCT_FILTER_MESSAGE = "Invalid product id";
 const ITEM_STATE_FILTER_MESSAGE = "Invalid item state id";
+const CURRENCY_FILTER_MESSAGE = "Invalid currency id";
 const COST_MESSAGE = "cost must be a number";
 const COST_NEGATIVE_MESSAGE = "cost must be >= 0";
 const COST_DECIMALS_MESSAGE = "cost must have at most 2 decimals";
@@ -89,12 +91,14 @@ const createCostSchema = yup.object({
   product_id: positiveInteger(PRODUCT_ID_MESSAGE),
   item_state_id: positiveInteger(ITEM_STATE_ID_MESSAGE),
   cost: costField(),
+  currency_id: positiveInteger(CURRENCY_ID_MESSAGE, false),
 });
 
 const updateCostSchema = yup.object({
   product_id: positiveInteger(PRODUCT_ID_MESSAGE, false),
   item_state_id: positiveInteger(ITEM_STATE_ID_MESSAGE, false),
   cost: costField(),
+  currency_id: positiveInteger(CURRENCY_ID_MESSAGE, false),
 });
 
 /**
@@ -149,15 +153,27 @@ function parseItemStateId(value) {
   return parsePositiveInteger(value);
 }
 
+/**
+ * Parses the optional `currency_id` listing filter.
+ * @param {unknown} value - Raw query value.
+ * @returns {number|null} The positive integer or null when invalid.
+ */
+function parseCurrencyId(value) {
+  return parsePositiveInteger(value);
+}
+
 module.exports = {
   COST_DECIMALS_MESSAGE,
   COST_INTEGER_DIGITS_MESSAGE,
   COST_MESSAGE,
   COST_NEGATIVE_MESSAGE,
+  CURRENCY_FILTER_MESSAGE,
+  CURRENCY_ID_MESSAGE,
   ITEM_STATE_FILTER_MESSAGE,
   ITEM_STATE_ID_MESSAGE,
   MAX_COST,
   parseCostId,
+  parseCurrencyId,
   parseItemStateId,
   parseProductId,
   PRODUCT_FILTER_MESSAGE,

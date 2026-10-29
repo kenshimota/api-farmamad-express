@@ -5,11 +5,14 @@ jest.mock("../models/cost", () => ({
 }));
 jest.mock("../models/product", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/item-state", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/currency", () => ({ findOne: jest.fn() }));
 
 const Cost = require("../models/cost");
 const Product = require("../models/product");
 const ItemState = require("../models/item-state");
+const Currency = require("../models/currency");
 const {
+  CURRENCY_ATTRIBUTES,
   ITEM_STATE_ATTRIBUTES,
   LIST_ORDER,
   createCostRepository,
@@ -23,6 +26,7 @@ beforeEach(() => {
   Cost.findByPk.mockReset();
   Product.findByPk.mockReset();
   ItemState.findByPk.mockReset();
+  Currency.findOne.mockReset();
 });
 
 describe("costRepository", () => {
@@ -41,6 +45,11 @@ describe("costRepository", () => {
           as: "item_state",
           attributes: [...ITEM_STATE_ATTRIBUTES],
         },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: [...CURRENCY_ATTRIBUTES],
+        },
       ],
     });
   });
@@ -57,6 +66,11 @@ describe("costRepository", () => {
           as: "item_state",
           attributes: [...ITEM_STATE_ATTRIBUTES],
         },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: [...CURRENCY_ATTRIBUTES],
+        },
       ],
     });
     expect(LIST_ORDER).toEqual([
@@ -72,6 +86,7 @@ describe("costRepository", () => {
       { productId: 1, itemStateId: 2 },
       { product_id: 1, item_state_id: 2 },
     ],
+    [{ currencyId: 3 }, { currency_id: 3 }],
   ])("filters with %p", async (filters, where) => {
     Cost.findAll.mockResolvedValue([]);
 
@@ -85,6 +100,11 @@ describe("costRepository", () => {
           model: ItemState,
           as: "item_state",
           attributes: [...ITEM_STATE_ATTRIBUTES],
+        },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: [...CURRENCY_ATTRIBUTES],
         },
       ],
     });
@@ -104,6 +124,11 @@ describe("costRepository", () => {
           as: "item_state",
           attributes: [...ITEM_STATE_ATTRIBUTES],
         },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: [...CURRENCY_ATTRIBUTES],
+        },
       ],
     });
   });
@@ -119,6 +144,11 @@ describe("costRepository", () => {
           model: ItemState,
           as: "item_state",
           attributes: [...ITEM_STATE_ATTRIBUTES],
+        },
+        {
+          model: Currency,
+          as: "currency",
+          attributes: [...CURRENCY_ATTRIBUTES],
         },
       ],
     });

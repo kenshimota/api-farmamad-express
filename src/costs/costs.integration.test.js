@@ -8,7 +8,12 @@ const {
 const app = require("../app");
 const sequelize = require("../database");
 const Cost = require("../models/cost");
+const Currency = require("../models/currency");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
+const {
+  ensureDefaultTransactionCurrency,
+  publicCurrencySummary,
+} = require("../../test/helpers/currency-default");
 const {
   BODY,
   as,
@@ -41,6 +46,7 @@ describe("POST /costs with a real database", () => {
     async (role) => {
       const product = await createProduct();
       const itemState = await createItemState();
+      const currency = await ensureDefaultTransactionCurrency();
       const token = await tokenFor(role);
 
       const response = await as("post", "/costs", token).send({
@@ -55,6 +61,8 @@ describe("POST /costs with a real database", () => {
         product_id: product.id,
         item_state_id: itemState.id,
         cost: 12.5,
+        currency_id: currency.id,
+        currency: publicCurrencySummary(currency),
         item_state: publicItemState(itemState),
       });
       expect(response.body).not.toHaveProperty("createdAt");
@@ -186,6 +194,7 @@ describe("POST /costs with a real database", () => {
         product_id: cost.product_id,
         item_state_id: cost.item_state_id,
         cost: 1,
+        currency_id: cost.currency_id,
       }),
     ).rejects.toThrow(UniqueConstraintError);
 
@@ -194,6 +203,7 @@ describe("POST /costs with a real database", () => {
         product_id: 99999,
         item_state_id: cost.item_state_id,
         cost: 1,
+        currency_id: cost.currency_id,
       }),
     ).rejects.toThrow(ForeignKeyConstraintError);
 
@@ -202,6 +212,7 @@ describe("POST /costs with a real database", () => {
         product_id: cost.product_id,
         item_state_id: cost.item_state_id,
         cost: -1,
+        currency_id: cost.currency_id,
       }),
     ).rejects.toThrow();
   });
@@ -209,11 +220,13 @@ describe("POST /costs with a real database", () => {
   it("rounds the decimal column to two places", async () => {
     const product = await createProduct();
     const itemState = await createItemState();
+    const currency = await ensureDefaultTransactionCurrency();
 
     const stored = await Cost.create({
       product_id: product.id,
       item_state_id: itemState.id,
       cost: 12.345,
+      currency_id: currency.id,
     });
 
     expect(Number(stored.cost)).toBe(12.35);

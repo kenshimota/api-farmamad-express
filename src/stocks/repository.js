@@ -2,6 +2,8 @@ const { Op, Sequelize } = require("sequelize");
 const Stock = require("../models/stock");
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
+const Currency = require("../models/currency");
+const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 const { createPurchaseStockService } = require("./purchase-service");
 
 const ITEM_STATE_ATTRIBUTES = Object.freeze([
@@ -24,6 +26,7 @@ const PRODUCT_LIST_ORDER = Object.freeze([["item_state_id", "ASC"]]);
  * @param {object} [itemStateModel] - Item state model used for the includes.
  * @param {object} [costModel] - Cost model joined by the available view.
  * @param {object} [purchaseService] - Service that applies purchase items.
+ * @param {object} [currencyModel] - Currency model nested in the current cost.
  * @returns {object} Stock repository.
  */
 function createStockRepository(
@@ -31,6 +34,7 @@ function createStockRepository(
   itemStateModel = ItemState,
   costModel = Cost,
   purchaseService = createPurchaseStockService(model),
+  currencyModel = Currency,
 ) {
   const itemStateInclude = {
     model: itemStateModel,
@@ -117,8 +121,15 @@ function createStockRepository(
           {
             model: costModel,
             as: "cost",
-            attributes: ["product_id", "item_state_id", "cost"],
+            attributes: ["product_id", "item_state_id", "cost", "currency_id"],
             required: false,
+            include: [
+              {
+                model: currencyModel,
+                as: "currency",
+                attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
+              },
+            ],
             on: {
               [Op.and]: [
                 Sequelize.where(

@@ -110,6 +110,7 @@ describe("PUT /currencies/:id", () => {
       rate: 1005.75,
       is_base: false,
       is_active: true,
+      is_default_for_transactions: false,
     });
     expect(CurrencyRateHistory.create).toHaveBeenCalledWith(
       {

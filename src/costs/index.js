@@ -3,7 +3,11 @@ const { toPublicCost } = require("./serializer");
 const { createCostSchema } = require("./validators");
 const { validatedBody, writeAccess } = require("./guards");
 const { costRepository } = require("./repository");
-const { ensureReferences, handleWriteError } = require("./shared");
+const {
+  ensureReferences,
+  handleWriteError,
+  resolveCreateCurrency,
+} = require("./shared");
 const listRouter = require("./list");
 const updateRouter = require("./update");
 const removeRouter = require("./remove");
@@ -20,8 +24,9 @@ const router = Router();
  *       product and the item state must exist, `cost` must be a number between
  *       0 and 999999999.99 with at most two decimals and the combination
  *       `(product_id, item_state_id)` is unique: a duplicate answers 409, use
- *       PUT to update it. The response includes the nested item state without
- *       timestamps.
+ *       PUT to update it. `currency_id` is optional and falls back to the
+ *       active default transaction currency. The response includes the nested
+ *       item state and currency without timestamps.
  *     tags:
  *       - Costs
  *     security:
@@ -52,6 +57,11 @@ const router = Router();
  *                 maximum: 999999999.99
  *                 multipleOf: 0.01
  *                 example: 12.5
+ *               currency_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Optional; defaults to the transaction currency
+ *                 example: 3
  *     responses:
  *       201:
  *         description: Cost created
@@ -102,6 +112,14 @@ const router = Router();
  *             example:
  *               errors:
  *                 product_id: Invalid product
+ *       503:
+ *         description: No active default transaction currency
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *             example:
+ *               message: Default transaction currency is not configured
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -110,6 +128,7 @@ router.post(
   ...writeAccess(),
   ...validatedBody(createCostSchema),
   ensureReferences,
+  resolveCreateCurrency,
   async (req, res) => {
     try {
       const cost = await costRepository.create(req.validated);

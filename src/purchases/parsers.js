@@ -4,6 +4,7 @@ const POSITIVE_INTEGER_PATTERN = /^\d+$/;
 const STATUS_MESSAGE = "Invalid status";
 const NUMBER_FILTER_MESSAGE = "Invalid number";
 const SUPPLIER_FILTER_MESSAGE = "Invalid supplier id";
+const CURRENCY_FILTER_MESSAGE = "Invalid currency id";
 
 /**
  * Parses a positive integer identifier coming from a route or query.
@@ -58,6 +59,15 @@ function parseSupplierFilter(value) {
 }
 
 /**
+ * Parses the optional `currency_id` listing filter.
+ * @param {unknown} value - Raw query value.
+ * @returns {number|null} The positive integer or null when invalid.
+ */
+function parseCurrencyFilter(value) {
+  return parsePositiveInteger(value);
+}
+
+/**
  * Parses the optional `number` listing filter.
  * @param {unknown} value - Raw query value.
  * @returns {number|null} The positive integer or null when invalid.
@@ -82,10 +92,12 @@ function parseStatusFilter(value) {
 }
 
 module.exports = {
+  CURRENCY_FILTER_MESSAGE,
   NUMBER_FILTER_MESSAGE,
   PURCHASE_STATUSES,
   STATUS_MESSAGE,
   SUPPLIER_FILTER_MESSAGE,
+  parseCurrencyFilter,
   parseNumberFilter,
   parsePositiveInteger,
   parsePurchaseId,
