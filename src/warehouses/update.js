@@ -15,7 +15,9 @@ const router = Router();
  *     description: >
  *       Replaces `name` and `address`, which are required. `observations` is
  *       updated only when the client sends it; when omitted the stored value is
- *       kept, and an explicit null clears it.
+ *       kept, and an explicit null clears it. As with every PUT endpoint, a
+ *       successful update responds 202 Accepted with the updated resource in
+ *       the body.
  *     tags:
  *       - Warehouses
  *     security:
@@ -50,7 +52,7 @@ const router = Router();
  *                 type: string
  *                 example: Calle 3 #10
  *     responses:
- *       200:
+ *       202:
  *         description: Updated public warehouse data
  *         content:
  *           application/json:
@@ -109,7 +111,7 @@ router.put(
     try {
       await warehouseRepository.update(req.warehouse, req.validated);
 
-      return res.json(toPublicWarehouse(req.warehouse));
+      return res.status(202).json(toPublicWarehouse(req.warehouse));
     } catch (error) {
       return next(error);
     }

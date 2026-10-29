@@ -7,7 +7,8 @@ const swaggerSpec = swaggerJsdoc({
     info: {
       title: "Super King API",
       version: "1.0.0",
-      description: "REST API for Super King, documented with Swagger.",
+      description:
+        "REST API for Super King, documented with Swagger. Every PUT endpoint answers 202 Accepted when the update succeeds.",
     },
     servers: [{ url: "/" }],
     tags: [

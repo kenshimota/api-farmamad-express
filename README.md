@@ -91,6 +91,20 @@ Los antiguos roles `delivery` y `freelance_delivery` ya no existen. La
 migración `migrations/20260910000006-align-roles-catalog.js` reasigna a
 `dispatcher` los usuarios que los tenían y elimina las filas obsoletas.
 
+## Convenciones de la API
+
+### Actualizaciones con `PUT`
+
+Todo endpoint `PUT` que actualice un recurso existente responde `202 Accepted`
+cuando la actualización se aplica correctamente. El cuerpo conserva el recurso
+actualizado con el mismo esquema que devuelve la lectura del recurso (por
+ejemplo, `Customer` o `Warehouse`) y la escritura se completa antes de
+responder: no hay procesamiento en cola. Los errores (`400`, `401`, `403`,
+`404`, `409`, `422` y `500`) mantienen sus códigos y cuerpos actuales.
+
+Esta convención aplica a los endpoints actuales y a los futuros: el camino
+exitoso de un `PUT` nunca responde `200` ni `204`.
+
 ## Endpoints
 
 ### `GET /hello-world`
@@ -674,7 +688,7 @@ curl -X PUT http://localhost:3001/customers/1 \
   -d '{"fullName":"Juan Pérez Gómez","latitude":-17.79,"longitude":-63.19,"direction":"Av. Monseñor Rivero 456","email":"juan@example.com"}'
 ```
 
-Respuesta `200`:
+Respuesta `202`:
 
 ```json
 {
@@ -862,7 +876,7 @@ curl -X PUT http://localhost:3001/warehouses/1 \
   -d '{"name":"Bodega Sur","address":"Calle 3 #10"}'
 ```
 
-Respuesta `200`:
+Respuesta `202`:
 
 ```json
 {

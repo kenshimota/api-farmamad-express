@@ -201,7 +201,7 @@ describe("PUT /customers/:id with a real database", () => {
       email: "juan@example.com",
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(response.body).toEqual({
       id: customer.id,
       fullName: "Juan Pérez Gómez",

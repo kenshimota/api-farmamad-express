@@ -81,14 +81,14 @@ beforeEach(() => {
 
 describe("PUT /warehouses/:id", () => {
   it.each(["admin", "manager_warehouse"])(
-    "allows a %s to update name and address and answers 200",
+    "allows a %s to update name and address and answers 202",
     async (role) => {
       const warehouse = target();
       Warehouse.findByPk.mockResolvedValue(warehouse);
 
       const response = await put("1", validBody, tokenFor(role));
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(202);
       expect(response.body).toEqual({
         id: 1,
         name: "Bodega Sur",
@@ -107,7 +107,7 @@ describe("PUT /warehouses/:id", () => {
 
     const response = await put("1", validBody);
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(warehouse.update).toHaveBeenCalledWith(validBody);
     expect(warehouse.update.mock.calls[0][0]).not.toHaveProperty(
       "observations",
@@ -123,7 +123,7 @@ describe("PUT /warehouses/:id", () => {
       observations: null,
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(warehouse.update).toHaveBeenCalledWith({
       ...validBody,
       observations: null,
@@ -143,7 +143,7 @@ describe("PUT /warehouses/:id", () => {
       admin: true,
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(warehouse.update).toHaveBeenCalledWith(validBody);
   });
 

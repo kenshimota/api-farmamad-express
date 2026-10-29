@@ -86,7 +86,7 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/customers/abc
 Authorization: Bearer {{token}}
 
-### PUT /customers/:id — actualiza un cliente (200)
+### PUT /customers/:id — actualiza un cliente (202)
 # Actualización completa: se envían los cinco campos.
 PUT {{baseUrl}}/customers/1
 Authorization: Bearer {{token}}

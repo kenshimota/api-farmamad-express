@@ -64,7 +64,7 @@ describe("PUT /warehouses/:id with a real database", () => {
       },
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(response.body).toEqual({
       id: warehouse.id,
       name: "Bodega Sur",
@@ -88,7 +88,7 @@ describe("PUT /warehouses/:id with a real database", () => {
       },
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(response.body.observations).toBeNull();
   });
 
