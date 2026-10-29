@@ -112,6 +112,9 @@ jest.mock("./models/currency-rate-history", () => ({
   findAll: jest.fn(),
 }));
 
+jest.mock("./models/shelf");
+jest.mock("./models/shelf-section");
+
 const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");

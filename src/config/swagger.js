@@ -73,6 +73,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Currency catalog with its editable rate against the bolívar and the append-only history of rate changes.",
       },
+      {
+        name: "Shelves",
+        description:
+          "Shelves inside a warehouse and the sections inside each shelf, with codes unique per parent.",
+      },
     ],
     components: {
       securitySchemes: {
