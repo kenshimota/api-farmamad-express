@@ -88,6 +88,19 @@ jest.mock("./models/stock", () => ({
   findOrCreate: jest.fn(),
 }));
 
+jest.mock("./models/purchase", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
+
+jest.mock("./models/purchase-item", () => ({
+  create: jest.fn(),
+  bulkCreate: jest.fn(),
+  findAll: jest.fn(),
+  findOne: jest.fn(),
+}));
+
 const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");

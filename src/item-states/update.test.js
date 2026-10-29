@@ -6,8 +6,8 @@ jest.mock("../models/item-state", () => ({
 }));
 jest.mock("../models/cost", () => ({ findOne: jest.fn() }));
 jest.mock("../models/stock", () => ({ findOne: jest.fn() }));
+jest.mock("../models/purchase-item", () => ({ findOne: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
-
 const express = require("express");
 const request = require("supertest");
 const jwt = require("jsonwebtoken");

@@ -5,10 +5,12 @@ jest.mock("../models/item-state", () => ({
 }));
 jest.mock("../models/cost", () => ({ findOne: jest.fn() }));
 jest.mock("../models/stock", () => ({ findOne: jest.fn() }));
+jest.mock("../models/purchase-item", () => ({ findOne: jest.fn() }));
 
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
 const Stock = require("../models/stock");
+const PurchaseItem = require("../models/purchase-item");
 const { createItemStateRepository, LIST_ORDER } = require("./repository");
 
 const repository = createItemStateRepository();
@@ -19,6 +21,7 @@ beforeEach(() => {
   ItemState.findByPk.mockReset();
   Cost.findOne.mockReset();
   Stock.findOne.mockReset();
+  PurchaseItem.findOne.mockReset();
 });
 
 describe("itemStateRepository", () => {
@@ -102,15 +105,30 @@ describe("itemStateRepository", () => {
     });
   });
 
-  it("returns false when neither costs nor stocks reference the item state", async () => {
+  it("reports whether purchase items reference the item state", async () => {
     Cost.findOne.mockResolvedValueOnce(null);
     Stock.findOne.mockResolvedValueOnce(null);
+    PurchaseItem.findOne.mockResolvedValueOnce({ id: 3 });
+
+    await expect(repository.isReferenced(3)).resolves.toBe(true);
+    expect(PurchaseItem.findOne).toHaveBeenCalledWith({
+      where: { item_state_id: 3 },
+    });
+  });
+
+  it("returns false when costs, stocks and purchase items do not reference it", async () => {
+    Cost.findOne.mockResolvedValueOnce(null);
+    Stock.findOne.mockResolvedValueOnce(null);
+    PurchaseItem.findOne.mockResolvedValueOnce(null);
 
     await expect(repository.isReferenced(99)).resolves.toBe(false);
     expect(Cost.findOne).toHaveBeenCalledWith({
       where: { item_state_id: 99 },
     });
     expect(Stock.findOne).toHaveBeenCalledWith({
+      where: { item_state_id: 99 },
+    });
+    expect(PurchaseItem.findOne).toHaveBeenCalledWith({
       where: { item_state_id: 99 },
     });
   });

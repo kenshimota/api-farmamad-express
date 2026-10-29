@@ -12,9 +12,8 @@ const router = Router();
  *     summary: Deletes a supplier permanently; only administrators and sellers can do it
  *     description: >
  *       A supplier with purchases cannot be removed: it responds 409 with
- *       `Supplier is in use`. The purchases table arrives with HU-21; the
- *       repository already exposes the check and the restrictive foreign key
- *       is mapped to the same 409.
+ *       `Supplier is in use`. The repository checks `purchases.supplier_id`
+ *       and the restrictive foreign key is mapped to the same 409.
  *     tags:
  *       - Suppliers
  *     security:

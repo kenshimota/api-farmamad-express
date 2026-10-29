@@ -13,9 +13,9 @@ const router = Router();
  *     description: >
  *       An item state referenced by costs, stocks or purchase items cannot be
  *       removed: it responds 409 with `Item state is in use` and stays in the
- *       database. Costs and stocks are checked before deleting; the
- *       restrictive foreign keys remain the final safeguard for concurrent
- *       deletions and purchase items (HU-21).
+ *       database. Costs, stocks and purchase items are checked before
+ *       deleting; the restrictive foreign keys remain the final safeguard for
+ *       concurrent deletions.
  *     tags:
  *       - Item states
  *     security:

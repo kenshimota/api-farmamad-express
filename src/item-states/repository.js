@@ -11,9 +11,16 @@ const LIST_ORDER = Object.freeze([["name", "ASC"]]);
  *   is loaded on demand so item state unit tests never need the cost model.
  * @param {object} [stockModel] - Stock model used for the reference check; it
  *   is loaded on demand so item state unit tests never need the stock model.
+ * @param {object} [purchaseItemModel] - Purchase item model used for the
+ *   reference check; it is loaded on demand too.
  * @returns {object} Item state repository.
  */
-function createItemStateRepository(model = ItemState, costModel, stockModel) {
+function createItemStateRepository(
+  model = ItemState,
+  costModel,
+  stockModel,
+  purchaseItemModel,
+) {
   return {
     /**
      * Persists a new item state.
@@ -71,16 +78,19 @@ function createItemStateRepository(model = ItemState, costModel, stockModel) {
     },
 
     /**
-     * Tells whether an item state is referenced by a cost or by a stock row.
-     * Purchase items will join this check with HU-21; their restrictive
-     * foreign key will also raise a `SequelizeForeignKeyConstraintError`, which
-     * the delete handler already maps to 409 `Item state is in use`.
+     * Tells whether an item state is referenced by a cost, a stock row or a
+     * purchase item. The restrictive foreign keys also raise a
+     * `SequelizeForeignKeyConstraintError`, which the delete handler maps to
+     * 409 `Item state is in use`.
      * @param {number} itemStateId - Item state id.
-     * @returns {Promise<boolean>} True when a cost or a stock references it.
+     * @returns {Promise<boolean>} True when a cost, stock or purchase line
+     *   references it.
      */
     async isReferenced(itemStateId) {
       const costModelToUse = costModel ?? require("../models/cost");
       const stockModelToUse = stockModel ?? require("../models/stock");
+      const purchaseItemModelToUse =
+        purchaseItemModel ?? require("../models/purchase-item");
       const cost = await costModelToUse.findOne({
         where: { item_state_id: itemStateId },
       });
@@ -93,7 +103,15 @@ function createItemStateRepository(model = ItemState, costModel, stockModel) {
         where: { item_state_id: itemStateId },
       });
 
-      return stock !== null && stock !== undefined;
+      if (stock !== null && stock !== undefined) {
+        return true;
+      }
+
+      const purchaseItem = await purchaseItemModelToUse.findOne({
+        where: { item_state_id: itemStateId },
+      });
+
+      return purchaseItem !== null && purchaseItem !== undefined;
     },
   };
 }
