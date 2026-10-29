@@ -52,6 +52,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Product item state catalog (sellable, damaged, expired, etc.): creation, listing, lookup, update and deletion.",
       },
+      {
+        name: "Costs",
+        description:
+          "Current cost of a product per item state: creation, listing, lookup, update and deletion.",
+      },
     ],
     components: {
       securitySchemes: {
@@ -302,6 +307,32 @@ const swaggerSpec = swaggerJsdoc({
               description:
                 "Whether a product in this state can, in principle, be sold",
               example: true,
+            },
+          },
+        },
+        Cost: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            product_id: { type: "integer", example: 15 },
+            item_state_id: { type: "integer", example: 2 },
+            cost: {
+              type: "number",
+              format: "double",
+              description:
+                "Current cost with DECIMAL(12,2) precision, serialized as a number",
+              example: 12.5,
+            },
+            item_state: {
+              type: "object",
+              description:
+                "Nested item state without description or audit fields",
+              properties: {
+                id: { type: "integer", example: 2 },
+                name: { type: "string", example: "damaged" },
+                label: { type: "string", example: "Maltratado" },
+                is_sellable: { type: "boolean", example: false },
+              },
             },
           },
         },

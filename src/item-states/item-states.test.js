@@ -5,6 +5,7 @@ jest.mock("../models/item-state", () => ({
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
+jest.mock("../models/cost", () => ({ findOne: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");

@@ -20,6 +20,7 @@ const statesRouter = require("./states");
 const citiesRouter = require("./cities");
 const suppliersRouter = require("./suppliers");
 const itemStatesRouter = require("./item-states");
+const costsRouter = require("./costs");
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/states", statesRouter);
 app.use("/cities", citiesRouter);
 app.use("/suppliers", suppliersRouter);
 app.use("/item-states", itemStatesRouter);
+app.use("/costs", costsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

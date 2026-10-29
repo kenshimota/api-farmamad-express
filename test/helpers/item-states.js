@@ -3,6 +3,10 @@ const app = require("../../src/app");
 const User = require("../../src/models/user");
 const Role = require("../../src/models/role");
 const ItemState = require("../../src/models/item-state");
+const Cost = require("../../src/models/cost");
+const Product = require("../../src/models/product");
+const Category = require("../../src/models/category");
+const Image = require("../../src/models/image");
 
 const PASSWORD = "secret123";
 const BODY = { name: "sellable", label: "Vendible" };
@@ -93,10 +97,28 @@ function as(method, path, token) {
 }
 
 /**
- * Truncates the item_states and users tables of the test database.
+ * Truncates every table used by the item states suites. Costs and products go
+ * first so the restrictive foreign keys never block the cleanup, and the
+ * product fixtures of the reference checks do not leak into the next test run.
  * @returns {Promise<void>} Resolves once the tables are empty.
  */
 async function resetDatabase() {
+  await Cost.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
+  await Product.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
+  await Category.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
+  await Image.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
   await ItemState.destroy({
     where: {},
     truncate: { cascade: true, restartIdentity: true },

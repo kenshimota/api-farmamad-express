@@ -4,12 +4,14 @@ const LIST_ORDER = Object.freeze([["name", "ASC"]]);
 
 /**
  * Creates a repository that encapsulates every persistence call for the
- * item-states module. The model is injectable to keep the abstraction
+ * item-states module. The models are injectable to keep the abstraction
  * testable.
  * @param {object} [model] - Sequelize model used for the queries.
+ * @param {object} [costModel] - Cost model used for the reference check; it
+ *   is loaded on demand so item state unit tests never need the cost model.
  * @returns {object} Item state repository.
  */
-function createItemStateRepository(model = ItemState) {
+function createItemStateRepository(model = ItemState, costModel) {
   return {
     /**
      * Persists a new item state.
@@ -67,20 +69,20 @@ function createItemStateRepository(model = ItemState) {
     },
 
     /**
-     * Tells whether an item state is referenced by costs, stocks or purchase
-     * items. Those tables belong to HU-19, HU-20 and HU-21 and do not exist
-     * yet, so this always resolves to false. When they are created, this
-     * method must query `costs.item_state_id`, `stocks.item_state_id` and
-     * `purchase_items.item_state_id`; the restrictive foreign keys will also
-     * raise a `SequelizeForeignKeyConstraintError`, which the delete handler
-     * already maps to 409 `Item state is in use`.
+     * Tells whether an item state is referenced by a cost. Stocks and purchase
+     * items will join this check with HU-20 and HU-21; their restrictive
+     * foreign keys will also raise a `SequelizeForeignKeyConstraintError`,
+     * which the delete handler already maps to 409 `Item state is in use`.
      * @param {number} itemStateId - Item state id.
-     * @returns {Promise<boolean>} False until the referencing tables exist.
+     * @returns {Promise<boolean>} True when a cost references the item state.
      */
     async isReferenced(itemStateId) {
-      void itemStateId;
+      const modelToUse = costModel ?? require("../models/cost");
+      const cost = await modelToUse.findOne({
+        where: { item_state_id: itemStateId },
+      });
 
-      return false;
+      return cost !== null && cost !== undefined;
     },
   };
 }

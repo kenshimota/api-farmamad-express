@@ -2035,10 +2035,10 @@ Protegido: requiere rol `admin` o `seller`. Acepta cualquier combinación de
 con el recurso actualizado. `description: null` borra la descripción.
 
 `name` es la clave estable: solo se puede cambiar si el registro **no** está
-referenciado por costos, stocks ni ítems de compra; si lo está, responde `409`
-con `{ "message": "Item state is in use" }`. Hasta que existan esas tablas
-(HU-19/20/21) la comprobación devuelve `false` y las claves foráneas
-restrictivas quedan preparadas para el mismo `409`.
+referenciado por costos (HU-19), stocks (HU-20) ni ítems de compra (HU-21); si
+lo está, responde `409` con `{ "message": "Item state is in use" }`. La
+comprobación ya consulta la tabla real `costs` y las claves foráneas
+restrictivas cubren el resto de tablas cuando se creen.
 
 ```bash
 curl -X PUT http://localhost:3001/item-states/1 \
@@ -2059,8 +2059,10 @@ Errores: `400` cuando no se envía ningún campo, `401`, `403`, `404`
 
 Protegido: requiere rol `admin` o `seller`. Elimina el estado y responde `204`
 sin cuerpo. Si está referenciado por costos, stocks o ítems de compra responde
-`409` con `{ "message": "Item state is in use" }` y no lo elimina. Un estado
-inexistente responde `404` y un id inválido `422`.
+`409` con `{ "message": "Item state is in use" }` y no lo elimina. La tabla
+`costs` ya aplica esa restricción; las claves foráneas restrictivas de stocks y
+compras se sumarán con HU-20 y HU-21. Un estado inexistente responde `404` y un
+id inválido `422`.
 
 ```bash
 curl -X DELETE http://localhost:3001/item-states/1 \
@@ -2082,6 +2084,142 @@ de forma idempotente cinco estados:
 
 El `down` elimina únicamente esos cinco registros y omite los que ya estén
 referenciados por otras tablas.
+
+## Costos
+
+Los costos viven en la tabla `costs` (modelo `Cost`) y guardan **solo el costo
+vigente** de un producto para un estado de ítem. El histórico queda en
+`purchase_items` (HU-21). La combinación `(product_id, item_state_id)` es única:
+un producto tiene un costo por estado.
+
+| Columna         | Tipo          | Restricciones                                   |
+| --------------- | ------------- | ----------------------------------------------- |
+| `id`            | INTEGER       | PK, autoincremental                             |
+| `product_id`    | INTEGER       | Requerido, FK `products.id` con `RESTRICT`      |
+| `item_state_id` | INTEGER       | Requerido, FK `item_states.id` con `RESTRICT`   |
+| `cost`          | DECIMAL(12,2) | Requerido, `>= 0`                               |
+| `createdAt`     | TIMESTAMP     | Auditoría, no se expone en la API               |
+| `updatedAt`     | TIMESTAMP     | Auditoría, no se expone en la API               |
+
+`cost` se valida con `yup` (máximo 2 decimales y 9 enteros) y se serializa como
+número, nunca como el string que devuelve `DECIMAL`. La respuesta pública es:
+
+```json
+{
+  "id": 1,
+  "product_id": 15,
+  "item_state_id": 2,
+  "cost": 12.5,
+  "item_state": {
+    "id": 2,
+    "name": "damaged",
+    "label": "Maltratado",
+    "is_sellable": false
+  }
+}
+```
+
+| Endpoint                     | admin | seller | manager_warehouse | dispatcher | support | customer |
+| ---------------------------- | ----- | ------ | ----------------- | ---------- | ------- | -------- |
+| `POST /costs`                | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /costs`                 | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /costs/:id`             | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /costs/product/:id`     | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `PUT /costs/:id`             | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `DELETE /costs/:id`          | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
+
+### `POST /costs`
+
+Protegido: requiere rol `admin` o `seller`. Crea el costo de un producto para
+un estado y responde `201`. Los tres campos son obligatorios y el producto y el
+estado deben existir.
+
+```bash
+curl -X POST http://localhost:3001/costs \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 15,
+    "item_state_id": 2,
+    "cost": 12.5
+  }'
+```
+
+Errores:
+
+| Código | Cuerpo                                                              |
+| ------ | ------------------------------------------------------------------- |
+| `400`  | `{ "message": "product_id, item_state_id and cost are required" }`  |
+| `401`  | `{ "message": "Unauthorized" }`                                     |
+| `403`  | `{ "message": "Forbidden" }`                                        |
+| `409`  | `{ "message": "Cost already exists" }`                              |
+| `422`  | `{ "errors": { "product_id": "Invalid product" } }`                 |
+| `422`  | `{ "errors": { "item_state_id": "Invalid item state" } }`           |
+| `422`  | `{ "errors": { "cost": "cost must be >= 0" } }`                     |
+| `422`  | `{ "errors": { "cost": "cost must have at most 2 decimals" } }`     |
+
+### `GET /costs`
+
+Protegido para `admin`, `seller` y `manager_warehouse`. Devuelve los costos
+ordenados por `product_id` y `item_state_id` ascendente. Los filtros
+`?product_id=` y `?item_state_id=` son opcionales y exactos; un valor inválido
+responde `422`.
+
+```bash
+curl "http://localhost:3001/costs?product_id=15&item_state_id=2" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `GET /costs/:id` y `GET /costs/product/:product_id`
+
+`GET /costs/:id` devuelve el detalle o `404` con
+`{ "message": "Cost not found" }`. `GET /costs/product/:product_id` devuelve
+todos los costos del producto, uno por estado y ordenados por `item_state_id`;
+si no hay ninguno responde `200` con `[]` (no `404`).
+
+```bash
+curl http://localhost:3001/costs/1 \
+  -H "Authorization: Bearer <jwt>"
+
+curl http://localhost:3001/costs/product/15 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Un id no numérico responde `422` con `{ "errors": { "id": "Invalid cost id" } }`
+y un producto no numérico con
+`{ "errors": { "product_id": "Invalid product id" } }`.
+
+### `PUT /costs/:id`
+
+Protegido: requiere rol `admin` o `seller`. Acepta cualquier combinación de
+`cost`, `product_id` e `item_state_id` (al menos uno) y responde `202` con el
+recurso actualizado. Las referencias nuevas deben existir y la combinación
+resultante debe seguir siendo única; si ya existe, responde `409`.
+
+```bash
+curl -X PUT http://localhost:3001/costs/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cost": 20,
+    "item_state_id": 1
+  }'
+```
+
+Errores: `400` cuando no se envía ningún campo, `401`, `403`, `404`
+(`Cost not found`), `409` (`Cost already exists`) y `422` para un id, campo o
+referencia inválidos.
+
+### `DELETE /costs/:id`
+
+Protegido: requiere rol `admin` o `seller`. Elimina el costo y responde `204`
+sin cuerpo. No modifica productos, estados, compras ni stocks. Un costo
+inexistente responde `404` y un id inválido `422`.
+
+```bash
+curl -X DELETE http://localhost:3001/costs/1 \
+  -H "Authorization: Bearer <jwt>"
+```
 
 ## Logs y manejo de errores
 

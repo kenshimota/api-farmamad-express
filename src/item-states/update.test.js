@@ -5,6 +5,7 @@ jest.mock("../models/item-state", () => ({
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
+jest.mock("../models/cost", () => ({ findOne: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");
@@ -286,7 +287,6 @@ describe("PUT /item-states/:id", () => {
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ message: "User is blocked" });
   });
-
   it("forwards unexpected persistence errors", async () => {
     const itemState = target();
     itemState.update.mockRejectedValue(new Error("database exploded"));

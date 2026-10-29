@@ -13,9 +13,8 @@ const router = Router();
  *     description: >
  *       An item state referenced by costs, stocks or purchase items cannot be
  *       removed: it responds 409 with `Item state is in use` and stays in the
- *       database. Those tables arrive with HU-19/20/21; the repository already
- *       exposes the check and the restrictive foreign keys are mapped to the
- *       same 409.
+ *       database. Costs are checked now; the restrictive foreign keys of
+ *       stocks and purchase items will map to the same 409 with HU-20/21.
  *     tags:
  *       - Item states
  *     security:
