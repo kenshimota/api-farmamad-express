@@ -15,6 +15,8 @@ describe("swagger spec", () => {
         "/roles",
         "/customers",
         "/customers/{id}",
+        "/warehouses",
+        "/warehouses/{id}",
       ]),
     );
   });
@@ -72,6 +74,24 @@ describe("swagger spec", () => {
     expect(
       swaggerSpec.components.schemas.Customer.properties,
     ).not.toHaveProperty("createdAt");
+  });
+
+  it("documents the Warehouse schema without audit fields", () => {
+    expect(swaggerSpec.components.schemas.Warehouse).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        name: { type: "string" },
+        observations: { type: "string", nullable: true },
+        address: { type: "string" },
+      },
+    });
+    expect(
+      swaggerSpec.components.schemas.Warehouse.properties,
+    ).not.toHaveProperty("createdAt");
+    expect(swaggerSpec.tags).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "Warehouses" })]),
+    );
   });
 
   it("documents the generic 500 and 404 schemas and responses", () => {

@@ -1,0 +1,139 @@
+# Archivo: warehouses.http
+# Módulo: warehouses  ->  POST /warehouses, GET /warehouses, GET /warehouses/:id,
+#                         PUT /warehouses/:id, DELETE /warehouses/:id
+# Protegido: escritura requiere rol admin o manager_warehouse; lectura también dispatcher.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /warehouses — registra una bodega (201)
+# observations es opcional; si se omite o se envía null se guarda como NULL.
+POST {{baseUrl}}/warehouses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bodega Central",
+  "observations": "Horario de 8 a 18",
+  "address": "Av. Monseñor Rivero 123"
+}
+
+### POST /warehouses — sin observations (201)
+POST {{baseUrl}}/warehouses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bodega Norte",
+  "address": "Calle 2 #45"
+}
+
+### POST /warehouses — sin token (401 Unauthorized)
+POST {{baseUrl}}/warehouses
+Content-Type: application/json
+
+{
+  "name": "Bodega Central",
+  "address": "Av. Monseñor Rivero 123"
+}
+
+### POST /warehouses — falta address (400)
+POST {{baseUrl}}/warehouses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bodega Central"
+}
+
+### POST /warehouses — name inválido (422)
+POST {{baseUrl}}/warehouses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "   ",
+  "address": "Av. Monseñor Rivero 123"
+}
+
+### GET /warehouses — lista las bodegas (200)
+# Devuelve id, name, observations y address; [] si no hay.
+GET {{baseUrl}}/warehouses
+Authorization: Bearer {{token}}
+
+### GET /warehouses?search=central — búsqueda parcial (200)
+# Filtra contra name, observations y address; insensible a mayúsculas.
+# search vacío o solo espacios devuelve el listado completo.
+GET {{baseUrl}}/warehouses?search=central
+Authorization: Bearer {{token}}
+
+### GET /warehouses — sin token (401 Unauthorized)
+GET {{baseUrl}}/warehouses
+
+### GET /warehouses/:id — consulta una bodega (200)
+# Sustituye 1 por el id de la bodega.
+GET {{baseUrl}}/warehouses/1
+Authorization: Bearer {{token}}
+
+### GET /warehouses/:id — id inexistente (404)
+GET {{baseUrl}}/warehouses/99999
+Authorization: Bearer {{token}}
+
+### GET /warehouses/:id — id inválido (422)
+GET {{baseUrl}}/warehouses/abc
+Authorization: Bearer {{token}}
+
+### PUT /warehouses/:id — actualiza una bodega (200)
+# name y address son obligatorios; observations solo se actualiza si se envía.
+PUT {{baseUrl}}/warehouses/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bodega Sur",
+  "address": "Calle 3 #10"
+}
+
+### PUT /warehouses/:id — limpia observations (200)
+PUT {{baseUrl}}/warehouses/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bodega Sur",
+  "observations": null,
+  "address": "Calle 3 #10"
+}
+
+### PUT /warehouses/:id — falta name (400)
+PUT {{baseUrl}}/warehouses/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "address": "Calle 3 #10"
+}
+
+### PUT /warehouses/:id — id inexistente (404)
+PUT {{baseUrl}}/warehouses/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Bodega Sur",
+  "address": "Calle 3 #10"
+}
+
+### DELETE /warehouses/:id — elimina una bodega (204, sin cuerpo)
+# Sustituye 1 por el id de la bodega a eliminar.
+DELETE {{baseUrl}}/warehouses/1
+Authorization: Bearer {{token}}
+
+### DELETE /warehouses/:id — id inexistente (404)
+DELETE {{baseUrl}}/warehouses/99999
+Authorization: Bearer {{token}}
+
+### DELETE /warehouses/:id — id inválido (422)
+DELETE {{baseUrl}}/warehouses/abc
+Authorization: Bearer {{token}}
+
+### DELETE /warehouses/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/warehouses/1
