@@ -25,6 +25,7 @@ const stocksRouter = require("./stocks");
 const purchasesRouter = require("./purchases");
 const currenciesRouter = require("./currencies");
 const shelvesRouter = require("./shelves");
+const lotsRouter = require("./lots");
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/stocks", stocksRouter);
 app.use("/purchases", purchasesRouter);
 app.use("/currencies", currenciesRouter);
 app.use("/shelves", shelvesRouter);
+app.use("/lots", lotsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

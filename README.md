@@ -2996,6 +2996,190 @@ curl -X DELETE http://localhost:3001/shelves/1/sections/3 \
 | `422`  | `{ "errors": { "warehouse_id": "warehouse_id cannot be changed" } }` |
 | `422`  | `{ "errors": { "shelf_id": "shelf_id cannot be changed" } }`         |
 
+## Lotes (lots)
+
+Cada lote representa las unidades físicas de un producto con su número, fecha
+de expiración, estado de ítem, cantidades y ubicación. La tabla es `lots`
+(modelo `Lot`) y referencia de forma restrictiva a `products`, `item_states`,
+`warehouses`, `shelves` y `shelf_sections`.
+
+Reglas de negocio:
+
+- `number` es obligatorio, se recorta, tiene 1–100 caracteres y es único por
+  producto **ignorando mayúsculas/minúsculas** mediante el índice funcional
+  `(product_id, LOWER(number))`.
+- `expiration_date` es una fecha `YYYY-MM-DD` obligatoria; se acepta una fecha
+  ya vencida porque el lote sigue existiendo en inventario.
+- `stock` y `reserved` son enteros entre `0` y `1 000 000 000`, con `0` por
+  defecto al crear. La base de datos impone `stock >= 0`, `reserved >= 0` y
+  `reserved <= stock`.
+- `available = stock - reserved` se calcula al serializar y nunca se almacena.
+- El estante debe pertenecer a la bodega y la sección al estante; si no, la API
+  responde `422`. Estas comprobaciones y la escritura ocurren en una
+  transacción.
+- Las respuestas nunca incluyen `createdAt` ni `updatedAt`.
+- `lots` no sincroniza automáticamente el agregado `stocks` de HU-20.
+
+Roles:
+
+- Lectura (`GET`): `admin`, `seller`, `manager_warehouse` y `dispatcher`.
+- Escritura (`POST`, `PUT`, `DELETE`): `admin`, `seller` y
+  `manager_warehouse`.
+
+| Endpoint          | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ----------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `GET /lots`       | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `GET /lots/:id`   | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `POST /lots`      | ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `PUT /lots/:id`   | ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `DELETE /lots/:id`| ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+
+### `POST /lots`
+
+Requiere `number`, `product_id`, `expiration_date`, `item_state_id`,
+`warehouse_id`, `shelf_id` y `section_id`; `stock` y `reserved` son opcionales
+y valen `0` por defecto. Todas las referencias deben existir y la ubicación debe
+ser coherente.
+
+```bash
+curl -X POST http://localhost:3001/lots \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":120,"reserved":15,"warehouse_id":1,"shelf_id":1,"section_id":2}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "number": "L-2026-001",
+  "product_id": 15,
+  "expiration_date": "2027-03-31",
+  "item_state_id": 1,
+  "stock": 120,
+  "reserved": 15,
+  "available": 105,
+  "warehouse_id": 1,
+  "shelf_id": 1,
+  "section_id": 2,
+  "product": { "id": 15, "name": "Ibuprofeno 800 mg", "reference": "IBU-800" },
+  "item_state": {
+    "id": 1,
+    "name": "sellable",
+    "label": "Vendible",
+    "is_sellable": true
+  },
+  "warehouse": { "id": 1, "name": "Bodega Central" },
+  "shelf": { "id": 1, "code": "A1", "name": "Estante A1" },
+  "section": { "id": 2, "code": "A1-02", "name": "Nivel 2" }
+}
+```
+
+### `GET /lots`
+
+Lista los lotes ordenados por `expiration_date` ascendente y luego por `id`.
+Incluye los anidados `product`, `item_state`, `warehouse`, `shelf` y `section`
+en una sola consulta con `include` de Sequelize (sin N+1).
+
+Filtros opcionales:
+
+| Filtro            | Significado                                                        |
+| ----------------- | ------------------------------------------------------------------ |
+| `product_id`      | Producto exacto.                                                   |
+| `item_state_id`   | Estado de ítem exacto.                                             |
+| `warehouse_id`    | Bodega exacta.                                                     |
+| `shelf_id`        | Estante exacto.                                                    |
+| `section_id`      | Sección exacta.                                                    |
+| `number`          | Número de lote exacto, sin distinguir mayúsculas/minúsculas.       |
+| `expired`         | `true` para `expiration_date < CURRENT_DATE`; `false` para `>=`.  |
+| `expiring_before` | Fecha máxima inclusive `YYYY-MM-DD`.                               |
+
+```bash
+curl "http://localhost:3001/lots?product_id=15&warehouse_id=1&expired=false&expiring_before=2027-12-31" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "number": "L-2026-001",
+    "product_id": 15,
+    "expiration_date": "2027-03-31",
+    "item_state_id": 1,
+    "stock": 120,
+    "reserved": 15,
+    "available": 105,
+    "warehouse_id": 1,
+    "shelf_id": 1,
+    "section_id": 2,
+    "product": { "id": 15, "name": "Ibuprofeno 800 mg", "reference": "IBU-800" },
+    "item_state": {
+      "id": 1,
+      "name": "sellable",
+      "label": "Vendible",
+      "is_sellable": true
+    },
+    "warehouse": { "id": 1, "name": "Bodega Central" },
+    "shelf": { "id": 1, "code": "A1", "name": "Estante A1" },
+    "section": { "id": 2, "code": "A1-02", "name": "Nivel 2" }
+  }
+]
+```
+
+### `GET /lots/:id`
+
+Devuelve el detalle con los anidados y `available`. Un id inválido responde
+`422` y un lote inexistente `404 Lot not found`.
+
+```bash
+curl http://localhost:3001/lots/1 -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /lots/:id`
+
+Reemplaza todos los campos editables y responde `202` con el lote actualizado.
+Exige `number`, `product_id`, `expiration_date`, `item_state_id`, `stock`,
+`reserved`, `warehouse_id`, `shelf_id` y `section_id`. Vuelve a validar las
+referencias y la coherencia de ubicación, y rechaza `reserved > stock` con
+`422`. Los campos `id`, `available`, `createdAt` y `updatedAt` se ignoran.
+
+```bash
+curl -X PUT http://localhost:3001/lots/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":100,"reserved":10,"warehouse_id":1,"shelf_id":1,"section_id":2}'
+```
+
+Respuesta `202` con `"available": 90`.
+
+### `DELETE /lots/:id`
+
+Elimina un lote y responde `204` sin cuerpo. Solo se permite cuando
+`stock = 0` y `reserved = 0`; en caso contrario responde `409 Lot has stock or
+reservations` y no borra nada.
+
+```bash
+curl -X DELETE http://localhost:3001/lots/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Errores del módulo
+
+| Código | Cuerpo                                                                 |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | `{ "message": "number, product_id, expiration_date, item_state_id, warehouse_id, shelf_id and section_id are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                                        |
+| `403`  | `{ "message": "Forbidden" }`                                           |
+| `404`  | `{ "message": "Lot not found" }`                                       |
+| `409`  | `{ "message": "Lot already exists" }`                                  |
+| `409`  | `{ "message": "Lot has stock or reservations" }`                       |
+| `422`  | `{ "errors": { "reserved": "reserved cannot exceed stock" } }`          |
+| `422`  | `{ "errors": { "shelf_id": "Shelf does not belong to the warehouse" } }` |
+| `422`  | `{ "errors": { "section_id": "Section does not belong to the shelf" } }` |
+| `422`  | `{ "errors": { "expiration_date": "expiration_date must be a valid date (YYYY-MM-DD)" } }` |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,

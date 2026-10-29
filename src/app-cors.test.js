@@ -124,6 +124,13 @@ jest.mock("./models/shelf-section", () => ({
   findOne: jest.fn(),
   findByPk: jest.fn(),
 }));
+jest.mock("./models/lot", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  findOne: jest.fn(),
+  getAttributes: jest.fn(() => ({})),
+}));
 
 const request = require("supertest");
 const app = require("./app");
