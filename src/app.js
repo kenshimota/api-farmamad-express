@@ -27,6 +27,7 @@ const currenciesRouter = require("./currencies");
 const shelvesRouter = require("./shelves");
 const lotsRouter = require("./lots");
 const customerSellersRouter = require("./customer-sellers");
+const taxesRouter = require("./taxes");
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use("/currencies", currenciesRouter);
 app.use("/shelves", shelvesRouter);
 app.use("/lots", lotsRouter);
 app.use("/customer-sellers", customerSellersRouter);
+app.use("/taxes", taxesRouter);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -3466,6 +3466,151 @@ curl -X DELETE http://localhost:3001/customer-sellers/1 \
 | `422`  | `{ "errors": { "customer_id": "customer_id cannot be changed" } }` |
 | `422`  | `{ "errors": { "id": "Invalid assignment id" } }`                  |
 
+## Impuestos (taxes)
+
+Catálogo de impuestos para los pedidos futuros (HU-27). Cada fila de la tabla
+`taxes` (modelo `Tax`) tiene un `code` único ignorando mayúsculas, un `name`,
+una `rate` porcentual, una `description` opcional y `is_active`. `rate` se
+guarda como `DECIMAL(5,2)` y la base de datos exige `0 <= rate <= 100`; por
+ejemplo `16.00` significa `16 %`, no un monto. No hay datos iniciales: el
+catálogo arranca vacío.
+
+Reglas de negocio:
+
+- `code` se normaliza a mayúsculas, mide entre 2 y 20 caracteres, solo acepta
+  `[A-Za-z0-9_]` y es único ignorando mayúsculas/minúsculas mediante un índice
+  funcional sobre `LOWER(code)`. Es inmutable: un `PUT` que lo envíe lo ignora.
+- `name` no es único y mide entre 2 y 100 caracteres. `description` admite hasta
+  255 caracteres y se devuelve como `null` cuando no se envía o llega vacía.
+- `is_active` es booleano y vale `true` por defecto. Desactivar un impuesto con
+  `PUT` no lo borra.
+- `DELETE` es físico. Si una tabla futura lo referencia, la FK `RESTRICT` impide
+  el borrado y la API responde `409`.
+- Los timestamps `createdAt` y `updatedAt` nunca se exponen.
+- Las respuestas se serializan con `id`, `code`, `name`, `rate`, `description`
+  e `is_active`.
+- Este catálogo **no** se usa en compras: `purchases` y `purchase_items` no
+  cambian en esta historia (el impuesto por línea de compra es HU-30).
+
+Roles:
+
+- Lectura (`GET`): `admin`, `seller`, `manager_warehouse` y `dispatcher`.
+- Escritura (`POST`, `PUT`, `DELETE`): solo `admin`.
+- `customer` y `support` reciben `403`.
+
+| Endpoint          | `admin` | `seller` | `manager_warehouse` | `dispatcher` | `support` | `customer` |
+| ----------------- | ------- | -------- | ------------------- | ------------ | --------- | ---------- |
+| `GET /taxes`      | ✅      | ✅       | ✅                  | ✅           | ❌ `403`  | ❌ `403`   |
+| `GET /taxes/:id`  | ✅      | ✅       | ✅                  | ✅           | ❌ `403`  | ❌ `403`   |
+| `POST /taxes`     | ✅      | ❌ `403` | ❌ `403`            | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+| `PUT /taxes/:id`  | ✅      | ❌ `403` | ❌ `403`            | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+| `DELETE /taxes/:id` | ✅    | ❌ `403` | ❌ `403`            | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+
+### `POST /taxes`
+
+Requiere `code`, `name` y `rate`; `description` e `is_active` son opcionales.
+
+```bash
+curl -X POST http://localhost:3001/taxes \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"IVA","name":"Impuesto al Valor Agregado","rate":16,"description":"IVA general"}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "code": "IVA",
+  "name": "Impuesto al Valor Agregado",
+  "rate": 16,
+  "description": "IVA general",
+  "is_active": true
+}
+```
+
+### `GET /taxes`
+
+Lista todos los impuestos ordenados por `code` ascendente, incluidos los
+inactivos. El filtro exacto opcional `?is_active=true|false` limita el
+resultado.
+
+```bash
+curl "http://localhost:3001/taxes?is_active=true" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "code": "IGTF",
+    "name": "Impuesto a las Grandes Transacciones Financieras",
+    "rate": 3,
+    "description": "IGTF",
+    "is_active": true
+  },
+  {
+    "id": 2,
+    "code": "IVA",
+    "name": "Impuesto al Valor Agregado",
+    "rate": 16,
+    "description": "IVA general",
+    "is_active": true
+  }
+]
+```
+
+### `GET /taxes/:id`
+
+Devuelve el detalle del impuesto, esté activo o inactivo.
+
+```bash
+curl http://localhost:3001/taxes/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /taxes/:id`
+
+Actualiza `name`, `rate`, `description` e `is_active`; requiere al menos uno y
+responde `202`. `code` es inmutable y se ignora si se envía. Cambiar la tasa no
+recalcula compras ni pedidos existentes.
+
+```bash
+curl -X PUT http://localhost:3001/taxes/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"rate":3.5,"is_active":false}'
+```
+
+### `DELETE /taxes/:id`
+
+Borra físicamente el impuesto y responde `204` sin cuerpo. Para dejar de usarlo
+sin borrarlo, actualícelo con `"is_active": false`. Si otra tabla lo referencia,
+responde `409 Tax is in use`.
+
+```bash
+curl -X DELETE http://localhost:3001/taxes/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Errores del módulo
+
+| Código | Cuerpo                                                       |
+| ------ | ------------------------------------------------------------ |
+| `400`  | `{ "message": "code, name and rate are required" }`          |
+| `400`  | `{ "message": "At least one field is required" }`            |
+| `401`  | `{ "message": "Unauthorized" }`                              |
+| `403`  | `{ "message": "Forbidden" }`                                 |
+| `404`  | `{ "message": "Tax not found" }`                             |
+| `409`  | `{ "message": "Tax already exists" }`                        |
+| `409`  | `{ "message": "Tax is in use" }`                             |
+| `422`  | `{ "errors": { "rate": "rate must be between 0 and 100" } }` |
+| `422`  | `{ "errors": { "rate": "rate must have at most 2 decimals" } }` |
+| `422`  | `{ "errors": { "id": "Invalid tax id" } }`                   |
+| `422`  | `{ "errors": { "is_active": "Invalid is_active" } }`         |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,

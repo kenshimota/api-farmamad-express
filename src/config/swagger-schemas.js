@@ -4,7 +4,7 @@ const currencySchemas = require("./swagger-currency-schemas");
 const shelfSchemas = require("./swagger-shelf-schemas");
 const lotSchemas = require("./swagger-lot-schemas");
 const customerSellerSchemas = require("./swagger-customer-seller-schemas");
-
+const taxSchemas = require("./swagger-tax-schemas");
 const CURRENCY_SUMMARY = { $ref: "#/components/schemas/CurrencySummary" };
 const schemas = {
   ...authSchemas,
@@ -13,6 +13,7 @@ const schemas = {
   ...shelfSchemas,
   ...lotSchemas,
   ...customerSellerSchemas,
+  ...taxSchemas,
   Customer: {
     type: "object",
     properties: {
@@ -296,5 +297,4 @@ const schemas = {
     },
   },
 };
-
 module.exports = schemas;

@@ -88,6 +88,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Assignment of each customer to the seller responsible for it, with one seller per customer and many customers per seller.",
       },
+      {
+        name: "Taxes",
+        description:
+          "Tax catalog (IVA, IGTF, etc.) with a unique code, a percentage rate and an active flag, reserved for future orders.",
+      },
     ],
     components: {
       securitySchemes: {
