@@ -5,41 +5,19 @@ const shelfSchemas = require("./swagger-shelf-schemas");
 const lotSchemas = require("./swagger-lot-schemas");
 const customerSellerSchemas = require("./swagger-customer-seller-schemas");
 const taxSchemas = require("./swagger-tax-schemas");
+const methodPaymentTypeSchemas = require("./swagger-method-payment-type-schemas");
+const customerSchemas = require("./swagger-customer-schemas");
 const CURRENCY_SUMMARY = { $ref: "#/components/schemas/CurrencySummary" };
 const schemas = {
   ...authSchemas,
+  ...customerSchemas,
   ...purchaseSchemas,
   ...currencySchemas,
   ...shelfSchemas,
   ...lotSchemas,
   ...customerSellerSchemas,
   ...taxSchemas,
-  Customer: {
-    type: "object",
-    properties: {
-      id: { type: "integer", example: 1 },
-      fullName: { type: "string", example: "Juan Pérez" },
-      latitude: {
-        type: "number",
-        description: "Latitude with up to 7 decimals",
-        example: -17.7833,
-      },
-      longitude: {
-        type: "number",
-        description: "Longitude with up to 7 decimals",
-        example: -63.1821,
-      },
-      direction: {
-        type: "string",
-        example: "Av. Monseñor Rivero 123",
-      },
-      email: {
-        type: "string",
-        format: "email",
-        example: "juan@example.com",
-      },
-    },
-  },
+  ...methodPaymentTypeSchemas,
   Warehouse: {
     type: "object",
     properties: {

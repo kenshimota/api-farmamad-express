@@ -137,6 +137,11 @@ jest.mock("./models/tax", () => ({
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
+jest.mock("./models/method-payment-type", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
 
 const request = require("supertest");
 const app = require("./app");

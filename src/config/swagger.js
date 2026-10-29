@@ -93,6 +93,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Tax catalog (IVA, IGTF, etc.) with a unique code, a percentage rate and an active flag, reserved for future orders.",
       },
+      {
+        name: "Method payment types",
+        description:
+          "Payment method categories (PayPal, Binance, bank transfer, mobile payment) with one currency and the definition of the fields their concrete methods require.",
+      },
     ],
     components: {
       securitySchemes: {
