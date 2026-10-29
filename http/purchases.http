@@ -11,18 +11,17 @@
 
 ### POST /purchases — crea una compra en borrador con líneas (201)
 # El servidor asigna number, status draft y calcula subtotal, impuesto y total.
-# Si omites tax_rate se usa PURCHASE_TAX_RATE (16 por defecto).
+# Cada línea requiere su propio tax_amount absoluto; tax_rate se ignora.
 POST {{baseUrl}}/purchases
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "supplier_id": 1,
-  "tax_rate": 16,
   "notes": "Reposición mensual",
   "items": [
-    { "product_id": 1, "item_state_id": 1, "quantity": 40, "unit_cost": 20.0 },
-    { "product_id": 1, "item_state_id": 2, "quantity": 3, "unit_cost": 12.5 }
+    { "product_id": 1, "item_state_id": 1, "quantity": 40, "unit_cost": 20.0, "tax_amount": 128.0 },
+    { "product_id": 1, "item_state_id": 2, "quantity": 3, "unit_cost": 12.5, "tax_amount": 6.0 }
   ]
 }
 
@@ -69,8 +68,8 @@ Content-Type: application/json
 {
   "supplier_id": 1,
   "items": [
-    { "product_id": 1, "item_state_id": 1, "quantity": 1, "unit_cost": 1 },
-    { "product_id": 1, "item_state_id": 1, "quantity": 2, "unit_cost": 2 }
+    { "product_id": 1, "item_state_id": 1, "quantity": 1, "unit_cost": 1, "tax_amount": 0 },
+    { "product_id": 1, "item_state_id": 1, "quantity": 2, "unit_cost": 2, "tax_amount": 0 }
   ]
 }
 
@@ -98,15 +97,15 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/purchases/99999
 Authorization: Bearer {{token}}
 
-### PUT /purchases/:id — actualiza proveedor, impuesto y notas en borrador (202)
+### PUT /purchases/:id — actualiza proveedor y notas en borrador (202)
 # No acepta items: las líneas se gestionan con los endpoints /items.
+# tax_rate se ignora; si es el único campo responde 400.
 PUT {{baseUrl}}/purchases/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "supplier_id": 1,
-  "tax_rate": 8.25,
   "notes": "Reposición ajustada"
 }
 
@@ -153,7 +152,8 @@ Content-Type: application/json
   "product_id": 1,
   "item_state_id": 1,
   "quantity": 10,
-  "unit_cost": 15.5
+  "unit_cost": 15.5,
+  "tax_amount": 8.0
 }
 
 ### POST /purchases/:id/items — línea duplicada (409)
@@ -165,17 +165,20 @@ Content-Type: application/json
   "product_id": 1,
   "item_state_id": 1,
   "quantity": 1,
-  "unit_cost": 1
+  "unit_cost": 1,
+  "tax_amount": 0
 }
 
-### PUT /purchases/:purchase_id/items/:item_id — actualiza cantidad y costo (202)
+### PUT /purchases/:purchase_id/items/:item_id — actualiza cantidad, costo e impuesto (202)
+# tax_amount es opcional: si se omite se conserva el valor actual.
 PUT {{baseUrl}}/purchases/1/items/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "quantity": 12,
-  "unit_cost": 18.75
+  "unit_cost": 18.75,
+  "tax_amount": 9.5
 }
 
 ### PUT /purchases/:purchase_id/items/:item_id — sin campos (400)

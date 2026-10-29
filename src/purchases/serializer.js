@@ -1,6 +1,7 @@
 const { toPublicSupplier } = require("../suppliers/serializer");
 const { toPublicCurrencySummary } = require("../currencies/serializer");
 const { readField, toDecimalNumber } = require("../shared/serializer");
+const { calculateLineTotal } = require("./money");
 
 /**
  * Converts a DECIMAL value (usually a string) into a JSON number with two
@@ -17,17 +18,26 @@ function toMoneyNumber(value) {
  * nested product/item state are left out on purpose.
  * @param {object} item - Purchase item instance or plain object.
  * @returns {{ id: number, product_id: number, item_state_id: number,
- *   quantity: number, unit_cost: number|null, subtotal: number|null }}
- *   Public line data.
+ *   quantity: number, unit_cost: number|null, subtotal: number|null,
+ *   tax_amount: number|null, total: number|null }} Public line data.
  */
 function toPublicPurchaseItem(item) {
+  const subtotal = toMoneyNumber(readField(item, "subtotal"));
+  const taxAmount = toMoneyNumber(readField(item, "tax_amount"));
+  const total =
+    subtotal === null || taxAmount === null
+      ? null
+      : calculateLineTotal(subtotal, taxAmount);
+
   return {
     id: readField(item, "id"),
     product_id: readField(item, "product_id"),
     item_state_id: readField(item, "item_state_id"),
     quantity: readField(item, "quantity"),
     unit_cost: toMoneyNumber(readField(item, "unit_cost")),
-    subtotal: toMoneyNumber(readField(item, "subtotal")),
+    subtotal,
+    tax_amount: taxAmount,
+    total,
   };
 }
 
@@ -67,7 +77,6 @@ function toPublicPurchase(
     currency_id: readField(purchase, "currency_id") ?? null,
     status: readField(purchase, "status"),
     subtotal: toMoneyNumber(readField(purchase, "subtotal")),
-    tax_rate: toMoneyNumber(readField(purchase, "tax_rate")),
     tax_amount: toMoneyNumber(readField(purchase, "tax_amount")),
     total: toMoneyNumber(readField(purchase, "total")),
     notes: readField(purchase, "notes"),

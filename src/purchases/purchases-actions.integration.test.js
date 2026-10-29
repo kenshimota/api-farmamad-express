@@ -31,19 +31,22 @@ afterAll(async () => {
 });
 
 describe("PUT /purchases/:id with a real database", () => {
-  it("updates supplier, tax rate and notes and recalculates the totals", async () => {
+  it("updates supplier and notes and recalculates from the line taxes", async () => {
     const supplier = await createPurchaseSupplier();
     const otherSupplier = await createPurchaseSupplier({
       identification: "J-99999999-9",
       email: "otro@example.com",
     });
     const purchase = await createPurchase({ supplier_id: supplier.id });
-    await createPurchaseItem({ purchase_id: purchase.id });
+    await createPurchaseItem({
+      purchase_id: purchase.id,
+      tax_amount: 8.25,
+    });
     const token = await tokenFor("seller");
 
     const response = await as("put", `/purchases/${purchase.id}`, token).send({
       supplier_id: otherSupplier.id,
-      tax_rate: 8.25,
+      tax_rate: 99,
       notes: "Actualizada",
     });
 
@@ -53,17 +56,31 @@ describe("PUT /purchases/:id with a real database", () => {
         id: purchase.id,
         supplier_id: otherSupplier.id,
         subtotal: 100,
-        tax_rate: 8.25,
         tax_amount: 8.25,
         total: 108.25,
         notes: "Actualizada",
       }),
     );
+    expect(response.body).not.toHaveProperty("tax_rate");
     expect(response.body.items).toHaveLength(1);
     expect(response.body).not.toHaveProperty("updatedAt");
 
     const stored = await Purchase.findByPk(purchase.id);
     expect(Number(stored.total)).toBe(108.25);
+  });
+
+  it("rejects a body with only tax_rate as having no editable field", async () => {
+    const purchase = await createPurchase();
+    const token = await tokenFor("admin");
+
+    const response = await as("put", `/purchases/${purchase.id}`, token).send({
+      tax_rate: 8.25,
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      message: "At least one field is required",
+    });
   });
 
   it("responds 409 for a confirmed purchase, 400 for an empty body and 422 for ids", async () => {

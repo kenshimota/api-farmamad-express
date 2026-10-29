@@ -73,6 +73,21 @@ describe("formatValidationErrors", () => {
     expect(formatValidationErrors(error)).toEqual({ email: "first" });
   });
 
+  it("flattens nested array paths to dot notation", () => {
+    const error = {
+      inner: [
+        {
+          path: "items[0].tax_amount",
+          message: "tax_amount is required",
+        },
+      ],
+    };
+
+    expect(formatValidationErrors(error)).toEqual({
+      "items.0.tax_amount": "tax_amount is required",
+    });
+  });
+
   it("falls back to the error itself when there are no inner issues", () => {
     expect(
       formatValidationErrors({ path: "email", message: "Email inválido" }),

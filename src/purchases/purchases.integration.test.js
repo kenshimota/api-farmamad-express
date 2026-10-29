@@ -65,7 +65,6 @@ async function references() {
 function purchaseBody(refs) {
   return {
     supplier_id: refs.supplier.id,
-    tax_rate: 16,
     notes: "Reposición mensual",
     items: [
       {
@@ -73,12 +72,14 @@ function purchaseBody(refs) {
         item_state_id: refs.sellable.id,
         quantity: 40,
         unit_cost: 20,
+        tax_amount: 128,
       },
       {
         product_id: refs.product.id,
         item_state_id: refs.damaged.id,
         quantity: 3,
         unit_cost: 12.5,
+        tax_amount: 6,
       },
     ],
   };
@@ -105,7 +106,6 @@ describe("POST /purchases with a real database", () => {
         currency: publicCurrencySummary(currency),
         status: "draft",
         subtotal: 837.5,
-        tax_rate: 16,
         tax_amount: 134,
         total: 971.5,
         notes: "Reposición mensual",
@@ -117,6 +117,8 @@ describe("POST /purchases with a real database", () => {
             quantity: 40,
             unit_cost: 20,
             subtotal: 800,
+            tax_amount: 128,
+            total: 928,
           },
           {
             id: expect.any(Number),
@@ -125,6 +127,8 @@ describe("POST /purchases with a real database", () => {
             quantity: 3,
             unit_cost: 12.5,
             subtotal: 37.5,
+            tax_amount: 6,
+            total: 43.5,
           },
         ],
       });
@@ -160,13 +164,30 @@ describe("POST /purchases with a real database", () => {
     expect(response.body.items).toEqual([]);
   });
 
-  it("uses PURCHASE_TAX_RATE as the default tax rate", async () => {
+  it("ignores tax_rate and requires tax_amount on every line", async () => {
     const refs = await references();
     const token = await tokenFor("admin");
-    const previous = process.env.PURCHASE_TAX_RATE;
-    process.env.PURCHASE_TAX_RATE = "8.25";
 
-    const response = await as("post", "/purchases", token).send({
+    const ignored = await as("post", "/purchases", token).send({
+      supplier_id: refs.supplier.id,
+      tax_rate: 8.25,
+      items: [
+        {
+          product_id: refs.product.id,
+          item_state_id: refs.sellable.id,
+          quantity: 1,
+          unit_cost: 100,
+          tax_amount: 8.25,
+        },
+      ],
+    });
+
+    expect(ignored.status).toBe(201);
+    expect(ignored.body).not.toHaveProperty("tax_rate");
+    expect(ignored.body.tax_amount).toBe(8.25);
+    expect(ignored.body.total).toBe(108.25);
+
+    const missing = await as("post", "/purchases", token).send({
       supplier_id: refs.supplier.id,
       items: [
         {
@@ -178,16 +199,10 @@ describe("POST /purchases with a real database", () => {
       ],
     });
 
-    if (previous === undefined) {
-      delete process.env.PURCHASE_TAX_RATE;
-    } else {
-      process.env.PURCHASE_TAX_RATE = previous;
-    }
-
-    expect(response.status).toBe(201);
-    expect(response.body.tax_rate).toBe(8.25);
-    expect(response.body.tax_amount).toBe(8.25);
-    expect(response.body.total).toBe(108.25);
+    expect(missing.status).toBe(422);
+    expect(missing.body).toEqual({
+      errors: { "items.0.tax_amount": "tax_amount is required" },
+    });
   });
 
   it("responds 400, 409, 422, 401 and 403 for invalid requests", async () => {
@@ -206,12 +221,14 @@ describe("POST /purchases with a real database", () => {
           item_state_id: refs.sellable.id,
           quantity: 1,
           unit_cost: 1,
+          tax_amount: 0,
         },
         {
           product_id: refs.product.id,
           item_state_id: refs.sellable.id,
           quantity: 2,
           unit_cost: 2,
+          tax_amount: 0,
         },
       ],
     });
@@ -234,6 +251,7 @@ describe("POST /purchases with a real database", () => {
           item_state_id: refs.sellable.id,
           quantity: 1,
           unit_cost: 1,
+          tax_amount: 0,
         },
       ],
     });
@@ -250,6 +268,7 @@ describe("POST /purchases with a real database", () => {
           item_state_id: 99999,
           quantity: 1,
           unit_cost: 1,
+          tax_amount: 0,
         },
       ],
     });

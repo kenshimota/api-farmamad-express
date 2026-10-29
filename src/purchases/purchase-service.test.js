@@ -6,8 +6,6 @@ const {
   repositoryDouble,
   stocksDouble,
 } = require("../../test/helpers/purchase-service-doubles");
-
-const ORIGINAL_TAX_RATE = process.env.PURCHASE_TAX_RATE;
 const CURRENCY = {
   id: 3,
   code: "USD_BCV",
@@ -48,7 +46,6 @@ function purchase(overrides = {}) {
     currency_id: 3,
     status: "draft",
     subtotal: "0.00",
-    tax_rate: "16.00",
     tax_amount: "0.00",
     total: "0.00",
     notes: null,
@@ -63,12 +60,6 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks();
-
-  if (ORIGINAL_TAX_RATE === undefined) {
-    delete process.env.PURCHASE_TAX_RATE;
-  } else {
-    process.env.PURCHASE_TAX_RATE = ORIGINAL_TAX_RATE;
-  }
 });
 
 describe("createPurchase", () => {
@@ -87,8 +78,20 @@ describe("createPurchase", () => {
       supplier_id: 2,
       notes: "Reposición mensual",
       items: [
-        { product_id: 15, item_state_id: 1, quantity: 40, unit_cost: 20 },
-        { product_id: 15, item_state_id: 2, quantity: 3, unit_cost: 12.5 },
+        {
+          product_id: 15,
+          item_state_id: 1,
+          quantity: 40,
+          unit_cost: 20,
+          tax_amount: 128,
+        },
+        {
+          product_id: 15,
+          item_state_id: 2,
+          quantity: 3,
+          unit_cost: 12.5,
+          tax_amount: 6,
+        },
       ],
     });
 
@@ -101,7 +104,6 @@ describe("createPurchase", () => {
         currency_id: 3,
         status: "draft",
         subtotal: "837.50",
-        tax_rate: "16.00",
         tax_amount: "134.00",
         total: "971.50",
         notes: "Reposición mensual",
@@ -117,6 +119,7 @@ describe("createPurchase", () => {
           quantity: 40,
           unit_cost: "20.00",
           subtotal: "800.00",
+          tax_amount: "128.00",
         },
         {
           purchase_id: 1,
@@ -125,6 +128,7 @@ describe("createPurchase", () => {
           quantity: 3,
           unit_cost: "12.50",
           subtotal: "37.50",
+          tax_amount: "6.00",
         },
       ],
       { transaction: TRANSACTION },
@@ -136,16 +140,23 @@ describe("createPurchase", () => {
     });
   });
 
-  it("uses PURCHASE_TAX_RATE as the default and creates an empty draft", async () => {
-    process.env.PURCHASE_TAX_RATE = "8.25";
+  it("creates an empty draft with zero totals and no tax rate", async () => {
     const { service, repository, itemRepository } = setup();
     repository.findById.mockResolvedValue(purchase());
 
     await service.createPurchase({ supplier_id: 2 });
 
     expect(repository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ tax_rate: "8.25", subtotal: "0.00" }),
+      expect.objectContaining({
+        subtotal: "0.00",
+        tax_amount: "0.00",
+        total: "0.00",
+      }),
       { transaction: TRANSACTION },
+    );
+    expect(repository.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tax_rate: expect.anything() }),
+      expect.anything(),
     );
     expect(itemRepository.createMany).not.toHaveBeenCalled();
   });

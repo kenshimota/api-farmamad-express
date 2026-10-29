@@ -59,6 +59,7 @@ describe("line CRUD with a real database", () => {
       item_state_id: itemState.id,
       quantity: 4,
       unit_cost: 25,
+      tax_amount: 16,
     });
 
     expect(created.status).toBe(201);
@@ -77,6 +78,8 @@ describe("line CRUD with a real database", () => {
         quantity: 4,
         unit_cost: 25,
         subtotal: 100,
+        tax_amount: 16,
+        total: 116,
       }),
     ]);
 
@@ -100,6 +103,7 @@ describe("line CRUD with a real database", () => {
       quantity: 2,
       unit_cost: 10,
       subtotal: 20,
+      tax_amount: 3.2,
     });
     const token = await tokenFor("admin");
 
@@ -107,7 +111,7 @@ describe("line CRUD with a real database", () => {
       "put",
       `/purchases/${purchase.id}/items/${item.id}`,
       token,
-    ).send({ quantity: 3, unit_cost: 12.5 });
+    ).send({ quantity: 3, unit_cost: 12.5, tax_amount: 6 });
 
     expect(response.status).toBe(202);
     expect(response.body).toEqual(
@@ -123,6 +127,8 @@ describe("line CRUD with a real database", () => {
         quantity: 3,
         unit_cost: 12.5,
         subtotal: 37.5,
+        tax_amount: 6,
+        total: 43.5,
       }),
     );
   });
@@ -141,6 +147,7 @@ describe("line CRUD with a real database", () => {
       item_state_id: item.item_state_id,
       quantity: 1,
       unit_cost: 1,
+      tax_amount: 0,
     });
     expect(duplicated.status).toBe(409);
     expect(duplicated.body).toEqual({ message: "Item already exists" });
@@ -154,6 +161,7 @@ describe("line CRUD with a real database", () => {
       item_state_id: item.item_state_id,
       quantity: 1,
       unit_cost: 1,
+      tax_amount: 0,
     });
     expect(missingProduct.status).toBe(422);
 
@@ -166,6 +174,7 @@ describe("line CRUD with a real database", () => {
       item_state_id: 99999,
       quantity: 1,
       unit_cost: 1,
+      tax_amount: 0,
     });
     expect(missingState.status).toBe(422);
   });
@@ -244,6 +253,7 @@ describe("line CRUD with a real database", () => {
       item_state_id: item.item_state_id,
       quantity: 1,
       unit_cost: 1,
+      tax_amount: 0,
     });
     expect(forbidden.status).toBe(403);
   });

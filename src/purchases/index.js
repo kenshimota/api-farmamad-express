@@ -22,9 +22,10 @@ const router = Router();
  *       Assigns an ascending server-side `number`, ignores any
  *       `number`, `status`, totals or `confirmed_at` sent by the client and
  *       calculates the subtotal, tax and total from the optional `items`.
- *       `tax_rate` defaults to `PURCHASE_TAX_RATE` (16 when unset) and
- *       `currency_id` defaults to the active default transaction currency.
- *       Every amount is expressed in that currency; no conversion is done.
+ *       Every line requires its own absolute `tax_amount`; `tax_rate` is
+ *       ignored. `currency_id` defaults to the active default transaction
+ *       currency. Every amount is expressed in that currency; no conversion
+ *       is done.
  *     tags:
  *       - Purchases
  *     security:
@@ -39,11 +40,10 @@ const router = Router();
  *             properties:
  *               supplier_id: { type: integer, minimum: 1, example: 1 }
  *               currency_id: { type: integer, minimum: 1, example: 3 }
- *               tax_rate: { type: number, minimum: 0, maximum: 100, example: 16 }
  *               notes: { type: string, maxLength: 1000, example: Reposición mensual }
  *               items:
  *                 type: array
- *                 items: { $ref: '#/components/schemas/PurchaseItem' }
+ *                 items: { $ref: '#/components/schemas/PurchaseItemInput' }
  *     responses:
  *       201:
  *         description: Purchase created with its items

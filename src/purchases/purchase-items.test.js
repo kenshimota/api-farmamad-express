@@ -63,6 +63,7 @@ const ITEM = {
   quantity: 2,
   unit_cost: "10.00",
   subtotal: "20.00",
+  tax_amount: "3.20",
 };
 const PURCHASE = {
   id: 1,
@@ -70,7 +71,6 @@ const PURCHASE = {
   supplier_id: 2,
   status: "draft",
   subtotal: "20.00",
-  tax_rate: "16.00",
   tax_amount: "3.20",
   total: "23.20",
   notes: null,
@@ -81,6 +81,7 @@ const BODY = {
   item_state_id: 1,
   quantity: 2,
   unit_cost: 10,
+  tax_amount: 3.2,
 };
 
 /**
@@ -137,6 +138,8 @@ describe("GET /purchases/:id/items", () => {
         quantity: 2,
         unit_cost: 10,
         subtotal: 20,
+        tax_amount: 3.2,
+        total: 23.2,
       },
     ]);
     expect(purchaseService.listItems).toHaveBeenCalledWith(1);
@@ -183,6 +186,18 @@ describe("POST /purchases/:id/items", () => {
     },
   );
 
+  it("responds 400 when tax_amount is missing", async () => {
+    const { tax_amount, ...withoutTax } = BODY;
+    const response = await send("post", "/purchases/1/items", withoutTax);
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      message:
+        "product_id, item_state_id, quantity, unit_cost and tax_amount are required",
+    });
+    expect(purchaseService.addItem).not.toHaveBeenCalled();
+  });
+
   it("responds 400 when a line field is missing", async () => {
     const response = await send("post", "/purchases/1/items", {
       product_id: 15,
@@ -190,7 +205,8 @@ describe("POST /purchases/:id/items", () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
-      message: "product_id, item_state_id, quantity and unit_cost are required",
+      message:
+        "product_id, item_state_id, quantity, unit_cost and tax_amount are required",
     });
     expect(purchaseService.addItem).not.toHaveBeenCalled();
   });
@@ -202,6 +218,9 @@ describe("POST /purchases/:id/items", () => {
     { ...BODY, unit_cost: -1 },
     { ...BODY, unit_cost: 1.234 },
     { ...BODY, product_id: 0 },
+    { ...BODY, tax_amount: -1 },
+    { ...BODY, tax_amount: 1.234 },
+    { ...BODY, tax_amount: 10000000000 },
   ])("responds 422 for invalid line %p", async (body) => {
     const response = await send("post", "/purchases/1/items", body);
 

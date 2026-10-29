@@ -13,8 +13,9 @@ const router = Router();
  *   post:
  *     summary: Confirms a draft purchase; only administrators and sellers can do it
  *     description: >
- *       In one transaction recalculates the totals, upserts the current
- *       `costs` of every line (inheriting `purchase.currency_id`), increments
+ *       In one transaction recalculates the totals from the line subtotals
+ *       and taxes, upserts the current `costs` of every line using the
+ *       tax-free `unit_cost` (inheriting `purchase.currency_id`), increments
  *       `stocks` and sets `confirmed` plus `confirmed_at`. No amount is
  *       converted. A purchase without lines answers 422 and any failure
  *       rolls back costs and stocks. Confirming twice answers 409 and is not

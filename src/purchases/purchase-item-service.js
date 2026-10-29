@@ -4,7 +4,7 @@ const {
   notEditable,
   purchaseNotFound,
 } = require("./errors");
-const { calculateLineSubtotal, toDecimal } = require("./money");
+const { toLineAmounts } = require("./money");
 
 /**
  * Creates the line operations of the purchases service.
@@ -64,10 +64,7 @@ function createPurchaseItemOperations({ repository, itemRepository, support }) {
             product_id: values.product_id,
             item_state_id: values.item_state_id,
             quantity: values.quantity,
-            unit_cost: toDecimal(values.unit_cost),
-            subtotal: toDecimal(
-              calculateLineSubtotal(values.quantity, values.unit_cost),
-            ),
+            ...toLineAmounts(values),
           },
           { transaction },
         );
@@ -101,6 +98,7 @@ function createPurchaseItemOperations({ repository, itemRepository, support }) {
         const itemStateId = changes.item_state_id ?? item.item_state_id;
         const quantity = changes.quantity ?? item.quantity;
         const unitCost = changes.unit_cost ?? item.unit_cost;
+        const taxAmount = changes.tax_amount ?? item.tax_amount ?? 0;
 
         await support.assertItemReferences([
           { product_id: productId, item_state_id: itemStateId },
@@ -124,8 +122,11 @@ function createPurchaseItemOperations({ repository, itemRepository, support }) {
             product_id: productId,
             item_state_id: itemStateId,
             quantity,
-            unit_cost: toDecimal(unitCost),
-            subtotal: toDecimal(calculateLineSubtotal(quantity, unitCost)),
+            ...toLineAmounts({
+              quantity,
+              unit_cost: unitCost,
+              tax_amount: taxAmount,
+            }),
           },
           { transaction },
         );

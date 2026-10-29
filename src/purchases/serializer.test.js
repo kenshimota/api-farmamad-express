@@ -12,6 +12,7 @@ const ITEM = {
   quantity: 40,
   unit_cost: "20.00",
   subtotal: "800.00",
+  tax_amount: "128.00",
 };
 const CURRENCY = {
   id: 3,
@@ -27,7 +28,6 @@ const PURCHASE = {
   currency: CURRENCY,
   status: "draft",
   subtotal: "800.00",
-  tax_rate: "16.00",
   tax_amount: "128.00",
   total: "928.00",
   notes: null,
@@ -61,7 +61,7 @@ describe("toMoneyNumber", () => {
 });
 
 describe("toPublicPurchaseItem", () => {
-  it("exposes only the public line fields as numbers", () => {
+  it("exposes the public line fields with its calculated total", () => {
     expect(toPublicPurchaseItem(ITEM)).toEqual({
       id: 1,
       product_id: 15,
@@ -69,12 +69,26 @@ describe("toPublicPurchaseItem", () => {
       quantity: 40,
       unit_cost: 20,
       subtotal: 800,
+      tax_amount: 128,
+      total: 928,
     });
+  });
+
+  it("calculates the line total in cents", () => {
+    expect(
+      toPublicPurchaseItem({ ...ITEM, subtotal: "0.10", tax_amount: "0.20" }),
+    ).toMatchObject({ subtotal: 0.1, tax_amount: 0.2, total: 0.3 });
+  });
+
+  it("returns null totals when the stored values are invalid", () => {
+    expect(
+      toPublicPurchaseItem({ ...ITEM, subtotal: null, tax_amount: null }),
+    ).toMatchObject({ subtotal: null, tax_amount: null, total: null });
   });
 });
 
 describe("toPublicPurchase", () => {
-  it("returns the base fields without timestamps for a draft", () => {
+  it("returns the base fields without timestamps or tax_rate for a draft", () => {
     const result = toPublicPurchase(PURCHASE);
 
     expect(result).toEqual({
@@ -85,11 +99,11 @@ describe("toPublicPurchase", () => {
       currency: CURRENCY,
       status: "draft",
       subtotal: 800,
-      tax_rate: 16,
       tax_amount: 128,
       total: 928,
       notes: null,
     });
+    expect(result).not.toHaveProperty("tax_rate");
     expect(result).not.toHaveProperty("createdAt");
     expect(result).not.toHaveProperty("updatedAt");
     expect(result).not.toHaveProperty("items");
@@ -116,6 +130,8 @@ describe("toPublicPurchase", () => {
         quantity: 40,
         unit_cost: 20,
         subtotal: 800,
+        tax_amount: 128,
+        total: 928,
       },
     ]);
     expect(result.supplier).toEqual(toPublicSupplier(PURCHASE.supplier));

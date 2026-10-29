@@ -1,14 +1,9 @@
 const { purchaseRepository } = require("./repository");
 const { purchaseItemRepository } = require("./item-repository");
 const { stockRepository } = require("../stocks/repository");
-const { resolveDefaultTaxRate } = require("./validators");
 const { resolveTransactionCurrency } = require("../currencies/default");
 const { purchaseNotFound } = require("./errors");
-const {
-  calculateLineSubtotal,
-  calculateTotals,
-  toDecimal,
-} = require("./money");
+const { calculateTotals, toLineAmounts, toTotalsAmounts } = require("./money");
 const { createServiceSupport } = require("./service-support");
 const { createPurchaseItemOperations } = require("./purchase-item-service");
 const {
@@ -77,13 +72,13 @@ function createPurchaseService({
     },
 
     /**
-     * Creates a draft purchase, assigns its number and calculates its totals.
-     * @param {object} input - Validated supplier, tax rate, notes and lines.
+     * Creates a draft purchase, assigns its number and calculates its totals
+     * from the lines.
+     * @param {object} input - Validated supplier, notes and lines.
      * @returns {Promise<object>} The created purchase with its lines.
      */
     async createPurchase(input) {
       const lines = input.items ?? [];
-      const taxRate = input.tax_rate ?? resolveDefaultTaxRate();
 
       support.assertNoDuplicates(lines);
       await support.assertSupplier(input.supplier_id);
@@ -91,7 +86,7 @@ function createPurchaseService({
       const currency = await resolveTransactionCurrency(input.currency_id);
 
       return repository.transaction(async (transaction) => {
-        const totals = calculateTotals(lines, taxRate);
+        const totals = calculateTotals(lines);
         const number = await repository.nextNumber(transaction);
         const purchase = await repository.create(
           {
@@ -99,10 +94,7 @@ function createPurchaseService({
             supplier_id: input.supplier_id,
             currency_id: currency.id,
             status: "draft",
-            subtotal: toDecimal(totals.subtotal),
-            tax_rate: toDecimal(taxRate),
-            tax_amount: toDecimal(totals.tax_amount),
-            total: toDecimal(totals.total),
+            ...toTotalsAmounts(totals),
             notes: input.notes ?? null,
           },
           { transaction },
@@ -115,10 +107,7 @@ function createPurchaseService({
               product_id: line.product_id,
               item_state_id: line.item_state_id,
               quantity: line.quantity,
-              unit_cost: toDecimal(line.unit_cost),
-              subtotal: toDecimal(
-                calculateLineSubtotal(line.quantity, line.unit_cost),
-              ),
+              ...toLineAmounts(line),
             })),
             { transaction },
           );
@@ -129,8 +118,8 @@ function createPurchaseService({
     },
 
     /**
-     * Updates the supplier, tax rate and/or notes of a draft and recalculates
-     * its totals.
+     * Updates the supplier, currency and/or notes of a draft and recalculates
+     * its totals from the lines. `tax_rate` is ignored.
      * @param {number} id - Purchase id.
      * @param {object} changes - Validated changes.
      * @returns {Promise<object>} The updated purchase with its lines.
@@ -139,6 +128,10 @@ function createPurchaseService({
       return repository.transaction(async (transaction) => {
         const purchase = await support.loadDraft(id, transaction);
         const updates = { ...changes };
+
+        // Defensive: the router already strips `tax_rate`, but the service must
+        // never persist a rate that no longer exists in the data model.
+        delete updates.tax_rate;
 
         if (changes.supplier_id !== undefined) {
           await support.assertSupplier(changes.supplier_id);
@@ -152,20 +145,15 @@ function createPurchaseService({
           updates.currency_id = currency.id;
         }
 
-        const taxRate = changes.tax_rate ?? purchase.tax_rate;
         const totals = calculateTotals(
           await itemRepository.list(id, { transaction }),
-          taxRate,
         );
 
         await repository.update(
           purchase,
           {
             ...updates,
-            tax_rate: toDecimal(taxRate),
-            subtotal: toDecimal(totals.subtotal),
-            tax_amount: toDecimal(totals.tax_amount),
-            total: toDecimal(totals.total),
+            ...toTotalsAmounts(totals),
           },
           { transaction },
         );

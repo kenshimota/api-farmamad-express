@@ -60,9 +60,10 @@ async function references() {
  * @param {object} refs - References.
  * @param {number} quantity - Quantity to add.
  * @param {number} unitCost - Unit cost.
+ * @param {number} [taxAmount] - Absolute tax amount of the line.
  * @returns {Promise<object>} The created line.
  */
-function addLine(purchase, refs, quantity, unitCost) {
+function addLine(purchase, refs, quantity, unitCost, taxAmount = 0) {
   return createPurchaseItem({
     purchase_id: purchase.id,
     product_id: refs.product.id,
@@ -70,6 +71,7 @@ function addLine(purchase, refs, quantity, unitCost) {
     quantity,
     unit_cost: unitCost,
     subtotal: quantity * unitCost,
+    tax_amount: taxAmount,
   });
 }
 
@@ -100,8 +102,8 @@ describe("confirmation rollback", () => {
     await Stock.create({ ...secondStock, quantity: 3 });
 
     const purchase = await createPurchase({ supplier_id: refs.supplier.id });
-    await addLine(purchase, refs, 4, 25);
-    await addLine(purchase, { ...refs, itemState: secondState }, 7, 10);
+    await addLine(purchase, refs, 4, 25, 100);
+    await addLine(purchase, { ...refs, itemState: secondState }, 7, 10, 70);
 
     const originalIncrement = Stock.prototype.increment;
     let calls = 0;

@@ -44,7 +44,6 @@ function purchase(overrides = {}) {
     currency_id: 3,
     status: "draft",
     subtotal: "0.00",
-    tax_rate: "16.00",
     tax_amount: "0.00",
     total: "0.00",
     ...overrides,
@@ -59,6 +58,7 @@ const LINES = [
     quantity: 40,
     unit_cost: "20.00",
     subtotal: "800.00",
+    tax_amount: "128.00",
   },
   {
     id: 2,
@@ -67,6 +67,7 @@ const LINES = [
     quantity: 3,
     unit_cost: "12.50",
     subtotal: "37.50",
+    tax_amount: "6.00",
   },
 ];
 

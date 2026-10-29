@@ -35,7 +35,6 @@ function purchase(overrides = {}) {
     supplier_id: 2,
     status: "draft",
     subtotal: "0.00",
-    tax_rate: "16.00",
     tax_amount: "0.00",
     total: "0.00",
     ...overrides,
@@ -56,6 +55,7 @@ function line(overrides = {}) {
     quantity: 2,
     unit_cost: "10.00",
     subtotal: "20.00",
+    tax_amount: "3.20",
     ...overrides,
   };
 }
@@ -104,6 +104,7 @@ describe("addItem", () => {
       item_state_id: 1,
       quantity: 2,
       unit_cost: 10,
+      tax_amount: 3.2,
     });
 
     expect(itemRepository.create).toHaveBeenCalledWith(
@@ -114,6 +115,7 @@ describe("addItem", () => {
         quantity: 2,
         unit_cost: "10.00",
         subtotal: "20.00",
+        tax_amount: "3.20",
       },
       { transaction: TRANSACTION },
     );
@@ -140,6 +142,7 @@ describe("addItem", () => {
         item_state_id: 1,
         quantity: 1,
         unit_cost: 1,
+        tax_amount: 0,
       }),
     ).rejects.toMatchObject({
       status: 409,
@@ -159,6 +162,7 @@ describe("addItem", () => {
         item_state_id: 1,
         quantity: 1,
         unit_cost: 1,
+        tax_amount: 0,
       }),
     ).rejects.toMatchObject({
       status: 422,
@@ -177,13 +181,18 @@ describe("updateItem", () => {
     itemRepository.findById.mockResolvedValue(storedLine);
     itemRepository.list.mockResolvedValue([storedLine]);
 
-    await operations.updateItem(1, 4, { quantity: 3, unit_cost: 12.5 });
+    await operations.updateItem(1, 4, {
+      quantity: 3,
+      unit_cost: 12.5,
+      tax_amount: 6,
+    });
 
     expect(itemRepository.update).toHaveBeenCalledWith(
       storedLine,
       {
         quantity: 3,
         unit_cost: "12.50",
+        tax_amount: "6.00",
         product_id: 15,
         item_state_id: 1,
         subtotal: "37.50",
@@ -193,6 +202,29 @@ describe("updateItem", () => {
     expect(repository.update).toHaveBeenCalledWith(
       stored,
       { subtotal: "37.50", tax_amount: "6.00", total: "43.50" },
+      { transaction: TRANSACTION },
+    );
+  });
+
+  it("preserves the current tax amount when the update omits it", async () => {
+    const { operations, repository, itemRepository } = setup();
+    const stored = purchase();
+    const storedLine = line({ tax_amount: "3.20" });
+    repository.findByIdForUpdate.mockResolvedValue(stored);
+    repository.findById.mockResolvedValue(stored);
+    itemRepository.findById.mockResolvedValue(storedLine);
+    itemRepository.list.mockResolvedValue([storedLine]);
+
+    await operations.updateItem(1, 4, { quantity: 3 });
+
+    expect(itemRepository.update).toHaveBeenCalledWith(
+      storedLine,
+      expect.objectContaining({ tax_amount: "3.20", subtotal: "30.00" }),
+      { transaction: TRANSACTION },
+    );
+    expect(repository.update).toHaveBeenCalledWith(
+      stored,
+      { subtotal: "30.00", tax_amount: "3.20", total: "33.20" },
       { transaction: TRANSACTION },
     );
   });

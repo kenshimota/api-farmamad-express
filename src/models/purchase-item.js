@@ -39,6 +39,11 @@ const PurchaseItem = sequelize.define(
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
     },
+    tax_amount: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     tableName: "purchase_items",

@@ -9,7 +9,7 @@ const {
   notEditable,
   purchaseNotFound,
 } = require("./errors");
-const { calculateTotals, toDecimal } = require("./money");
+const { calculateTotals, toTotalsAmounts } = require("./money");
 
 /**
  * Builds the HTTP error used when an item reference no longer exists.
@@ -117,24 +117,18 @@ function createServiceSupport({ repository, itemRepository }) {
     },
 
     /**
-     * Recalculates the purchase totals from its current lines and tax rate.
+     * Recalculates the purchase totals from its current lines.
      * @param {object} purchase - Loaded purchase.
      * @param {object} transaction - Open transaction.
      * @returns {Promise<object>} The calculated totals.
      */
     async recalculate(purchase, transaction) {
       const lines = await itemRepository.list(purchase.id, { transaction });
-      const totals = calculateTotals(lines, purchase.tax_rate);
+      const totals = calculateTotals(lines);
 
-      await repository.update(
-        purchase,
-        {
-          subtotal: toDecimal(totals.subtotal),
-          tax_amount: toDecimal(totals.tax_amount),
-          total: toDecimal(totals.total),
-        },
-        { transaction },
-      );
+      await repository.update(purchase, toTotalsAmounts(totals), {
+        transaction,
+      });
 
       return totals;
     },

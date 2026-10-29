@@ -131,7 +131,6 @@ async function createPurchaseSupplier(overrides = {}) {
  */
 async function createPurchase(overrides = {}) {
   const values = {
-    tax_rate: 16,
     subtotal: 0,
     tax_amount: 0,
     total: 0,
@@ -164,7 +163,7 @@ async function createPurchase(overrides = {}) {
  * @returns {Promise<object>} The created Sequelize instance.
  */
 async function createPurchaseItem(overrides = {}) {
-  const values = { quantity: 5, unit_cost: 20, ...overrides };
+  const values = { quantity: 5, unit_cost: 20, tax_amount: 0, ...overrides };
 
   if (values.purchase_id === undefined) {
     const purchase = await createPurchase();
@@ -209,6 +208,8 @@ function publicPurchaseItem(item) {
     quantity: item.quantity,
     unit_cost: Number(item.unit_cost),
     subtotal: Number(item.subtotal),
+    tax_amount: Number(item.tax_amount),
+    total: Number(item.subtotal) + Number(item.tax_amount),
   };
 }
 

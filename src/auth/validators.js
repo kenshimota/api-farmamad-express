@@ -78,8 +78,13 @@ function formatValidationErrors(error) {
   const errors = {};
 
   for (const issue of error.inner ?? [error]) {
-    if (errors[issue.path] === undefined) {
-      errors[issue.path] = issue.message;
+    const path =
+      typeof issue.path === "string"
+        ? issue.path.replace(/\[(\d+)\]/g, ".$1")
+        : issue.path;
+
+    if (errors[path] === undefined) {
+      errors[path] = issue.message;
     }
   }
 

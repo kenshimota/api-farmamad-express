@@ -43,7 +43,6 @@ const VALUES = {
   supplier_id: 2,
   status: "draft",
   subtotal: "0.00",
-  tax_rate: "16.00",
   tax_amount: "0.00",
   total: "0.00",
 };
