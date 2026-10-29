@@ -101,6 +101,17 @@ jest.mock("./models/purchase-item", () => ({
   findOne: jest.fn(),
 }));
 
+jest.mock("./models/currency", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
+
+jest.mock("./models/currency-rate-history", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+}));
+
 const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");

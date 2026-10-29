@@ -68,6 +68,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Purchase orders with their lines, server-side totals and the draft-to-confirmed flow that updates costs and stocks.",
       },
+      {
+        name: "Currencies",
+        description:
+          "Currency catalog with its editable rate against the bolívar and the append-only history of rate changes.",
+      },
     ],
     components: {
       securitySchemes: {

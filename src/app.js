@@ -23,6 +23,7 @@ const itemStatesRouter = require("./item-states");
 const costsRouter = require("./costs");
 const stocksRouter = require("./stocks");
 const purchasesRouter = require("./purchases");
+const currenciesRouter = require("./currencies");
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use("/item-states", itemStatesRouter);
 app.use("/costs", costsRouter);
 app.use("/stocks", stocksRouter);
 app.use("/purchases", purchasesRouter);
+app.use("/currencies", currenciesRouter);
 
 app.use(notFound);
 app.use(errorHandler);
