@@ -38,6 +38,11 @@ const Currency = sequelize.define(
       allowNull: false,
       defaultValue: true,
     },
+    is_default_for_transactions: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     tableName: "currencies",

@@ -8,6 +8,9 @@ const Cost = require("../models/cost");
 const { createProduct } = require("../../test/helpers/products");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 const {
+  ensureDefaultTransactionCurrency,
+} = require("../../test/helpers/currency-default");
+const {
   BODY,
   as,
   createItemState,
@@ -110,10 +113,12 @@ describe("PUT /item-states/:id with a real database", () => {
     const itemState = await createItemState();
     const product = await createProduct({ reference: "ITEM-STATE-RENAME" });
     const token = await tokenFor("seller");
+    const currency = await ensureDefaultTransactionCurrency();
     const cost = await Cost.create({
       product_id: product.id,
       item_state_id: itemState.id,
       cost: 10,
+      currency_id: currency.id,
     });
 
     try {
@@ -219,10 +224,12 @@ describe("DELETE /item-states/:id with a real database", () => {
     const itemState = await createItemState();
     const product = await createProduct({ reference: "ITEM-STATE-DELETE" });
     const token = await tokenFor("admin");
+    const currency = await ensureDefaultTransactionCurrency();
     const cost = await Cost.create({
       product_id: product.id,
       item_state_id: itemState.id,
       cost: 10,
+      currency_id: currency.id,
     });
 
     try {

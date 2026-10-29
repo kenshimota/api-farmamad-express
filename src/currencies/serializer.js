@@ -1,12 +1,4 @@
-/**
- * Reads a field from a Sequelize instance or a plain object.
- * @param {object} record - Sequelize instance or plain object.
- * @param {string} field - Field name.
- * @returns {unknown} The raw value.
- */
-function readField(record, field) {
-  return typeof record.get === "function" ? record.get(field) : record[field];
-}
+const { readField, toDecimalNumber } = require("../shared/serializer");
 
 /**
  * Converts a DECIMAL rate (usually a string) into a JSON number with at most
@@ -15,28 +7,30 @@ function readField(record, field) {
  * @returns {number|null} The numeric rate or null.
  */
 function toRateNumber(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    (typeof value === "string" && value.trim() === "")
-  ) {
-    return null;
-  }
+  return toDecimalNumber(value, 6);
+}
 
-  const numeric = Number(value);
-
-  if (!Number.isFinite(numeric)) {
-    return null;
-  }
-
-  return Number(numeric.toFixed(6));
+/**
+ * Builds the compact currency nested in costs, purchases and stocks.
+ * @param {object} currency - Currency instance or plain object.
+ * @returns {{ id: number, code: string, name: string, symbol: string }}
+ *   Public summary.
+ */
+function toPublicCurrencySummary(currency) {
+  return {
+    id: readField(currency, "id"),
+    code: readField(currency, "code"),
+    name: readField(currency, "name"),
+    symbol: readField(currency, "symbol"),
+  };
 }
 
 /**
  * Builds the public representation of a currency with no audit columns.
  * @param {object} currency - Currency instance or plain object.
  * @returns {{ id: number, code: string, name: string, symbol: string,
- *   rate: number|null, is_base: boolean, is_active: boolean }} Public data.
+ *   rate: number|null, is_base: boolean, is_active: boolean,
+ *   is_default_for_transactions: boolean }} Public data.
  */
 function toPublicCurrency(currency) {
   return {
@@ -47,6 +41,8 @@ function toPublicCurrency(currency) {
     rate: toRateNumber(readField(currency, "rate")),
     is_base: readField(currency, "is_base") === true,
     is_active: readField(currency, "is_active") === true,
+    is_default_for_transactions:
+      readField(currency, "is_default_for_transactions") === true,
   };
 }
 
@@ -106,6 +102,7 @@ function toPublicHistoryEntry(entry) {
 module.exports = {
   toPublicChangedBy,
   toPublicCurrency,
+  toPublicCurrencySummary,
   toPublicHistoryEntry,
   toRateNumber,
 };

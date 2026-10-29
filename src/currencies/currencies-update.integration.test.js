@@ -215,3 +215,27 @@ describe("PUT /currencies/:id with a real database", () => {
     });
   });
 });
+
+describe("default transaction currency protection", () => {
+  it("rejects deactivating the default currency with PUT", async () => {
+    const currency = await createCurrency({
+      code: "USD_BCV",
+      name: "Dólar BCV",
+      symbol: "$",
+      rate: "889.890000",
+      is_default_for_transactions: true,
+    });
+    const token = await tokenFor("admin");
+
+    const response = await as("put", `/currencies/${currency.id}`, token).send({
+      is_active: false,
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      message: "Default transaction currency cannot be deactivated",
+    });
+    const stored = await Currency.findByPk(currency.id);
+    expect(stored.is_active).toBe(true);
+  });
+});

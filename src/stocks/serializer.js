@@ -1,14 +1,6 @@
 const { toCostNumber } = require("../costs/serializer");
-
-/**
- * Reads a field from a Sequelize instance or a plain object.
- * @param {object} record - Sequelize instance or plain object.
- * @param {string} field - Field name.
- * @returns {unknown} The raw value.
- */
-function readField(record, field) {
-  return typeof record.get === "function" ? record.get(field) : record[field];
-}
+const { toPublicCurrencySummary } = require("../currencies/serializer");
+const { readField } = require("../shared/serializer");
 
 /**
  * Builds the nested item state included in every stock response. Only the
@@ -48,14 +40,16 @@ function toPublicStock(stock, itemState = readField(stock, "item_state")) {
 
 /**
  * Builds the public representation of an available stock row. The current cost
- * is exposed as a number or null when the combination has no registered cost,
- * so the missing value stays visible to the client.
+ * and its currency are exposed as null when the combination has no registered
+ * cost, so the missing value stays visible to the client.
  * @param {object} stock - Stock instance or plain object with its cost.
  * @returns {{ product_id: number, item_state_id: number, quantity: number,
- *   cost: number|null, item_state: object|null }} Public data.
+ *   cost: number|null, currency_id: number|null, currency: object|null,
+ *   item_state: object|null }} Public data.
  */
 function toAvailableStock(stock) {
   const cost = readField(stock, "cost");
+  const currency = cost ? readField(cost, "currency") : null;
   const itemState = readField(stock, "item_state");
 
   return {
@@ -63,6 +57,8 @@ function toAvailableStock(stock) {
     item_state_id: readField(stock, "item_state_id"),
     quantity: readField(stock, "quantity"),
     cost: cost ? toCostNumber(readField(cost, "cost")) : null,
+    currency_id: cost ? (readField(cost, "currency_id") ?? null) : null,
+    currency: currency ? toPublicCurrencySummary(currency) : null,
     item_state: itemState ? toPublicStockItemState(itemState) : null,
   };
 }

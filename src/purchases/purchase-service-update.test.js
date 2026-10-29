@@ -1,3 +1,4 @@
+const Currency = require("../models/currency");
 const { createPurchaseService } = require("./purchase-service");
 const {
   TRANSACTION,
@@ -58,6 +59,10 @@ afterEach(() => {
 });
 
 describe("updatePurchase", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("recalculates the totals with the new tax rate", async () => {
     const { service, repository, itemRepository } = setup();
     const stored = purchase();
@@ -80,6 +85,38 @@ describe("updatePurchase", () => {
       },
       { transaction: TRANSACTION },
     );
+  });
+
+  it("validates and changes the currency without converting the totals", async () => {
+    const { service, repository, itemRepository } = setup();
+    const stored = purchase();
+    const other = { id: 7, code: "VES", name: "Bolívar", symbol: "Bs" };
+    jest.spyOn(Currency, "findOne").mockResolvedValue(other);
+    repository.findByIdForUpdate.mockResolvedValue(stored);
+    itemRepository.list.mockResolvedValue([
+      { quantity: 2, unit_cost: "10.00" },
+    ]);
+
+    await service.updatePurchase(1, { currency_id: 7 });
+
+    expect(repository.update).toHaveBeenCalledWith(
+      stored,
+      expect.objectContaining({ currency_id: 7, subtotal: "20.00" }),
+      { transaction: TRANSACTION },
+    );
+  });
+
+  it("rejects an invalid currency on update", async () => {
+    const { service, repository } = setup();
+    jest.spyOn(Currency, "findOne").mockResolvedValue(null);
+    repository.findByIdForUpdate.mockResolvedValue(purchase());
+
+    await expect(
+      service.updatePurchase(1, { currency_id: 99 }),
+    ).rejects.toMatchObject({
+      status: 422,
+      body: { errors: { currency_id: "Invalid currency" } },
+    });
   });
 
   it("validates a changed supplier", async () => {

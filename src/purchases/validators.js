@@ -2,7 +2,12 @@ const yup = require("yup");
 const { MAX_MONEY, hasAtMostTwoDecimals } = require("./money");
 
 const REQUIRED_PURCHASE_FIELDS = ["supplier_id"];
-const EDITABLE_PURCHASE_FIELDS = ["supplier_id", "tax_rate", "notes"];
+const EDITABLE_PURCHASE_FIELDS = [
+  "supplier_id",
+  "currency_id",
+  "tax_rate",
+  "notes",
+];
 const REQUIRED_PURCHASE_ITEM_FIELDS = [
   "product_id",
   "item_state_id",
@@ -15,6 +20,7 @@ const MAX_QUANTITY = 1000000;
 const DEFAULT_TAX_RATE = 16;
 const MAX_TAX_RATE = 100;
 const SUPPLIER_ID_MESSAGE = "Invalid supplier id";
+const CURRENCY_ID_MESSAGE = "Invalid currency";
 const PRODUCT_ID_MESSAGE = "Invalid product id";
 const ITEM_STATE_ID_MESSAGE = "Invalid item state id";
 const QUANTITY_TYPE_MESSAGE = "quantity must be an integer";
@@ -174,6 +180,7 @@ const purchaseItemSchema = yup.object({
 
 const createPurchaseSchema = yup.object({
   supplier_id: positiveInteger(SUPPLIER_ID_MESSAGE),
+  currency_id: positiveInteger(CURRENCY_ID_MESSAGE, false),
   tax_rate: taxRateField(),
   notes: notesField(),
   items: yup
@@ -185,6 +192,7 @@ const createPurchaseSchema = yup.object({
 
 const updatePurchaseSchema = yup.object({
   supplier_id: positiveInteger(SUPPLIER_ID_MESSAGE, false),
+  currency_id: positiveInteger(CURRENCY_ID_MESSAGE, false),
   tax_rate: taxRateField(),
   notes: notesField(),
 });
@@ -225,6 +233,7 @@ function resolveDefaultTaxRate() {
 }
 
 module.exports = {
+  CURRENCY_ID_MESSAGE,
   DEFAULT_TAX_RATE,
   EDITABLE_PURCHASE_FIELDS,
   EDITABLE_PURCHASE_ITEM_FIELDS,

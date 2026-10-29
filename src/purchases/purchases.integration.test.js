@@ -4,7 +4,13 @@ const request = require("supertest");
 const app = require("../app");
 const sequelize = require("../database");
 const Purchase = require("../models/purchase");
+const Cost = require("../models/cost");
+const Currency = require("../models/currency");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
+const {
+  ensureDefaultTransactionCurrency,
+  publicCurrencySummary,
+} = require("../../test/helpers/currency-default");
 const { createProduct } = require("../../test/helpers/products");
 const { createItemState } = require("../../test/helpers/item-states");
 const {
@@ -83,6 +89,7 @@ describe("POST /purchases with a real database", () => {
     "allows a %s to create a purchase with items and answers 201",
     async (role) => {
       const refs = await references();
+      const currency = await ensureDefaultTransactionCurrency();
       const token = await tokenFor(role);
 
       const response = await as("post", "/purchases", token).send(
@@ -94,6 +101,8 @@ describe("POST /purchases with a real database", () => {
         id: expect.any(Number),
         number: 1,
         supplier_id: refs.supplier.id,
+        currency_id: currency.id,
+        currency: publicCurrencySummary(currency),
         status: "draft",
         subtotal: 837.5,
         tax_rate: 16,

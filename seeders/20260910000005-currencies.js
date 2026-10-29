@@ -23,8 +23,10 @@ const CURRENCIES = Object.freeze([
     symbol: "$",
     rate: "889.890000",
     is_base: false,
+    is_default_for_transactions: true,
   },
 ]);
+const DEFAULT_TRANSACTION_CODE = "USD_BCV";
 
 /**
  * Resolves the id of a currency by its code.
@@ -78,6 +80,33 @@ async function removeCurrency(queryInterface, currencyId) {
   await queryInterface.bulkDelete(CURRENCIES_TABLE, { id: currencyId }, {});
 }
 
+/**
+ * Makes USD_BCV the active default transaction currency without touching its
+ * rate. It is idempotent and works when the row already existed before the
+ * default flag was introduced.
+ * @param {object} queryInterface - Sequelize query interface.
+ * @param {Date} now - Seeding timestamp.
+ * @returns {Promise<void>}
+ */
+async function ensureDefaultTransactionCurrency(queryInterface, now) {
+  const currencyId = await findId(queryInterface, DEFAULT_TRANSACTION_CODE);
+
+  if (currencyId === null) {
+    return;
+  }
+
+  await queryInterface.bulkUpdate(
+    CURRENCIES_TABLE,
+    { is_default_for_transactions: false },
+    { is_default_for_transactions: true },
+  );
+  await queryInterface.bulkUpdate(
+    CURRENCIES_TABLE,
+    { is_active: true, is_default_for_transactions: true, updatedAt: now },
+    { id: currencyId },
+  );
+}
+
 /** @type {import('sequelize-cli').Seeder} */
 module.exports = {
   async up(queryInterface) {
@@ -105,6 +134,8 @@ module.exports = {
         await insertHistory(queryInterface, currencyId, currency.rate, now);
       }
     }
+
+    await ensureDefaultTransactionCurrency(queryInterface, now);
   },
 
   async down(queryInterface) {

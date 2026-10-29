@@ -64,6 +64,7 @@ describe("toPublicCurrency", () => {
       rate: 1000.29,
       is_base: false,
       is_active: true,
+      is_default_for_transactions: false,
     });
     expect(Object.keys(toPublicCurrency(CURRENCY))).toEqual([
       "id",
@@ -73,6 +74,7 @@ describe("toPublicCurrency", () => {
       "rate",
       "is_base",
       "is_active",
+      "is_default_for_transactions",
     ]);
   });
 
@@ -89,6 +91,7 @@ describe("toPublicCurrency", () => {
       rate: 1000.29,
       is_base: false,
       is_active: true,
+      is_default_for_transactions: false,
     });
     expect(currency.get).toHaveBeenCalledWith("id");
   });

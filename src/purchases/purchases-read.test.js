@@ -75,10 +75,18 @@ const SUPPLIER = {
   city_id: 1,
   state_id: 1,
 };
+const CURRENCY = {
+  id: 3,
+  code: "USD_BCV",
+  name: "Dólar BCV",
+  symbol: "$",
+};
 const PURCHASE = {
   id: 1,
   number: 1,
   supplier_id: 2,
+  currency_id: 3,
+  currency: CURRENCY,
   status: "draft",
   subtotal: "800.00",
   tax_rate: "16.00",
@@ -142,6 +150,8 @@ describe("GET /purchases", () => {
         id: 1,
         number: 1,
         supplier_id: 2,
+        currency_id: 3,
+        currency: CURRENCY,
         status: "draft",
         subtotal: 800,
         tax_rate: 16,
@@ -182,10 +192,26 @@ describe("GET /purchases", () => {
     });
   });
 
+  it("filters by currency_id", async () => {
+    const response = await send(
+      "get",
+      "/purchases?currency_id=3",
+      undefined,
+      tokenFor("admin"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(purchaseService.listPurchases).toHaveBeenCalledWith({
+      currencyId: 3,
+      includeItems: false,
+    });
+  });
+
   it.each([
     ["supplier_id=abc", { supplier_id: "Invalid supplier id" }],
     ["status=paid", { status: "Invalid status" }],
     ["number=abc", { number: "Invalid number" }],
+    ["currency_id=abc", { currency_id: "Invalid currency id" }],
   ])("responds 422 for an invalid %s filter", async (query, errors) => {
     const response = await send(
       "get",

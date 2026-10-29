@@ -13,6 +13,7 @@ jest.mock("../models/supplier", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/product", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/item-state", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/cost", () => ({ upsert: jest.fn() }));
+jest.mock("../models/currency", () => ({}));
 jest.mock("../database", () => ({
   transaction: jest.fn(),
   query: jest.fn(),
@@ -26,7 +27,9 @@ const Supplier = require("../models/supplier");
 const Product = require("../models/product");
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
+const Currency = require("../models/currency");
 const {
+  CURRENCY_INCLUDE,
   ITEM_INCLUDE,
   LIST_ORDER,
   SUPPLIER_INCLUDE,
@@ -52,7 +55,10 @@ beforeEach(() => {
 
 describe("buildListOptions", () => {
   it("orders by number descending without filters", () => {
-    expect(buildListOptions()).toEqual({ order: LIST_ORDER });
+    expect(buildListOptions()).toEqual({
+      order: LIST_ORDER,
+      include: [CURRENCY_INCLUDE],
+    });
   });
 
   it("combines every exact filter and includes the items on demand", () => {
@@ -61,12 +67,13 @@ describe("buildListOptions", () => {
         supplierId: 2,
         status: "confirmed",
         number: 7,
+        currencyId: 3,
         includeItems: true,
       }),
     ).toEqual({
       order: LIST_ORDER,
-      where: { supplier_id: 2, status: "confirmed", number: 7 },
-      include: [ITEM_INCLUDE],
+      where: { supplier_id: 2, status: "confirmed", number: 7, currency_id: 3 },
+      include: [CURRENCY_INCLUDE, ITEM_INCLUDE],
     });
   });
 });
@@ -135,6 +142,7 @@ describe("purchaseRepository", () => {
     expect(Purchase.findAll).toHaveBeenCalledWith({
       order: LIST_ORDER,
       where: { status: "draft" },
+      include: [CURRENCY_INCLUDE],
     });
   });
 
@@ -150,14 +158,14 @@ describe("purchaseRepository", () => {
       }),
     ).resolves.toBe(purchase);
     expect(Purchase.findByPk).toHaveBeenCalledWith(1, {
-      include: [ITEM_INCLUDE, SUPPLIER_INCLUDE],
+      include: [CURRENCY_INCLUDE, ITEM_INCLUDE, SUPPLIER_INCLUDE],
       transaction: TRANSACTION,
       lock: undefined,
     });
 
     await repository.findById(2);
     expect(Purchase.findByPk).toHaveBeenLastCalledWith(2, {
-      include: undefined,
+      include: [CURRENCY_INCLUDE],
       transaction: undefined,
       lock: undefined,
     });
@@ -169,7 +177,6 @@ describe("purchaseRepository", () => {
     await repository.findByIdForUpdate(1, TRANSACTION);
 
     expect(Purchase.findByPk).toHaveBeenCalledWith(1, {
-      include: undefined,
       transaction: TRANSACTION,
       lock: "UPDATE",
     });
@@ -191,12 +198,22 @@ describe("purchaseRepository", () => {
     Cost.upsert.mockResolvedValue([{ id: 1 }, true]);
 
     await repository.upsertCost(
-      { product_id: 15, item_state_id: 1, unit_cost: "20.00" },
+      {
+        product_id: 15,
+        item_state_id: 1,
+        unit_cost: "20.00",
+        currency_id: 3,
+      },
       { transaction: TRANSACTION },
     );
 
     expect(Cost.upsert).toHaveBeenCalledWith(
-      { product_id: 15, item_state_id: 1, cost: "20.00" },
+      {
+        product_id: 15,
+        item_state_id: 1,
+        cost: "20.00",
+        currency_id: 3,
+      },
       {
         transaction: TRANSACTION,
         conflictFields: ["product_id", "item_state_id"],
@@ -227,7 +244,10 @@ describe("purchaseRepository", () => {
     expect(model.create).toHaveBeenCalledWith(VALUES, {
       transaction: undefined,
     });
-    expect(model.findAll).toHaveBeenCalledWith({ order: LIST_ORDER });
+    expect(model.findAll).toHaveBeenCalledWith({
+      order: LIST_ORDER,
+      include: [CURRENCY_INCLUDE],
+    });
     expect(Purchase.create).not.toHaveBeenCalled();
   });
 });

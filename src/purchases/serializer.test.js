@@ -13,10 +13,18 @@ const ITEM = {
   unit_cost: "20.00",
   subtotal: "800.00",
 };
+const CURRENCY = {
+  id: 3,
+  code: "USD_BCV",
+  name: "Dólar BCV",
+  symbol: "$",
+};
 const PURCHASE = {
   id: 1,
   number: 1,
   supplier_id: 2,
+  currency_id: 3,
+  currency: CURRENCY,
   status: "draft",
   subtotal: "800.00",
   tax_rate: "16.00",
@@ -73,6 +81,8 @@ describe("toPublicPurchase", () => {
       id: 1,
       number: 1,
       supplier_id: 2,
+      currency_id: 3,
+      currency: CURRENCY,
       status: "draft",
       subtotal: 800,
       tax_rate: 16,

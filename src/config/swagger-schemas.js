@@ -4,6 +4,8 @@ const currencySchemas = require("./swagger-currency-schemas");
 const shelfSchemas = require("./swagger-shelf-schemas");
 const lotSchemas = require("./swagger-lot-schemas");
 const customerSellerSchemas = require("./swagger-customer-seller-schemas");
+
+const CURRENCY_SUMMARY = { $ref: "#/components/schemas/CurrencySummary" };
 const schemas = {
   ...authSchemas,
   ...purchaseSchemas,
@@ -205,6 +207,8 @@ const schemas = {
           "Current cost with DECIMAL(12,2) precision, serialized as a number",
         example: 12.5,
       },
+      currency_id: { type: "integer", example: 3 },
+      currency: { ...CURRENCY_SUMMARY },
       item_state: {
         type: "object",
         description: "Nested item state without description or audit fields",
@@ -249,6 +253,8 @@ const schemas = {
         description: "Current cost of the combination or null when missing",
         example: 20,
       },
+      currency_id: { type: "integer", nullable: true, example: 3 },
+      currency: { ...CURRENCY_SUMMARY, nullable: true },
       item_state: {
         type: "object",
         description: "Nested sellable item state",

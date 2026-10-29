@@ -114,6 +114,22 @@ describe("DELETE /currencies/:id", () => {
     expect(stored.update).not.toHaveBeenCalled();
   });
 
+  it("responds 409 when the default transaction currency is deactivated", async () => {
+    const stored = target({
+      code: "USD_BCV",
+      is_default_for_transactions: true,
+    });
+    Currency.findByPk.mockResolvedValue(stored);
+
+    const response = await remove("3");
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      message: "Default transaction currency cannot be deactivated",
+    });
+    expect(stored.update).not.toHaveBeenCalled();
+  });
+
   it("responds 404 when the currency does not exist", async () => {
     Currency.findByPk.mockResolvedValue(null);
 

@@ -75,10 +75,13 @@ const SUPPLIER = {
   city_id: 1,
   state_id: 1,
 };
+const CURRENCY = { id: 3, code: "USD_BCV", name: "Dólar BCV", symbol: "$" };
 const PURCHASE = {
   id: 1,
   number: 1,
   supplier_id: 2,
+  currency_id: 3,
+  currency: CURRENCY,
   status: "draft",
   subtotal: "800.00",
   tax_rate: "16.00",
@@ -155,6 +158,8 @@ describe("POST /purchases", () => {
         id: 1,
         number: 1,
         supplier_id: 2,
+        currency_id: 3,
+        currency: CURRENCY,
         status: "draft",
         subtotal: 800,
         tax_rate: 16,

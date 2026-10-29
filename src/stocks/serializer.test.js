@@ -105,7 +105,16 @@ describe("toAvailableStock", () => {
       product_id: 15,
       item_state_id: 2,
       quantity: 40,
-      cost: { cost: "20.00" },
+      cost: {
+        cost: "20.00",
+        currency_id: 3,
+        currency: {
+          id: 3,
+          code: "USD_BCV",
+          name: "Dólar BCV",
+          symbol: "$",
+        },
+      },
       item_state: ITEM_STATE,
       createdAt: new Date("2026-09-01T00:00:00.000Z"),
       updatedAt: new Date("2026-09-01T00:00:00.000Z"),
@@ -116,6 +125,13 @@ describe("toAvailableStock", () => {
       item_state_id: 2,
       quantity: 40,
       cost: 20,
+      currency_id: 3,
+      currency: {
+        id: 3,
+        code: "USD_BCV",
+        name: "Dólar BCV",
+        symbol: "$",
+      },
       item_state: {
         id: 2,
         name: "damaged",
@@ -131,6 +147,8 @@ describe("toAvailableStock", () => {
       item_state_id: 1,
       quantity: 4,
       cost: null,
+      currency_id: null,
+      currency: null,
       item_state: {
         id: 1,
         name: "sellable",
@@ -144,6 +162,8 @@ describe("toAvailableStock", () => {
       item_state_id: 1,
       quantity: 4,
       cost: null,
+      currency_id: null,
+      currency: null,
       item_state: {
         id: 1,
         name: "sellable",
@@ -180,6 +200,8 @@ describe("toAvailableStock", () => {
       "item_state_id",
       "quantity",
       "cost",
+      "currency_id",
+      "currency",
       "item_state",
     ]);
   });

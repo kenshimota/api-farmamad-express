@@ -7,6 +7,29 @@ const { parseProductId, PRODUCT_FILTER_MESSAGE } = require("./validators");
 const router = Router();
 
 /**
+ * Answers the sellable stock of one product. Both routes share the same
+ * handler because the product id can arrive as a query parameter or as a path
+ * parameter.
+ * @param {import("express").Request} req - Express request.
+ * @param {import("express").Response} res - Express response.
+ * @returns {Promise<import("express").Response>} The JSON response.
+ */
+async function sendAvailable(req, res) {
+  const rawProductId = req.params.product_id ?? req.query.product_id;
+  const productId = parseProductId(rawProductId);
+
+  if (productId === null) {
+    return res.status(422).json({
+      errors: { product_id: PRODUCT_FILTER_MESSAGE },
+    });
+  }
+
+  const stocks = await stockRepository.listAvailable(productId);
+
+  return res.json(stocks.map((stock) => toAvailableStock(stock)));
+}
+
+/**
  * @openapi
  * /stocks/available:
  *   get:
@@ -15,8 +38,10 @@ const router = Router();
  *       Returns only the rows with `quantity > 0` whose item state is
  *       `is_sellable = true`, ordered by item state name ascending. Each row
  *       includes the current cost of the same `(product_id, item_state_id)`
- *       combination or `null` when no cost is registered. Stocks, item states
- *       and costs are resolved in one Sequelize join.
+ *       combination or `null` when no cost is registered, together with the
+ *       currency of that cost (`currency_id` and `currency`, both null without
+ *       cost). Stocks, item states, costs and currencies are resolved in one
+ *       Sequelize join, without N+1.
  *     tags:
  *       - Stocks
  *     security:
@@ -68,19 +93,7 @@ const router = Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/available", ...readAccess(), async (req, res) => {
-  const productId = parseProductId(req.query.product_id);
-
-  if (productId === null) {
-    return res.status(422).json({
-      errors: { product_id: PRODUCT_FILTER_MESSAGE },
-    });
-  }
-
-  const stocks = await stockRepository.listAvailable(productId);
-
-  return res.json(stocks.map((stock) => toAvailableStock(stock)));
-});
+router.get("/available", ...readAccess(), sendAvailable);
 
 /**
  * @openapi
@@ -88,9 +101,10 @@ router.get("/available", ...readAccess(), async (req, res) => {
  *   get:
  *     summary: Alias of GET /stocks/available?product_id=
  *     description: >
- *       Returns exactly the same sellable stock rows and current costs as
- *       `GET /stocks/available?product_id=`. The response is ordered by item
- *       state name and keeps `cost: null` when the combination has no cost.
+ *       Returns exactly the same sellable stock rows, current costs and
+ *       currencies as `GET /stocks/available?product_id=`. The response is
+ *       ordered by item state name and keeps `cost`, `currency_id` and
+ *       `currency` in `null` when the combination has no cost.
  *     tags:
  *       - Stocks
  *     security:
@@ -142,18 +156,6 @@ router.get("/available", ...readAccess(), async (req, res) => {
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/available/:product_id", ...readAccess(), async (req, res) => {
-  const productId = parseProductId(req.params.product_id);
-
-  if (productId === null) {
-    return res.status(422).json({
-      errors: { product_id: PRODUCT_FILTER_MESSAGE },
-    });
-  }
-
-  const stocks = await stockRepository.listAvailable(productId);
-
-  return res.json(stocks.map((stock) => toAvailableStock(stock)));
-});
+router.get("/available/:product_id", ...readAccess(), sendAvailable);
 
 module.exports = router;

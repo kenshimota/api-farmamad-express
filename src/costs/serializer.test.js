@@ -4,6 +4,13 @@ const {
   toPublicCostItemState,
 } = require("./serializer");
 
+const CURRENCY = {
+  id: 3,
+  code: "USD_BCV",
+  name: "Dólar BCV",
+  symbol: "$",
+};
+
 describe("toCostNumber", () => {
   it.each([
     ["12.50", 12.5],
@@ -73,6 +80,8 @@ describe("toPublicCost", () => {
       product_id: 15,
       item_state_id: 2,
       cost: "12.50",
+      currency_id: 3,
+      currency: CURRENCY,
       item_state: {
         id: 2,
         name: "damaged",
@@ -88,6 +97,8 @@ describe("toPublicCost", () => {
       product_id: 15,
       item_state_id: 2,
       cost: 12.5,
+      currency_id: 3,
+      currency: CURRENCY,
       item_state: {
         id: 2,
         name: "damaged",
@@ -103,6 +114,8 @@ describe("toPublicCost", () => {
       product_id: 4,
       item_state_id: 5,
       cost: "20.00",
+      currency_id: 3,
+      currency: CURRENCY,
       item_state: {
         id: 5,
         name: "sellable",
@@ -117,6 +130,8 @@ describe("toPublicCost", () => {
       product_id: 4,
       item_state_id: 5,
       cost: 20,
+      currency_id: 3,
+      currency: CURRENCY,
       item_state: {
         id: 5,
         name: "sellable",
@@ -163,6 +178,8 @@ describe("toPublicCost", () => {
       "product_id",
       "item_state_id",
       "cost",
+      "currency_id",
+      "currency",
       "item_state",
     ]);
   });
@@ -175,6 +192,8 @@ describe("toPublicCost", () => {
       product_id: 2,
       item_state_id: 3,
       cost: 1,
+      currency_id: null,
+      currency: null,
       item_state: null,
     });
   });

@@ -15,6 +15,7 @@ const Cost = require("../../src/models/cost");
 const Stock = require("../../src/models/stock");
 const Category = require("../../src/models/category");
 const Image = require("../../src/models/image");
+const { ensureDefaultTransactionCurrency } = require("./currency-default");
 const { createSupplier } = require("./suppliers");
 const { createProduct } = require("./products");
 const { createItemState } = require("./item-states");
@@ -149,6 +150,10 @@ async function createPurchase(overrides = {}) {
     values.number = await nextPurchaseNumber();
   }
 
+  if (values.currency_id === undefined) {
+    values.currency_id = (await ensureDefaultTransactionCurrency()).id;
+  }
+
   return Purchase.create(values);
 }
 
@@ -273,6 +278,7 @@ async function resetDatabase() {
     where: {},
     truncate: { cascade: true, restartIdentity: true },
   });
+  await ensureDefaultTransactionCurrency();
 }
 
 module.exports = {
@@ -282,6 +288,7 @@ module.exports = {
   createPurchase,
   createPurchaseItem,
   createPurchaseSupplier,
+  ensureDefaultTransactionCurrency,
   nextPurchaseNumber,
   publicPurchaseItem,
   resetDatabase,

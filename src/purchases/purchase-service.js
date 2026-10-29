@@ -2,6 +2,7 @@ const { purchaseRepository } = require("./repository");
 const { purchaseItemRepository } = require("./item-repository");
 const { stockRepository } = require("../stocks/repository");
 const { resolveDefaultTaxRate } = require("./validators");
+const { resolveTransactionCurrency } = require("../currencies/default");
 const { purchaseNotFound } = require("./errors");
 const {
   calculateLineSubtotal,
@@ -87,6 +88,7 @@ function createPurchaseService({
       support.assertNoDuplicates(lines);
       await support.assertSupplier(input.supplier_id);
       await support.assertItemReferences(lines, "items");
+      const currency = await resolveTransactionCurrency(input.currency_id);
 
       return repository.transaction(async (transaction) => {
         const totals = calculateTotals(lines, taxRate);
@@ -95,6 +97,7 @@ function createPurchaseService({
           {
             number,
             supplier_id: input.supplier_id,
+            currency_id: currency.id,
             status: "draft",
             subtotal: toDecimal(totals.subtotal),
             tax_rate: toDecimal(taxRate),
@@ -135,9 +138,18 @@ function createPurchaseService({
     async updatePurchase(id, changes) {
       return repository.transaction(async (transaction) => {
         const purchase = await support.loadDraft(id, transaction);
+        const updates = { ...changes };
 
         if (changes.supplier_id !== undefined) {
           await support.assertSupplier(changes.supplier_id);
+        }
+
+        if (changes.currency_id !== undefined) {
+          const currency = await resolveTransactionCurrency(
+            changes.currency_id,
+          );
+
+          updates.currency_id = currency.id;
         }
 
         const taxRate = changes.tax_rate ?? purchase.tax_rate;
@@ -149,7 +161,7 @@ function createPurchaseService({
         await repository.update(
           purchase,
           {
-            ...changes,
+            ...updates,
             tax_rate: toDecimal(taxRate),
             subtotal: toDecimal(totals.subtotal),
             tax_amount: toDecimal(totals.tax_amount),

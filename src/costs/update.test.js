@@ -6,6 +6,7 @@ jest.mock("../models/cost", () => ({
 }));
 jest.mock("../models/product", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/item-state", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/currency", () => ({ findOne: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");
@@ -15,6 +16,7 @@ const { UniqueConstraintError } = require("sequelize");
 const Cost = require("../models/cost");
 const Product = require("../models/product");
 const ItemState = require("../models/item-state");
+const Currency = require("../models/currency");
 const User = require("../models/user");
 const updateRouter = require("./update");
 
@@ -33,6 +35,7 @@ const ITEM_STATE = {
   label: "Maltratado",
   is_sellable: false,
 };
+const CURRENCY = { id: 1, code: "USD_BCV", name: "Dólar BCV", symbol: "$" };
 
 /**
  * Signs a JWT for the given role.
@@ -56,6 +59,8 @@ function target(overrides = {}) {
     product_id: 15,
     item_state_id: 2,
     cost: "12.50",
+    currency_id: 1,
+    currency: CURRENCY,
     item_state: ITEM_STATE,
     update: jest.fn(function update(values) {
       Object.assign(this, values);
@@ -85,9 +90,11 @@ beforeEach(() => {
   Cost.findByPk.mockReset();
   Product.findByPk.mockReset();
   ItemState.findByPk.mockReset();
+  Currency.findOne.mockReset();
   User.findByPk.mockReset();
   Product.findByPk.mockResolvedValue({ id: 15 });
   ItemState.findByPk.mockResolvedValue(ITEM_STATE);
+  Currency.findOne.mockResolvedValue(CURRENCY);
   User.findByPk.mockResolvedValue(AUTH_USER);
 });
 
@@ -111,6 +118,8 @@ describe("PUT /costs/:id", () => {
         product_id: 15,
         item_state_id: 2,
         cost: 20,
+        currency_id: 1,
+        currency: CURRENCY,
         item_state: ITEM_STATE,
       });
       expect(response.body).not.toHaveProperty("createdAt");

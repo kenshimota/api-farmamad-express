@@ -74,6 +74,7 @@ function createPurchaseConfirmOperations({
               product_id: line.product_id,
               item_state_id: line.item_state_id,
               unit_cost: line.unit_cost,
+              currency_id: purchase.currency_id,
             },
             { transaction },
           );

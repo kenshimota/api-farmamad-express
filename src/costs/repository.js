@@ -1,6 +1,10 @@
 const Cost = require("../models/cost");
 const Product = require("../models/product");
 const ItemState = require("../models/item-state");
+const Currency = require("../models/currency");
+const {
+  CURRENCY_SUMMARY_ATTRIBUTES: CURRENCY_ATTRIBUTES,
+} = require("../currencies/attributes");
 
 const LIST_ORDER = Object.freeze([
   ["product_id", "ASC"],
@@ -21,18 +25,26 @@ const ITEM_STATE_ATTRIBUTES = Object.freeze([
  * @param {object} [productModel] - Product model used for the checks.
  * @param {object} [itemStateModel] - Item state model used for the checks and
  *   for the nested include.
+ * @param {object} [currencyModel] - Currency model used for the nested include
+ *   and the active currency check.
  * @returns {object} Cost repository.
  */
 function createCostRepository(
   model = Cost,
   productModel = Product,
   itemStateModel = ItemState,
+  currencyModel = Currency,
 ) {
   const include = [
     {
       model: itemStateModel,
       as: "item_state",
       attributes: [...ITEM_STATE_ATTRIBUTES],
+    },
+    {
+      model: currencyModel,
+      as: "currency",
+      attributes: [...CURRENCY_ATTRIBUTES],
     },
   ];
 
@@ -62,9 +74,10 @@ function createCostRepository(
      * @param {object} [filters] - Listing filters.
      * @param {number} [filters.productId] - Exact product id.
      * @param {number} [filters.itemStateId] - Exact item state id.
+     * @param {number} [filters.currencyId] - Exact currency id.
      * @returns {Promise<object[]>} The matching instances.
      */
-    list({ productId, itemStateId } = {}) {
+    list({ productId, itemStateId, currencyId } = {}) {
       const options = { order: LIST_ORDER, include };
       const where = {};
 
@@ -74,6 +87,10 @@ function createCostRepository(
 
       if (itemStateId !== undefined) {
         where.item_state_id = itemStateId;
+      }
+
+      if (currencyId !== undefined) {
+        where.currency_id = currencyId;
       }
 
       if (Object.keys(where).length > 0) {
@@ -148,6 +165,7 @@ function createCostRepository(
 const costRepository = createCostRepository();
 
 module.exports = {
+  CURRENCY_ATTRIBUTES,
   ITEM_STATE_ATTRIBUTES,
   LIST_ORDER,
   createCostRepository,

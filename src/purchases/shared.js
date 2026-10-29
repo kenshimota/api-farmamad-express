@@ -2,7 +2,10 @@ const {
   ForeignKeyConstraintError,
   UniqueConstraintError,
 } = require("sequelize");
+const { foreignKeyField } = require("../shared/foreign-key");
+const { isHttpError, sendHttpError } = require("../shared/http-error");
 const {
+  CURRENCY_ID_MESSAGE,
   ITEM_STATE_ID_MESSAGE,
   PRODUCT_ID_MESSAGE,
   SUPPLIER_ID_MESSAGE,
@@ -10,30 +13,10 @@ const {
 
 const FOREIGN_KEY_FIELDS = Object.freeze([
   "supplier_id",
+  "currency_id",
   "product_id",
   "item_state_id",
 ]);
-
-/**
- * Reads the foreign key field named by a Sequelize constraint error.
- * @param {ForeignKeyConstraintError} error - Sequelize constraint error.
- * @returns {string|null} The matching field name or null.
- */
-function foreignKeyField(error) {
-  const fields = error.fields;
-  const candidates = Array.isArray(fields) ? fields : Object.keys(fields ?? {});
-  const direct = candidates.find((field) => FOREIGN_KEY_FIELDS.includes(field));
-
-  if (direct) {
-    return direct;
-  }
-
-  const message = `${error.message ?? ""} ${
-    error.parent?.detail ?? ""
-  }`.toLowerCase();
-
-  return FOREIGN_KEY_FIELDS.find((field) => message.includes(field)) ?? null;
-}
 
 /**
  * Translates service and persistence errors into HTTP responses. Errors with a
@@ -46,8 +29,8 @@ function foreignKeyField(error) {
  * @throws {unknown} The original error when it cannot be classified.
  */
 function handlePurchaseError(error, res) {
-  if (error && typeof error.status === "number" && error.body) {
-    return res.status(error.status).json(error.body);
+  if (isHttpError(error)) {
+    return sendHttpError(res, error);
   }
 
   if (error instanceof UniqueConstraintError) {
@@ -55,12 +38,18 @@ function handlePurchaseError(error, res) {
   }
 
   if (error instanceof ForeignKeyConstraintError) {
-    const field = foreignKeyField(error);
+    const field = foreignKeyField(error, FOREIGN_KEY_FIELDS);
 
     if (field === "supplier_id") {
       return res
         .status(422)
         .json({ errors: { supplier_id: SUPPLIER_ID_MESSAGE } });
+    }
+
+    if (field === "currency_id") {
+      return res
+        .status(422)
+        .json({ errors: { currency_id: CURRENCY_ID_MESSAGE } });
     }
 
     if (field === "product_id") {

@@ -1,4 +1,5 @@
 const { UniqueConstraintError } = require("sequelize");
+const { isHttpError, sendHttpError } = require("../shared/http-error");
 
 /**
  * Builds an error that carries the HTTP status and body a router must send.
@@ -59,13 +60,13 @@ function baseCannotBeDeactivated() {
 }
 
 /**
- * Sends the status and body carried by an HTTP error.
- * @param {import("express").Response} res - Express response.
- * @param {Error & { status: number, body: object }} error - HTTP error.
- * @returns {import("express").Response} The error response.
+ * 409 response used when the default transaction currency is deactivated.
+ * @returns {Error} The HTTP error.
  */
-function sendHttpError(res, error) {
-  return res.status(error.status).json(error.body);
+function defaultCannotBeDeactivated() {
+  return httpError(409, {
+    message: "Default transaction currency cannot be deactivated",
+  });
 }
 
 /**
@@ -78,7 +79,7 @@ function sendHttpError(res, error) {
  * @throws {unknown} The original error when it cannot be classified.
  */
 function handleCurrencyError(error, res) {
-  if (error && typeof error.status === "number" && error.body) {
+  if (isHttpError(error)) {
     return sendHttpError(res, error);
   }
 
@@ -94,6 +95,7 @@ module.exports = {
   baseRateLocked,
   currencyAlreadyExists,
   currencyNotFound,
+  defaultCannotBeDeactivated,
   handleCurrencyError,
   httpError,
   invalidCurrencyId,

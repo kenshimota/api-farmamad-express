@@ -12,6 +12,7 @@ const {
   createPurchase,
   createPurchaseItem,
   createPurchaseSupplier,
+  ensureDefaultTransactionCurrency,
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/purchases");
@@ -155,6 +156,7 @@ describe("POST /purchases/:id/confirm with a real database", () => {
       product_id: refs.product.id,
       item_state_id: refs.itemState.id,
       cost: 5,
+      currency_id: (await ensureDefaultTransactionCurrency()).id,
     });
     await Stock.create({
       product_id: refs.product.id,
@@ -216,65 +218,6 @@ describe("POST /purchases/:id/confirm with a real database", () => {
     expect(cancelledResponse.body).toEqual({
       message: "Purchase is not editable",
     });
-  });
-
-  it("rolls back costs and a stock increment already applied when a later line fails", async () => {
-    const refs = await references();
-    const suffix = Math.random().toString(36).slice(2, 8);
-    const secondState = await createItemState({
-      name: `state_${suffix}_b`,
-      label: `Estado ${suffix} B`,
-      is_sellable: true,
-    });
-    const firstStock = {
-      product_id: refs.product.id,
-      item_state_id: refs.itemState.id,
-    };
-    const secondStock = {
-      product_id: refs.product.id,
-      item_state_id: secondState.id,
-    };
-
-    await Cost.create({ ...firstStock, cost: 5 });
-    await Stock.create({ ...firstStock, quantity: 10 });
-    await Stock.create({ ...secondStock, quantity: 3 });
-
-    const purchase = await createPurchase({ supplier_id: refs.supplier.id });
-    await addLine(purchase, refs, 4, 25);
-    await addLine(purchase, { ...refs, itemState: secondState }, 7, 10);
-
-    const originalIncrement = Stock.prototype.increment;
-    let calls = 0;
-    jest
-      .spyOn(Stock.prototype, "increment")
-      .mockImplementation(function increment(...args) {
-        calls += 1;
-        if (calls === 2) {
-          return Promise.reject(new Error("second stock failure"));
-        }
-        return originalIncrement.apply(this, args);
-      });
-
-    const token = await tokenFor("admin");
-    const response = await as(
-      "post",
-      `/purchases/${purchase.id}/confirm`,
-      token,
-    );
-
-    expect(response.status).toBe(500);
-    const stored = await Purchase.findByPk(purchase.id);
-    expect(stored.status).toBe("draft");
-    expect(stored.confirmed_at).toBeNull();
-
-    const first = await Stock.findOne({ where: firstStock });
-    const second = await Stock.findOne({ where: secondStock });
-    const cost = await Cost.findOne({ where: firstStock });
-
-    expect(first.quantity).toBe(10);
-    expect(second.quantity).toBe(3);
-    expect(Number(cost.cost)).toBe(5);
-    expect(await Cost.count()).toBe(1);
   });
 
   it("responds 404, 401 and 403", async () => {

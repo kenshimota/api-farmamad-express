@@ -9,6 +9,7 @@ const { Op } = require("sequelize");
 const Stock = require("../models/stock");
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
+const Currency = require("../models/currency");
 const {
   ITEM_STATE_ATTRIBUTES,
   LIST_ORDER,
@@ -120,8 +121,15 @@ describe("stockRepository", () => {
       expect.objectContaining({
         model: Cost,
         as: "cost",
-        attributes: ["product_id", "item_state_id", "cost"],
+        attributes: ["product_id", "item_state_id", "cost", "currency_id"],
         required: false,
+        include: [
+          {
+            model: Currency,
+            as: "currency",
+            attributes: ["id", "code", "name", "symbol"],
+          },
+        ],
       }),
     ]);
     expect(options.include[1].on).toBeDefined();

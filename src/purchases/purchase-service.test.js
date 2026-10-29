@@ -1,3 +1,4 @@
+const Currency = require("../models/currency");
 const { createPurchaseService } = require("./purchase-service");
 const {
   TRANSACTION,
@@ -7,6 +8,12 @@ const {
 } = require("../../test/helpers/purchase-service-doubles");
 
 const ORIGINAL_TAX_RATE = process.env.PURCHASE_TAX_RATE;
+const CURRENCY = {
+  id: 3,
+  code: "USD_BCV",
+  name: "Dólar BCV",
+  symbol: "$",
+};
 
 /**
  * Builds the service with fresh doubles.
@@ -38,6 +45,7 @@ function purchase(overrides = {}) {
     id: 1,
     number: 1,
     supplier_id: 2,
+    currency_id: 3,
     status: "draft",
     subtotal: "0.00",
     tax_rate: "16.00",
@@ -49,7 +57,13 @@ function purchase(overrides = {}) {
   };
 }
 
+beforeEach(() => {
+  jest.spyOn(Currency, "findOne").mockResolvedValue(CURRENCY);
+});
+
 afterEach(() => {
+  jest.restoreAllMocks();
+
   if (ORIGINAL_TAX_RATE === undefined) {
     delete process.env.PURCHASE_TAX_RATE;
   } else {
@@ -84,6 +98,7 @@ describe("createPurchase", () => {
       {
         number: 7,
         supplier_id: 2,
+        currency_id: 3,
         status: "draft",
         subtotal: "837.50",
         tax_rate: "16.00",
@@ -133,6 +148,42 @@ describe("createPurchase", () => {
       { transaction: TRANSACTION },
     );
     expect(itemRepository.createMany).not.toHaveBeenCalled();
+  });
+
+  it("uses an explicit active currency", async () => {
+    const { service, repository } = setup();
+    const other = { id: 7, code: "VES", name: "Bolívar", symbol: "Bs" };
+    Currency.findOne.mockResolvedValue(other);
+    repository.findById.mockResolvedValue(purchase({ currency_id: 7 }));
+
+    await service.createPurchase({ supplier_id: 2, currency_id: 7 });
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ currency_id: 7 }),
+      { transaction: TRANSACTION },
+    );
+  });
+
+  it("rejects an invalid currency and a missing default", async () => {
+    const { service, repository } = setup();
+    Currency.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.createPurchase({ supplier_id: 2, currency_id: 99 }),
+    ).rejects.toMatchObject({
+      status: 422,
+      body: { errors: { currency_id: "Invalid currency" } },
+    });
+
+    await expect(
+      service.createPurchase({ supplier_id: 2 }),
+    ).rejects.toMatchObject({
+      status: 503,
+      body: {
+        message: "Default transaction currency is not configured",
+      },
+    });
+    expect(repository.transaction).not.toHaveBeenCalled();
   });
 
   it("rejects duplicated product/item state pairs before opening a transaction", async () => {

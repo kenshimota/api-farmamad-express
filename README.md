@@ -1820,15 +1820,15 @@ Respuesta `201`:
 
 Errores:
 
-| Código | Cuerpo                                                                                                                      |
-| ------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `400`  | `{ "message": "name, identification, email, phone, address, city_id and state_id are required" }`                           |
-| `401`  | `{ "message": "Unauthorized" }`                                                                                             |
-| `403`  | `{ "message": "Forbidden" }`                                                                                                |
-| `409`  | `{ "message": "Supplier already exists" }`                                                                                  |
-| `422`  | `{ "errors": { "city_id": "Invalid city id" } }`                                                                            |
-| `422`  | `{ "errors": { "state_id": "Invalid state" } }`                                                                             |
-| `422`  | `{ "errors": { "city_id": "City does not belong to state" } }`                                                              |
+| Código | Cuerpo                                                                                            |
+| ------ | ------------------------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "name, identification, email, phone, address, city_id and state_id are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                                                                   |
+| `403`  | `{ "message": "Forbidden" }`                                                                      |
+| `409`  | `{ "message": "Supplier already exists" }`                                                        |
+| `422`  | `{ "errors": { "city_id": "Invalid city id" } }`                                                  |
+| `422`  | `{ "errors": { "state_id": "Invalid state" } }`                                                   |
+| `422`  | `{ "errors": { "city_id": "City does not belong to state" } }`                                    |
 
 ### `GET /suppliers`
 
@@ -1864,12 +1864,12 @@ Respuesta `200`:
 
 Errores:
 
-| Código | Cuerpo                                            |
-| ------ | ------------------------------------------------- |
-| `401`  | `{ "message": "Unauthorized" }`                   |
-| `403`  | `{ "message": "User is blocked" }`                |
-| `422`  | `{ "errors": { "state_id": "Invalid state" } }`   |
-| `422`  | `{ "errors": { "city_id": "Invalid city id" } }`  |
+| Código | Cuerpo                                           |
+| ------ | ------------------------------------------------ |
+| `401`  | `{ "message": "Unauthorized" }`                  |
+| `403`  | `{ "message": "User is blocked" }`               |
+| `422`  | `{ "errors": { "state_id": "Invalid state" } }`  |
+| `422`  | `{ "errors": { "city_id": "Invalid city id" } }` |
 
 ### `GET /suppliers/:id`
 
@@ -1882,12 +1882,12 @@ curl http://localhost:3001/suppliers/1 -H "Authorization: Bearer <jwt>"
 
 Errores:
 
-| Código | Cuerpo                                           |
-| ------ | ------------------------------------------------ |
-| `401`  | `{ "message": "Unauthorized" }`                  |
-| `403`  | `{ "message": "User is blocked" }`               |
-| `404`  | `{ "message": "Supplier not found" }`            |
-| `422`  | `{ "errors": { "id": "Invalid supplier id" } }`  |
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "User is blocked" }`              |
+| `404`  | `{ "message": "Supplier not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid supplier id" } }` |
 
 ### `PUT /suppliers/:id`
 
@@ -1905,15 +1905,15 @@ curl -X PUT http://localhost:3001/suppliers/1 \
 
 Errores:
 
-| Código | Cuerpo                                                                        |
-| ------ | ----------------------------------------------------------------------------- |
-| `400`  | `{ "message": "At least one field is required" }`                             |
-| `401`  | `{ "message": "Unauthorized" }`                                               |
-| `403`  | `{ "message": "Forbidden" }`                                                  |
-| `404`  | `{ "message": "Supplier not found" }`                                         |
-| `409`  | `{ "message": "Supplier already exists" }`                                    |
-| `422`  | `{ "errors": { "id": "Invalid supplier id" } }`                               |
-| `422`  | `{ "errors": { "city_id": "City does not belong to state" } }`                |
+| Código | Cuerpo                                                         |
+| ------ | -------------------------------------------------------------- |
+| `400`  | `{ "message": "At least one field is required" }`              |
+| `401`  | `{ "message": "Unauthorized" }`                                |
+| `403`  | `{ "message": "Forbidden" }`                                   |
+| `404`  | `{ "message": "Supplier not found" }`                          |
+| `409`  | `{ "message": "Supplier already exists" }`                     |
+| `422`  | `{ "errors": { "id": "Invalid supplier id" } }`                |
+| `422`  | `{ "errors": { "city_id": "City does not belong to state" } }` |
 
 ### `DELETE /suppliers/:id`
 
@@ -1929,13 +1929,13 @@ curl -X DELETE http://localhost:3001/suppliers/1 \
 
 Errores:
 
-| Código | Cuerpo                                           |
-| ------ | ------------------------------------------------ |
-| `401`  | `{ "message": "Unauthorized" }`                  |
-| `403`  | `{ "message": "Forbidden" }`                     |
-| `404`  | `{ "message": "Supplier not found" }`            |
-| `409`  | `{ "message": "Supplier is in use" }`            |
-| `422`  | `{ "errors": { "id": "Invalid supplier id" } }`  |
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "Forbidden" }`                    |
+| `404`  | `{ "message": "Supplier not found" }`           |
+| `409`  | `{ "message": "Supplier is in use" }`           |
+| `422`  | `{ "errors": { "id": "Invalid supplier id" } }` |
 
 ## Estados de ítem
 
@@ -1945,15 +1945,15 @@ cuarentena o reservado. **No deben confundirse con `states` (HU-16)**, que son
 los estados geográficos de Venezuela; en este módulo los nombres de archivo,
 tabla y variables usan siempre `item_state(s)`.
 
-| Columna       | Tipo        | Restricciones                                  |
-| ------------- | ----------- | ---------------------------------------------- |
-| `id`          | INTEGER     | PK, autoincremental                            |
-| `name`        | STRING(50)  | Requerido, único sin distinguir mayúsculas     |
-| `label`       | STRING(100) | Requerido                                      |
-| `description` | STRING(255) | Opcional                                       |
-| `is_sellable` | BOOLEAN     | Requerido, por defecto `false`                 |
-| `createdAt`   | TIMESTAMP   | Auditoría, no se expone en la API              |
-| `updatedAt`   | TIMESTAMP   | Auditoría, no se expone en la API              |
+| Columna       | Tipo        | Restricciones                              |
+| ------------- | ----------- | ------------------------------------------ |
+| `id`          | INTEGER     | PK, autoincremental                        |
+| `name`        | STRING(50)  | Requerido, único sin distinguir mayúsculas |
+| `label`       | STRING(100) | Requerido                                  |
+| `description` | STRING(255) | Opcional                                   |
+| `is_sellable` | BOOLEAN     | Requerido, por defecto `false`             |
+| `createdAt`   | TIMESTAMP   | Auditoría, no se expone en la API          |
+| `updatedAt`   | TIMESTAMP   | Auditoría, no se expone en la API          |
 
 `name` es la clave estable (`snake_case`, solo `[a-z0-9_]`, 2–50 caracteres) que
 usarán costos, stocks y compras. `label` es el texto visible (2–100
@@ -1972,13 +1972,13 @@ La respuesta pública de un estado de ítem es:
 }
 ```
 
-| Endpoint                 | admin | seller | dispatcher | manager_warehouse | support | customer |
-| ------------------------ | ----- | ------ | ---------- | ----------------- | ------- | -------- |
-| `POST /item-states`      | ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
-| `GET /item-states`       | ✅    | ✅     | ✅         | ✅                | ✅      | ✅       |
-| `GET /item-states/:id`   | ✅    | ✅     | ✅         | ✅                | ✅      | ✅       |
-| `PUT /item-states/:id`   | ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
-| `DELETE /item-states/:id`| ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
+| Endpoint                  | admin | seller | dispatcher | manager_warehouse | support  | customer |
+| ------------------------- | ----- | ------ | ---------- | ----------------- | -------- | -------- |
+| `POST /item-states`       | ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
+| `GET /item-states`        | ✅    | ✅     | ✅         | ✅                | ✅       | ✅       |
+| `GET /item-states/:id`    | ✅    | ✅     | ✅         | ✅                | ✅       | ✅       |
+| `PUT /item-states/:id`    | ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
+| `DELETE /item-states/:id` | ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
 
 ### `POST /item-states`
 
@@ -2000,13 +2000,13 @@ curl -X POST http://localhost:3001/item-states \
 
 Errores:
 
-| Código | Cuerpo                                                        |
-| ------ | ------------------------------------------------------------- |
-| `400`  | `{ "message": "name and label are required" }`                |
-| `401`  | `{ "message": "Unauthorized" }`                               |
-| `403`  | `{ "message": "Forbidden" }`                                  |
-| `409`  | `{ "message": "Item state already exists" }`                  |
-| `422`  | `{ "errors": { "name": "name must be snake_case" } }`         |
+| Código | Cuerpo                                                |
+| ------ | ----------------------------------------------------- |
+| `400`  | `{ "message": "name and label are required" }`        |
+| `401`  | `{ "message": "Unauthorized" }`                       |
+| `403`  | `{ "message": "Forbidden" }`                          |
+| `409`  | `{ "message": "Item state already exists" }`          |
+| `422`  | `{ "errors": { "name": "name must be snake_case" } }` |
 
 ### `GET /item-states`
 
@@ -2095,14 +2095,15 @@ vigente** de un producto para un estado de ítem. El histórico queda en
 `purchase_items` (HU-21). La combinación `(product_id, item_state_id)` es única:
 un producto tiene un costo por estado.
 
-| Columna         | Tipo          | Restricciones                                   |
-| --------------- | ------------- | ----------------------------------------------- |
-| `id`            | INTEGER       | PK, autoincremental                             |
-| `product_id`    | INTEGER       | Requerido, FK `products.id` con `RESTRICT`      |
-| `item_state_id` | INTEGER       | Requerido, FK `item_states.id` con `RESTRICT`   |
-| `cost`          | DECIMAL(12,2) | Requerido, `>= 0`                               |
-| `createdAt`     | TIMESTAMP     | Auditoría, no se expone en la API               |
-| `updatedAt`     | TIMESTAMP     | Auditoría, no se expone en la API               |
+| Columna         | Tipo          | Restricciones                                 |
+| --------------- | ------------- | --------------------------------------------- |
+| `id`            | INTEGER       | PK, autoincremental                           |
+| `product_id`    | INTEGER       | Requerido, FK `products.id` con `RESTRICT`    |
+| `item_state_id` | INTEGER       | Requerido, FK `item_states.id` con `RESTRICT` |
+| `cost`          | DECIMAL(12,2) | Requerido, `>= 0`                             |
+| `currency_id`   | INTEGER       | Requerido, FK `currencies.id` con `RESTRICT`  |
+| `createdAt`     | TIMESTAMP     | Auditoría, no se expone en la API             |
+| `updatedAt`     | TIMESTAMP     | Auditoría, no se expone en la API             |
 
 `cost` se valida con `yup` (máximo 2 decimales y 9 enteros) y se serializa como
 número, nunca como el string que devuelve `DECIMAL`. La respuesta pública es:
@@ -2113,6 +2114,13 @@ número, nunca como el string que devuelve `DECIMAL`. La respuesta pública es:
   "product_id": 15,
   "item_state_id": 2,
   "cost": 12.5,
+  "currency_id": 3,
+  "currency": {
+    "id": 3,
+    "code": "USD_BCV",
+    "name": "Dólar BCV",
+    "symbol": "$"
+  },
   "item_state": {
     "id": 2,
     "name": "damaged",
@@ -2122,20 +2130,26 @@ número, nunca como el string que devuelve `DECIMAL`. La respuesta pública es:
 }
 ```
 
-| Endpoint                     | admin | seller | manager_warehouse | dispatcher | support | customer |
-| ---------------------------- | ----- | ------ | ----------------- | ---------- | ------- | -------- |
-| `POST /costs`                | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `GET /costs`                 | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `GET /costs/:id`             | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `GET /costs/product/:id`     | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `PUT /costs/:id`             | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `DELETE /costs/:id`          | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
+`cost` está expresado en la moneda indicada por `currency_id`. Si el cliente no
+la envía, se usa la moneda por defecto para transacciones (`USD_BCV`). No hay
+conversión automática: cambiar la moneda conserva el valor numérico.
+
+| Endpoint                 | admin | seller | manager_warehouse | dispatcher | support  | customer |
+| ------------------------ | ----- | ------ | ----------------- | ---------- | -------- | -------- |
+| `POST /costs`            | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /costs`             | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /costs/:id`         | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /costs/product/:id` | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `PUT /costs/:id`         | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `DELETE /costs/:id`      | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
 
 ### `POST /costs`
 
 Protegido: requiere rol `admin` o `seller`. Crea el costo de un producto para
-un estado y responde `201`. Los tres campos son obligatorios y el producto y el
-estado deben existir.
+un estado y responde `201`. `product_id`, `item_state_id` y `cost` son
+obligatorios; `currency_id` es opcional y, si se omite, se usa la moneda por
+defecto para transacciones. El producto, el estado y la moneda deben existir (la
+moneda además debe estar activa).
 
 ```bash
 curl -X POST http://localhost:3001/costs \
@@ -2148,28 +2162,44 @@ curl -X POST http://localhost:3001/costs \
   }'
 ```
 
+Con moneda explícita:
+
+```bash
+curl -X POST http://localhost:3001/costs \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 15,
+    "item_state_id": 2,
+    "cost": 12.5,
+    "currency_id": 1
+  }'
+```
+
 Errores:
 
-| Código | Cuerpo                                                              |
-| ------ | ------------------------------------------------------------------- |
-| `400`  | `{ "message": "product_id, item_state_id and cost are required" }`  |
-| `401`  | `{ "message": "Unauthorized" }`                                     |
-| `403`  | `{ "message": "Forbidden" }`                                        |
-| `409`  | `{ "message": "Cost already exists" }`                              |
-| `422`  | `{ "errors": { "product_id": "Invalid product" } }`                 |
-| `422`  | `{ "errors": { "item_state_id": "Invalid item state" } }`           |
-| `422`  | `{ "errors": { "cost": "cost must be >= 0" } }`                     |
-| `422`  | `{ "errors": { "cost": "cost must have at most 2 decimals" } }`     |
+| Código | Cuerpo                                                             |
+| ------ | ------------------------------------------------------------------ |
+| `400`  | `{ "message": "product_id, item_state_id and cost are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                                    |
+| `403`  | `{ "message": "Forbidden" }`                                       |
+| `409`  | `{ "message": "Cost already exists" }`                             |
+| `422`  | `{ "errors": { "product_id": "Invalid product" } }`                |
+| `422`  | `{ "errors": { "item_state_id": "Invalid item state" } }`          |
+| `422`  | `{ "errors": { "cost": "cost must be >= 0" } }`                    |
+| `422`  | `{ "errors": { "cost": "cost must have at most 2 decimals" } }`    |
+| `422`  | `{ "errors": { "currency_id": "Invalid currency" } }`              |
+| `503`  | `{ "message": "Default transaction currency is not configured" }`  |
 
 ### `GET /costs`
 
 Protegido para `admin`, `seller` y `manager_warehouse`. Devuelve los costos
 ordenados por `product_id` y `item_state_id` ascendente. Los filtros
-`?product_id=` y `?item_state_id=` son opcionales y exactos; un valor inválido
-responde `422`.
+`?product_id=`, `?item_state_id=` y `?currency_id=` son opcionales y exactos;
+un valor inválido responde `422`.
 
 ```bash
-curl "http://localhost:3001/costs?product_id=15&item_state_id=2" \
+curl "http://localhost:3001/costs?product_id=15&item_state_id=2&currency_id=3" \
   -H "Authorization: Bearer <jwt>"
 ```
 
@@ -2195,9 +2225,11 @@ y un producto no numérico con
 ### `PUT /costs/:id`
 
 Protegido: requiere rol `admin` o `seller`. Acepta cualquier combinación de
-`cost`, `product_id` e `item_state_id` (al menos uno) y responde `202` con el
-recurso actualizado. Las referencias nuevas deben existir y la combinación
-resultante debe seguir siendo única; si ya existe, responde `409`.
+`cost`, `product_id`, `item_state_id` y `currency_id` (al menos uno) y responde
+`202` con el recurso actualizado. Cambiar `currency_id` **no convierte** el
+valor de `cost`: el número se conserva y pasa a interpretarse en la nueva
+moneda. Las referencias nuevas deben existir (la moneda debe estar activa) y la
+combinación resultante debe seguir siendo única; si ya existe, responde `409`.
 
 ```bash
 curl -X PUT http://localhost:3001/costs/1 \
@@ -2231,14 +2263,14 @@ por combinación `(product_id, item_state_id)`** con la cantidad disponible. En
 esta historia la API es de **solo lectura**: las filas se crean y se incrementan
 automáticamente al confirmar compras (HU-21), no mediante endpoints públicos.
 
-| Columna         | Tipo      | Restricciones                                        |
-| --------------- | --------- | ---------------------------------------------------- |
-| `id`            | INTEGER   | PK, autoincremental                                  |
-| `product_id`    | INTEGER   | Requerido, FK `products.id` con `RESTRICT`           |
-| `item_state_id` | INTEGER   | Requerido, FK `item_states.id` con `RESTRICT`        |
-| `quantity`      | INTEGER   | Requerido, `>= 0`, por defecto `0`                    |
-| `createdAt`     | TIMESTAMP | Auditoría, no se expone en la API                    |
-| `updatedAt`     | TIMESTAMP | Auditoría, no se expone en la API                    |
+| Columna         | Tipo      | Restricciones                                 |
+| --------------- | --------- | --------------------------------------------- |
+| `id`            | INTEGER   | PK, autoincremental                           |
+| `product_id`    | INTEGER   | Requerido, FK `products.id` con `RESTRICT`    |
+| `item_state_id` | INTEGER   | Requerido, FK `item_states.id` con `RESTRICT` |
+| `quantity`      | INTEGER   | Requerido, `>= 0`, por defecto `0`            |
+| `createdAt`     | TIMESTAMP | Auditoría, no se expone en la API             |
+| `updatedAt`     | TIMESTAMP | Auditoría, no se expone en la API             |
 
 La restricción única `(product_id, item_state_id)` impide duplicados y el
 `CHECK (quantity >= 0)` impide cantidades negativas. La respuesta pública de
@@ -2259,13 +2291,13 @@ La restricción única `(product_id, item_state_id)` impide duplicados y el
 }
 ```
 
-| Endpoint                         | admin | seller | manager_warehouse | dispatcher | support | customer |
-| -------------------------------- | ----- | ------ | ----------------- | ---------- | ------- | -------- |
-| `GET /stocks`                    | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `GET /stocks/:id`                | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `GET /stocks/product/:product_id`| ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `GET /stocks/available`          | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
-| `GET /stocks/available/:product_id`| ✅  | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| Endpoint                            | admin | seller | manager_warehouse | dispatcher | support  | customer |
+| ----------------------------------- | ----- | ------ | ----------------- | ---------- | -------- | -------- |
+| `GET /stocks`                       | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /stocks/:id`                   | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /stocks/product/:product_id`   | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /stocks/available`             | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /stocks/available/:product_id` | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
 
 No existe `POST`, `PUT` ni `DELETE` público para `stocks`; esas rutas responden
 `404`.
@@ -2305,8 +2337,10 @@ Protegido para `admin`, `seller` y `manager_warehouse`. Requiere
 `?product_id=` y devuelve solo las filas con `quantity > 0` cuyo estado tiene
 `is_sellable = true`, ordenadas por `item_state.name`. Cada fila incluye el
 costo vigente de `costs` para la misma combinación o `cost: null` si no existe;
-la fila **no se oculta** para que el faltante de costo sea visible. La consulta
-cruza `stocks`, `item_states` y `costs` con un join de Sequelize, sin N+1.
+también incluye `currency_id` y `currency` del costo, o ambos en `null` cuando
+no hay costo. La fila **no se oculta** para que el faltante sea visible. La
+consulta cruza `stocks`, `item_states`, `costs` y `currencies` con un join de
+Sequelize, sin N+1.
 `GET /stocks/available/:product_id` es un alias de la misma consulta.
 
 ```bash
@@ -2323,6 +2357,13 @@ Respuesta `200`:
     "item_state_id": 1,
     "quantity": 40,
     "cost": 20.0,
+    "currency_id": 3,
+    "currency": {
+      "id": 3,
+      "code": "USD_BCV",
+      "name": "Dólar BCV",
+      "symbol": "$"
+    },
     "item_state": {
       "id": 1,
       "name": "sellable",
@@ -2335,12 +2376,12 @@ Respuesta `200`:
 
 Errores comunes del módulo:
 
-| Código | Cuerpo                                           |
-| ------ | ------------------------------------------------ |
-| `401`  | `{ "message": "Unauthorized" }`                  |
-| `403`  | `{ "message": "Forbidden" }`                     |
-| `404`  | `{ "message": "Stock not found" }`               |
-| `422`  | `{ "errors": { "product_id": "Invalid id" } }`   |
+| Código | Cuerpo                                         |
+| ------ | ---------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                |
+| `403`  | `{ "message": "Forbidden" }`                   |
+| `404`  | `{ "message": "Stock not found" }`             |
+| `422`  | `{ "errors": { "product_id": "Invalid id" } }` |
 
 ### Incremento desde compras (HU-21)
 
@@ -2382,17 +2423,20 @@ es idempotente: repetir la confirmación responde `409`.
 
 ### Roles
 
-| Endpoint                                                       | admin | seller | manager_warehouse | dispatcher | support | customer |
-| -------------------------------------------------------------- | ----- | ------ | ----------------- | ---------- | ------- | -------- |
-| `POST /purchases` y escrituras `/purchases/...`                | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403`| ❌ `403` |
-| `GET /purchases`, `GET /purchases/:id`, `GET .../items`        | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403`| ❌ `403` |
+| Endpoint                                                | admin | seller | manager_warehouse | dispatcher | support  | customer |
+| ------------------------------------------------------- | ----- | ------ | ----------------- | ---------- | -------- | -------- |
+| `POST /purchases` y escrituras `/purchases/...`         | ✅    | ✅     | ❌ `403`          | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /purchases`, `GET /purchases/:id`, `GET .../items` | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
 
 ### `POST /purchases`
 
-Protegido para `admin` y `seller`. `supplier_id` es obligatorio; `tax_rate`,
-`notes` e `items` son opcionales. Las líneas se validan contra `products` e
-`item_states` y no se repite `(product_id, item_state_id)` en una misma compra
-(`409`). Responde `201` con la compra y sus líneas.
+Protegido para `admin` y `seller`. `supplier_id` es obligatorio; `currency_id`,
+`tax_rate`, `notes` e `items` son opcionales. `currency_id` toma la moneda por
+defecto (`USD_BCV`) cuando se omite, debe existir y estar activa si se envía, y
+todos los montos de la compra y de sus líneas quedan expresados en ella. Las
+líneas se validan contra `products` e `item_states` y no se repite
+`(product_id, item_state_id)` en una misma compra (`409`). Responde `201` con la
+compra, su moneda y sus líneas.
 
 ```bash
 curl -X POST http://localhost:3001/purchases \
@@ -2416,6 +2460,13 @@ Respuesta `201`:
   "id": 1,
   "number": 1,
   "supplier_id": 1,
+  "currency_id": 3,
+  "currency": {
+    "id": 3,
+    "code": "USD_BCV",
+    "name": "Dólar BCV",
+    "symbol": "$"
+  },
   "status": "draft",
   "subtotal": 837.5,
   "tax_rate": 16,
@@ -2423,16 +2474,47 @@ Respuesta `201`:
   "total": 971.5,
   "notes": "Reposición mensual",
   "items": [
-    { "id": 1, "product_id": 15, "item_state_id": 1, "quantity": 40, "unit_cost": 20, "subtotal": 800 },
-    { "id": 2, "product_id": 15, "item_state_id": 2, "quantity": 3, "unit_cost": 12.5, "subtotal": 37.5 }
+    {
+      "id": 1,
+      "product_id": 15,
+      "item_state_id": 1,
+      "quantity": 40,
+      "unit_cost": 20,
+      "subtotal": 800
+    },
+    {
+      "id": 2,
+      "product_id": 15,
+      "item_state_id": 2,
+      "quantity": 3,
+      "unit_cost": 12.5,
+      "subtotal": 37.5
+    }
   ]
 }
+```
+
+Para crear la compra en otra moneda activa, envía `currency_id`; no se convierte
+ningún monto:
+
+```bash
+curl -X POST http://localhost:3001/purchases \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "supplier_id": 1,
+    "currency_id": 1,
+    "items": [
+      { "product_id": 15, "item_state_id": 1, "quantity": 40, "unit_cost": 20.0 }
+    ]
+  }'
 ```
 
 ### `GET /purchases` y `GET /purchases/:id`
 
 `GET /purchases` lista por `number` descendente y acepta los filtros exactos
-`?supplier_id=`, `?status=draft|confirmed|cancelled` y `?number=`. Con
+`?supplier_id=`, `?status=draft|confirmed|cancelled`, `?number=` y
+`?currency_id=`. Con
 `?include=items` cada compra incluye sus líneas. `GET /purchases/:id` devuelve
 siempre `items` y el `supplier` anidado, o `404` con
 `{ "message": "Purchase not found" }`.
@@ -2447,8 +2529,10 @@ curl http://localhost:3001/purchases/1 \
 
 ### `PUT /purchases/:id`, `DELETE /purchases/:id` y `POST /purchases/:id/cancel`
 
-`PUT` acepta `supplier_id`, `tax_rate` y/o `notes`, recalcula los totales y
-responde `202`. No acepta `items`. `DELETE` solo borra borradores (`204`, con
+`PUT` acepta `supplier_id`, `currency_id`, `tax_rate` y/o `notes`, recalcula
+los totales y responde `202`. Cambiar `currency_id` solo se permite en `draft` y
+**no convierte** los montos: `unit_cost`, `subtotal`, `tax_amount` y `total`
+conservan su valor numérico. No acepta `items`. `DELETE` solo borra borradores (`204`, con
 cascada a las líneas) y `POST /purchases/:id/cancel` cambia el estado a
 `cancelled` (`200`) sin tocar `costs` ni `stocks`. Cualquier intento sobre una
 compra confirmada o cancelada responde `409` con
@@ -2474,8 +2558,10 @@ curl -X POST http://localhost:3001/purchases/1/cancel \
 - `DELETE /purchases/:purchase_id/items/:item_id` elimina la línea y responde
   `204`.
 
-Cada alta, edición o baja recalcula la cabecera; al borrar la última línea los
-totales quedan en `0`. Solo se permiten sobre borradores. Si la línea no
+Las líneas **no** llevan `currency_id`: todos sus montos se expresan en la
+moneda de la compra padre. Si el cliente envía `currency_id` dentro de una línea,
+se ignora. Cada alta, edición o baja recalcula la cabecera; al borrar la última
+línea los totales quedan en `0`. Solo se permiten sobre borradores. Si la línea no
 pertenece a la compra responde `404` con `{ "message": "Item not found" }` y un
 producto/estado repetido responde `409` con
 `{ "message": "Item already exists" }`.
@@ -2498,13 +2584,15 @@ curl -X DELETE http://localhost:3001/purchases/1/items/1 \
 ### `POST /purchases/:id/confirm`
 
 Protegido para `admin` y `seller`. En **una sola transacción** recalcula los
-totales, hace *upsert* en `costs` por `(product_id, item_state_id)` (la última
+totales, hace _upsert_ en `costs` por `(product_id, item_state_id)` (la última
 compra confirmada gana), incrementa `stocks.quantity` con
 `stockRepository.applyPurchaseItems(items, { transaction })` y marca
 `status = confirmed` con `confirmed_at`. Si cualquier paso falla se revierte
-todo: ni costos ni stocks cambian. Sin líneas responde `422` con
-`{ "message": "Purchase has no items" }`; si ya estaba confirmada responde
-`409` con `{ "message": "Purchase already confirmed" }`.
+todo: ni costos ni stocks cambian. El _upsert_ de `costs` hereda
+`currency_id` de la compra; si la moneda fue desactivada después de crear la
+compra, la confirmación se permite porque la referencia es histórica. Sin líneas
+responde `422` con `{ "message": "Purchase has no items" }`; si ya estaba
+confirmada responde `409` con `{ "message": "Purchase already confirmed" }`.
 
 ```bash
 curl -X POST http://localhost:3001/purchases/1/confirm \
@@ -2513,14 +2601,16 @@ curl -X POST http://localhost:3001/purchases/1/confirm \
 
 ### Errores del módulo
 
-| Código | Cuerpo                                                                 |
-| ------ | ---------------------------------------------------------------------- |
-| `400`  | `{ "message": "supplier_id is required" }` / `{ "message": "At least one field is required" }` |
-| `401`  | `{ "message": "Unauthorized" }`                                        |
-| `403`  | `{ "message": "Forbidden" }`                                           |
-| `404`  | `{ "message": "Purchase not found" }` / `{ "message": "Item not found" }` |
+| Código | Cuerpo                                                                                                 |
+| ------ | ------------------------------------------------------------------------------------------------------ |
+| `400`  | `{ "message": "supplier_id is required" }` / `{ "message": "At least one field is required" }`         |
+| `401`  | `{ "message": "Unauthorized" }`                                                                        |
+| `403`  | `{ "message": "Forbidden" }`                                                                           |
+| `404`  | `{ "message": "Purchase not found" }` / `{ "message": "Item not found" }`                              |
 | `409`  | `{ "message": "Purchase is not editable" }` / `"Purchase already confirmed"` / `"Item already exists"` |
-| `422`  | `{ "errors": { ... } }` / `{ "message": "Purchase has no items" }`      |
+| `422`  | `{ "errors": { ... } }` / `{ "message": "Purchase has no items" }`                                     |
+| `422`  | `{ "errors": { "currency_id": "Invalid currency" } }`                                                  |
+| `503`  | `{ "message": "Default transaction currency is not configured" }`                                      |
 
 ### Referencias activadas
 
@@ -2546,9 +2636,10 @@ Roles:
 
 El seeder `seeders/<timestamp>-currencies.js` inserta `VES`, `USDT` y
 `USD_BCV` si no existen. Es idempotente y **nunca sobrescribe** una tasa ya
-modificada por un administrador: solo crea las monedas faltantes. Cada moneda
-insertada por la semilla deja una fila de historial con
-`changed_by = null` y `reason = "seed"`.
+modificada por un administrador: solo crea las monedas faltantes. Además deja
+`USD_BCV` activa y marcada con `is_default_for_transactions = true`. Cada moneda
+insertada por la semilla deja una fila de historial con `changed_by = null` y
+`reason = "seed"`.
 
 ```bash
 npm run db:seed
@@ -2582,7 +2673,8 @@ curl "http://localhost:3001/currencies" \
     "symbol": "$",
     "rate": 1000.29,
     "is_base": false,
-    "is_active": true
+    "is_active": true,
+    "is_default_for_transactions": false
   }
 ]
 ```
@@ -2621,7 +2713,8 @@ Respuesta `201`:
   "symbol": "€",
   "rate": 970.5,
   "is_base": false,
-  "is_active": true
+  "is_active": true,
+  "is_default_for_transactions": false
 }
 ```
 
@@ -2650,7 +2743,8 @@ Respuesta `202`:
   "symbol": "$",
   "rate": 1005.75,
   "is_base": false,
-  "is_active": true
+  "is_active": true,
+  "is_default_for_transactions": false
 }
 ```
 
@@ -2663,6 +2757,11 @@ Reglas:
 - `is_active = true` reactiva una moneda desactivada.
 - La moneda base no puede cambiar `rate` (`409 Base currency rate cannot be
 changed`) ni desactivarse (`409 Base currency cannot be deactivated`).
+- La moneda por defecto para transacciones no puede desactivarse: `PUT` con
+  `is_active: false` o `DELETE` responde `409` con
+  `{ "message": "Default transaction currency cannot be deactivated" }`.
+- `is_default_for_transactions` se expone en las respuestas pero **no es
+  editable por API**; en esta HU queda fija en `USD_BCV`.
 - `rate` debe ser mayor que `0`, con máximo 6 decimales y máximo
   `999999999999`; si no, responde `422`.
 
@@ -2676,8 +2775,8 @@ curl -X DELETE http://localhost:3001/currencies/4 \
   -H "Authorization: Bearer <jwt>"
 ```
 
-La moneda base responde `409`. Una moneda inexistente o ya inactiva responde
-`404`.
+La moneda base y la moneda por defecto para transacciones responden `409`. Una
+moneda inexistente o ya inactiva responde `404`.
 
 ### `GET /currencies/:id/history`
 
@@ -2719,17 +2818,37 @@ curl "http://localhost:3001/currencies/2/history" \
 
 ### Errores del módulo
 
-| Código | Cuerpo                                                      |
-| ------ | ----------------------------------------------------------- |
-| `400`  | `{ "message": "code, name, symbol and rate are required" }` |
-| `400`  | `{ "message": "At least one field is required" }`           |
-| `401`  | `{ "message": "Unauthorized" }`                             |
-| `403`  | `{ "message": "Forbidden" }`                                |
-| `404`  | `{ "message": "Currency not found" }`                       |
-| `409`  | `{ "message": "Currency already exists" }`                  |
-| `409`  | `{ "message": "Base currency rate cannot be changed" }`     |
-| `409`  | `{ "message": "Base currency cannot be deactivated" }`      |
-| `422`  | `{ "errors": { "rate": "rate must be greater than 0" } }`   |
+| Código | Cuerpo                                                                |
+| ------ | --------------------------------------------------------------------- |
+| `400`  | `{ "message": "code, name, symbol and rate are required" }`           |
+| `400`  | `{ "message": "At least one field is required" }`                     |
+| `401`  | `{ "message": "Unauthorized" }`                                       |
+| `403`  | `{ "message": "Forbidden" }`                                          |
+| `404`  | `{ "message": "Currency not found" }`                                 |
+| `409`  | `{ "message": "Currency already exists" }`                            |
+| `409`  | `{ "message": "Base currency rate cannot be changed" }`               |
+| `409`  | `{ "message": "Base currency cannot be deactivated" }`                |
+| `409`  | `{ "message": "Default transaction currency cannot be deactivated" }` |
+| `422`  | `{ "errors": { "rate": "rate must be greater than 0" } }`             |
+
+### Moneda por defecto para transacciones (HU-26)
+
+`currencies.is_default_for_transactions` marca la moneda que usan los endpoints
+de costos y compras cuando el cliente omite `currency_id`. La columna es
+`BOOLEAN NOT NULL DEFAULT false`, tiene un índice único parcial
+`currencies_default_transaction_unique ON currencies (is_default_for_transactions)
+WHERE is_default_for_transactions = true` y la migración de HU-26 deja
+`USD_BCV` (`rate = 889.89`) como única moneda por defecto activa.
+
+- `GET /currencies` y `GET /currencies/:id` incluyen el flag.
+- `POST /costs` y `POST /purchases` usan `USD_BCV` si no se envía `currency_id`.
+- `GET /costs?currency_id=` y `GET /purchases?currency_id=` filtran por moneda.
+- Las respuestas de costos, compras y stock disponible anidan `currency`
+  (`id`, `code`, `name`, `symbol`).
+- No existe conversión de montos: la moneda solo etiqueta el valor.
+- Si no hay una moneda por defecto activa, los endpoints que la necesitan
+  responden `503` con
+  `{ "message": "Default transaction currency is not configured" }`.
 
 ## Estantes y secciones (shelves, shelf_sections)
 
@@ -3026,13 +3145,13 @@ Roles:
 - Escritura (`POST`, `PUT`, `DELETE`): `admin`, `seller` y
   `manager_warehouse`.
 
-| Endpoint          | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
-| ----------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
-| `GET /lots`       | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
-| `GET /lots/:id`   | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
-| `POST /lots`      | ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
-| `PUT /lots/:id`   | ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
-| `DELETE /lots/:id`| ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| Endpoint           | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ------------------ | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `GET /lots`        | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `GET /lots/:id`    | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `POST /lots`       | ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `PUT /lots/:id`    | ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `DELETE /lots/:id` | ✅      | ✅       | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
 
 ### `POST /lots`
 
@@ -3084,16 +3203,16 @@ en una sola consulta con `include` de Sequelize (sin N+1).
 
 Filtros opcionales:
 
-| Filtro            | Significado                                                        |
-| ----------------- | ------------------------------------------------------------------ |
-| `product_id`      | Producto exacto.                                                   |
-| `item_state_id`   | Estado de ítem exacto.                                             |
-| `warehouse_id`    | Bodega exacta.                                                     |
-| `shelf_id`        | Estante exacto.                                                    |
-| `section_id`      | Sección exacta.                                                    |
-| `number`          | Número de lote exacto, sin distinguir mayúsculas/minúsculas.       |
-| `expired`         | `true` para `expiration_date < CURRENT_DATE`; `false` para `>=`.  |
-| `expiring_before` | Fecha máxima inclusive `YYYY-MM-DD`.                               |
+| Filtro            | Significado                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| `product_id`      | Producto exacto.                                                 |
+| `item_state_id`   | Estado de ítem exacto.                                           |
+| `warehouse_id`    | Bodega exacta.                                                   |
+| `shelf_id`        | Estante exacto.                                                  |
+| `section_id`      | Sección exacta.                                                  |
+| `number`          | Número de lote exacto, sin distinguir mayúsculas/minúsculas.     |
+| `expired`         | `true` para `expiration_date < CURRENT_DATE`; `false` para `>=`. |
+| `expiring_before` | Fecha máxima inclusive `YYYY-MM-DD`.                             |
 
 ```bash
 curl "http://localhost:3001/lots?product_id=15&warehouse_id=1&expired=false&expiring_before=2027-12-31" \
@@ -3114,7 +3233,11 @@ curl "http://localhost:3001/lots?product_id=15&warehouse_id=1&expired=false&expi
     "warehouse_id": 1,
     "shelf_id": 1,
     "section_id": 2,
-    "product": { "id": 15, "name": "Ibuprofeno 800 mg", "reference": "IBU-800" },
+    "product": {
+      "id": 15,
+      "name": "Ibuprofeno 800 mg",
+      "reference": "IBU-800"
+    },
     "item_state": {
       "id": 1,
       "name": "sellable",
@@ -3167,18 +3290,18 @@ curl -X DELETE http://localhost:3001/lots/1 \
 
 ### Errores del módulo
 
-| Código | Cuerpo                                                                 |
-| ------ | ---------------------------------------------------------------------- |
+| Código | Cuerpo                                                                                                                    |
+| ------ | ------------------------------------------------------------------------------------------------------------------------- |
 | `400`  | `{ "message": "number, product_id, expiration_date, item_state_id, warehouse_id, shelf_id and section_id are required" }` |
-| `401`  | `{ "message": "Unauthorized" }`                                        |
-| `403`  | `{ "message": "Forbidden" }`                                           |
-| `404`  | `{ "message": "Lot not found" }`                                       |
-| `409`  | `{ "message": "Lot already exists" }`                                  |
-| `409`  | `{ "message": "Lot has stock or reservations" }`                       |
-| `422`  | `{ "errors": { "reserved": "reserved cannot exceed stock" } }`          |
-| `422`  | `{ "errors": { "shelf_id": "Shelf does not belong to the warehouse" } }` |
-| `422`  | `{ "errors": { "section_id": "Section does not belong to the shelf" } }` |
-| `422`  | `{ "errors": { "expiration_date": "expiration_date must be a valid date (YYYY-MM-DD)" } }` |
+| `401`  | `{ "message": "Unauthorized" }`                                                                                           |
+| `403`  | `{ "message": "Forbidden" }`                                                                                              |
+| `404`  | `{ "message": "Lot not found" }`                                                                                          |
+| `409`  | `{ "message": "Lot already exists" }`                                                                                     |
+| `409`  | `{ "message": "Lot has stock or reservations" }`                                                                          |
+| `422`  | `{ "errors": { "reserved": "reserved cannot exceed stock" } }`                                                            |
+| `422`  | `{ "errors": { "shelf_id": "Shelf does not belong to the warehouse" } }`                                                  |
+| `422`  | `{ "errors": { "section_id": "Section does not belong to the shelf" } }`                                                  |
+| `422`  | `{ "errors": { "expiration_date": "expiration_date must be a valid date (YYYY-MM-DD)" } }`                                |
 
 ## Vendedores por cliente (customer_sellers)
 

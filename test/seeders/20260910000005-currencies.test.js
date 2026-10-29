@@ -42,6 +42,18 @@ function queryInterfaceDouble() {
 
       return existing.has(code) ? existing.get(code) : null;
     }),
+    bulkUpdate: jest.fn(async (table, values, where) => {
+      if (
+        table === "currencies" &&
+        values.is_default_for_transactions === true
+      ) {
+        for (const [code, id] of existing) {
+          if (id === where.id) {
+            existing.set(code, id);
+          }
+        }
+      }
+    }),
     bulkDelete: jest.fn(async (table, where) => {
       if (table === "currencies") {
         for (const [code, id] of existing) {
@@ -81,6 +93,24 @@ describe("seeder 20260910000005-currencies", () => {
       expect(row.createdAt).toBeInstanceOf(Date);
       expect(row.updatedAt).toBeInstanceOf(Date);
     }
+  });
+
+  it("marks USD_BCV as the default transaction currency", async () => {
+    const queryInterface = queryInterfaceDouble();
+
+    await seeder.up(queryInterface);
+
+    const rows = queryInterface.bulkInsert.mock.calls
+      .filter((call) => call[0] === "currencies")
+      .flatMap((call) => call[1]);
+    const bcv = rows.find((row) => row.code === "USD_BCV");
+
+    expect(bcv).toEqual(
+      expect.objectContaining({
+        is_active: true,
+        is_default_for_transactions: true,
+      }),
+    );
   });
 
   it("inserts one seed history row per inserted currency", async () => {
