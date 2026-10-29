@@ -63,6 +63,12 @@ jest.mock("./models/city", () => ({
   findByPk: jest.fn(),
 }));
 
+jest.mock("./models/supplier", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
+
 const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");
@@ -164,6 +170,13 @@ describe("app", () => {
 
   it("exposes POST /images behind authentication", async () => {
     const response = await request(app).post("/images").send({});
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ message: "Unauthorized" });
+  });
+
+  it("exposes POST /suppliers behind authentication", async () => {
+    const response = await request(app).post("/suppliers").send({});
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: "Unauthorized" });

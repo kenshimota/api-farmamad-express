@@ -21,6 +21,8 @@ describe("swagger spec", () => {
         "/categories/{id}",
         "/images",
         "/images/{id}",
+        "/suppliers",
+        "/suppliers/{id}",
       ]),
     );
   });
@@ -130,6 +132,35 @@ describe("swagger spec", () => {
     );
     expect(swaggerSpec.tags).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "Images" })]),
+    );
+  });
+
+  it("documents the Supplier schema without audit fields", () => {
+    expect(swaggerSpec.components.schemas.Supplier).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        name: { type: "string" },
+        identification: { type: "string" },
+        email: { type: "string", format: "email" },
+        phone: { type: "string" },
+        observations: { type: "string", nullable: true },
+        address: { type: "string" },
+        city_id: { type: "integer" },
+        state_id: { type: "integer" },
+      },
+    });
+    expect(
+      swaggerSpec.components.schemas.Supplier.properties,
+    ).not.toHaveProperty("createdAt");
+    expect(
+      swaggerSpec.components.schemas.Supplier.properties.city,
+    ).toBeDefined();
+    expect(
+      swaggerSpec.components.schemas.Supplier.properties.state,
+    ).toBeDefined();
+    expect(swaggerSpec.tags).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "Suppliers" })]),
     );
   });
 
