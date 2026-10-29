@@ -45,59 +45,87 @@ jobs:
       - run: npm test
       - run: npm run test:integration
 
-  build:
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: contabo
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          build-args: VERSION=${{ github.ref_name }}
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_IMAGE }}:${{ github.ref_name }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_IMAGE }}:latest
-
   deploy:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build
     runs-on: contabo
+    concurrency:
+      group: deploy-contabo
+      cancel-in-progress: false
+    env:
+      IMAGE: farmamad-api
+      CONTAINER: farmamad-api
+      NETWORK: strixcryptoapp
+      HOST_PORT: "3002"
     steps:
-      - name: Deploy to VM
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VM_HOSTNAME }}
-          port: ${{ secrets.VM_PORT }}
-          username: ${{ secrets.VM_USERNAME }}
-          password: ${{ secrets.VM_PASSWORD }}
-          script_stop: true
-          script: |
-            export IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/${{ vars.DOCKERHUB_IMAGE }}"
-            export CONTAINER=asic-guanipa-api
-            export TAG="${{ github.ref_name }}"
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            ~/create-container --restart unless-stopped \
-              -e NODE_ENV=production \
-              -e PORT=3000 \
-              -e LOG_LEVEL="${{ vars.LOG_LEVEL }}" \
-              -e DB_HOST="${{ secrets.DB_HOST }}" \
-              -e DB_PORT="${{ secrets.DB_PORT }}" \
-              -e DB_NAME="${{ secrets.DB_NAME }}" \
-              -e DB_USER="${{ secrets.DB_USER }}" \
-              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-              -e JWT_EXPIRES_IN="${{ secrets.JWT_EXPIRES_IN }}" \
-              -e GMAIL_USERNAME="${{ secrets.GMAIL_USERNAME }}" \
-              -e GMAIL_TOKEN="${{ secrets.GMAIL_TOKEN }}" \
-              --network asic-guanipa-network
-            docker exec asic-guanipa-api npm run db:migrate
-            docker exec asic-guanipa-api npm run db:seed
-            sleep 10
-            CONTAINER=asic-guanipa-api bash ~/check-container
-            echo "Deployment successful!"
+      - uses: actions/checkout@v4
+
+      - name: Write environment file
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          {
+            printf 'PORT=%s\n' "3001"
+            printf 'NODE_ENV=%s\n' "production"
+            printf 'LOG_LEVEL=%s\n' "info"
+            printf 'NO_COLOR=%s\n' "1"
+            printf 'DB_HOST=%s\n' "$DB_HOST"
+            printf 'DB_PORT=%s\n' "$DB_PORT"
+            printf 'DB_NAME=%s\n' "$DB_NAME"
+            printf 'DB_USER=%s\n' "$DB_USER"
+            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
+            printf 'JWT_EXPIRES_IN=%s\n' "$JWT_EXPIRES_IN"
+            printf 'GMAIL_USERNAME=%s\n' "$GMAIL_USERNAME"
+            printf 'GMAIL_TOKEN=%s\n' "$GMAIL_TOKEN"
+          } > "$RUNNER_TEMP/farmamad.env"
+
+      - name: Build image
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg VERSION="${{ github.ref_name }}" \
+            -t "$IMAGE:${{ github.ref_name }}" \
+            -t "$IMAGE:latest" .
+          docker run --rm --env-file "$RUNNER_TEMP/farmamad.env" --network "$NETWORK" \
+            "$IMAGE:${{ github.ref_name }}" npm run db:migrate
+          docker run --rm --env-file "$RUNNER_TEMP/farmamad.env" --network "$NETWORK" \
+            "$IMAGE:${{ github.ref_name }}" npx sequelize-cli db:seed:all
+
+      - name: Recreate container
+        run: |
+          set -euo pipefail
+          docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+          docker run -d \
+            --name "$CONTAINER" \
+            --restart unless-stopped \
+            --env-file "$RUNNER_TEMP/farmamad.env" \
+            --network "$NETWORK" \
+            -p "127.0.0.1:${HOST_PORT}:3001" \
+            "$IMAGE:${{ github.ref_name }}"
+
+      - name: Healthcheck
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${HOST_PORT}/health"; then
+              echo "Deployment successful!"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs --tail 100 "$CONTAINER"
+          exit 1
+
+      - name: Remove environment file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/farmamad.env"
