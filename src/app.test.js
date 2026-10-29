@@ -51,6 +51,18 @@ jest.mock("./models/product", () => ({
   findByPk: jest.fn(),
 }));
 
+jest.mock("./models/state", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
+
+jest.mock("./models/city", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
+
 const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");

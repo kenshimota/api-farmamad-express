@@ -1260,13 +1260,13 @@ respuesta incluye `createdAt` ni `updatedAt`: solo se exponen `id`, `name`,
 
 Permisos por endpoint:
 
-| Endpoint                | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
-| ----------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
-| `POST /products`        | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
-| `GET /products`         | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
-| `GET /products/:id`     | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
-| `PUT /products/:id`     | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
-| `DELETE /products/:id`  | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| Endpoint               | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ---------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /products`       | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /products`        | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `GET /products/:id`    | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `PUT /products/:id`    | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /products/:id` | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
 
 Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` en
 todos los endpoints, y sin token (o con token inválido/expirado) la respuesta es
@@ -1303,14 +1303,14 @@ Respuesta `201`:
 
 Errores:
 
-| Código | Cuerpo                                                                                   |
-| ------ | ---------------------------------------------------------------------------------------- |
-| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }`    |
-| `401`  | `{ "message": "Unauthorized" }`                                                          |
-| `403`  | `{ "message": "Forbidden" }`                                                             |
-| `409`  | `{ "message": "Product already exists" }`                                                |
-| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                                 |
-| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                       |
+| Código | Cuerpo                                                                                 |
+| ------ | -------------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                                                        |
+| `403`  | `{ "message": "Forbidden" }`                                                           |
+| `409`  | `{ "message": "Product already exists" }`                                              |
+| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                               |
+| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                     |
 
 ### `GET /products`
 
@@ -1367,12 +1367,12 @@ Respuesta `200`:
 
 Errores:
 
-| Código | Cuerpo                                          |
-| ------ | ----------------------------------------------- |
-| `401`  | `{ "message": "Unauthorized" }`                 |
-| `403`  | `{ "message": "User is blocked" }`              |
-| `404`  | `{ "message": "Product not found" }`            |
-| `422`  | `{ "errors": { "id": "Invalid product id" } }`  |
+| Código | Cuerpo                                         |
+| ------ | ---------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                |
+| `403`  | `{ "message": "User is blocked" }`             |
+| `404`  | `{ "message": "Product not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid product id" } }` |
 
 ### `PUT /products/:id`
 
@@ -1402,16 +1402,16 @@ Respuesta `202`:
 
 Errores:
 
-| Código | Cuerpo                                                                                   |
-| ------ | ---------------------------------------------------------------------------------------- |
-| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }`    |
-| `401`  | `{ "message": "Unauthorized" }`                                                          |
-| `403`  | `{ "message": "Forbidden" }`                                                             |
-| `404`  | `{ "message": "Product not found" }`                                                     |
-| `409`  | `{ "message": "Product already exists" }`                                                |
-| `422`  | `{ "errors": { "id": "Invalid product id" } }`                                           |
-| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                                 |
-| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                       |
+| Código | Cuerpo                                                                                 |
+| ------ | -------------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                                                        |
+| `403`  | `{ "message": "Forbidden" }`                                                           |
+| `404`  | `{ "message": "Product not found" }`                                                   |
+| `409`  | `{ "message": "Product already exists" }`                                              |
+| `422`  | `{ "errors": { "id": "Invalid product id" } }`                                         |
+| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                               |
+| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                     |
 
 ### `DELETE /products/:id`
 
@@ -1426,12 +1426,336 @@ curl -X DELETE http://localhost:3001/products/1 \
 
 Errores:
 
+| Código | Cuerpo                                         |
+| ------ | ---------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                |
+| `403`  | `{ "message": "Forbidden" }`                   |
+| `404`  | `{ "message": "Product not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid product id" } }` |
+
+## Estados
+
+Los estados viven en la tabla `states` (modelo `State`) y representan las 23
+entidades federales de Venezuela más el Distrito Capital. `name` es obligatorio,
+único sin distinguir mayúsculas y admite 2–100 caracteres; `code` es obligatorio,
+único, de 2–10 caracteres y se guarda en mayúsculas. Ninguna respuesta incluye
+`createdAt` ni `updatedAt`: solo se exponen `id`, `name` y `code`.
+
+La unicidad del nombre se implementa con un índice único funcional sobre
+`LOWER(name)`, así `Aragua`, `ARAGUA` y `aragua` compiten por el mismo valor.
+
+Permisos por endpoint:
+
+| Endpoint             | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| -------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /states`       | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /states`        | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `GET /states/:id`    | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `PUT /states/:id`    | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /states/:id` | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` en
+todos los endpoints, y sin token (o con token inválido/expirado) la respuesta es
+`401` con `{ "message": "Unauthorized" }`.
+
+### `POST /states`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos: `name`
+y `code`. El nombre se recorta y el código se guarda en mayúsculas.
+
+```bash
+curl -X POST http://localhost:3001/states \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Aragua","code":"VE-D"}'
+```
+
+Respuesta `201`:
+
+```json
+{ "id": 4, "name": "Aragua", "code": "VE-D" }
+```
+
+Errores:
+
+| Código | Cuerpo                                        |
+| ------ | --------------------------------------------- |
+| `400`  | `{ "message": "name and code are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`               |
+| `403`  | `{ "message": "Forbidden" }`                  |
+| `409`  | `{ "message": "State already exists" }`       |
+| `422`  | `{ "errors": { "name": "Nombre inválido" } }` |
+| `422`  | `{ "errors": { "code": "Código inválido" } }` |
+
+### `GET /states`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve la colección
+completa ordenada por `name` ascendente. Si no hay estados responde `200` con
+`[]`.
+
+```bash
+curl http://localhost:3001/states -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  { "id": 1, "name": "Amazonas", "code": "VE-Z" },
+  { "id": 2, "name": "Anzoátegui", "code": "VE-B" }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                             |
+| ------ | ---------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`    |
+| `403`  | `{ "message": "User is blocked" }` |
+
+### `GET /states/:id`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve un único estado.
+
+```bash
+curl http://localhost:3001/states/4 -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+{ "id": 4, "name": "Aragua", "code": "VE-D" }
+```
+
+Errores:
+
+| Código | Cuerpo                                       |
+| ------ | -------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`              |
+| `403`  | `{ "message": "User is blocked" }`           |
+| `404`  | `{ "message": "State not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid state id" } }` |
+
+### `PUT /states/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Actualiza `name` y/o
+`code`; al menos uno debe estar presente. Responde `202` con el recurso
+actualizado.
+
+```bash
+curl -X PUT http://localhost:3001/states/4 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"VE-D"}'
+```
+
+Respuesta `202`:
+
+```json
+{ "id": 4, "name": "Aragua", "code": "VE-D" }
+```
+
+Errores:
+
+| Código | Cuerpo                                       |
+| ------ | -------------------------------------------- |
+| `400`  | `{ "message": "name or code is required" }`  |
+| `401`  | `{ "message": "Unauthorized" }`              |
+| `403`  | `{ "message": "Forbidden" }`                 |
+| `404`  | `{ "message": "State not found" }`           |
+| `409`  | `{ "message": "State already exists" }`      |
+| `422`  | `{ "errors": { "id": "Invalid state id" } }` |
+
+### `DELETE /states/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Elimina el estado y
+responde `204` sin cuerpo. Si tiene ciudades asociadas responde `409` con
+`{ "message": "State has cities" }` y no lo elimina.
+
+```bash
+curl -X DELETE http://localhost:3001/states/4 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                       |
+| ------ | -------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`              |
+| `403`  | `{ "message": "Forbidden" }`                 |
+| `404`  | `{ "message": "State not found" }`           |
+| `409`  | `{ "message": "State has cities" }`          |
+| `422`  | `{ "errors": { "id": "Invalid state id" } }` |
+
+## Ciudades
+
+Las ciudades viven en la tabla `cities` (modelo `City`). `name` es obligatorio y
+admite 2–100 caracteres; `state_id` es obligatorio y referencia `states.id` con
+`ON DELETE RESTRICT`. El par `(name, state_id)` es único, por lo que el mismo
+nombre puede existir en estados distintos pero no dos veces en el mismo. Las
+respuestas exponen `id`, `name` y `state_id`; el objeto `state` anidado solo
+aparece en la lista cuando se envía `?include=state`.
+
+Permisos por endpoint:
+
+| Endpoint             | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| -------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /cities`       | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /cities`        | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `GET /cities/:id`    | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `PUT /cities/:id`    | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /cities/:id` | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+### `POST /cities`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos: `name`
+y `state_id`. Antes de insertar se verifica que el estado exista.
+
+```bash
+curl -X POST http://localhost:3001/cities \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Maracay","state_id":4}'
+```
+
+Respuesta `201`:
+
+```json
+{ "id": 10, "name": "Maracay", "state_id": 4 }
+```
+
+Errores:
+
+| Código | Cuerpo                                            |
+| ------ | ------------------------------------------------- |
+| `400`  | `{ "message": "name and state_id are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                   |
+| `403`  | `{ "message": "Forbidden" }`                      |
+| `409`  | `{ "message": "City already exists" }`            |
+| `422`  | `{ "errors": { "state_id": "Invalid state" } }`   |
+
+### `GET /cities`
+
+Protegido: requiere un JWT válido, de cualquier rol. Acepta `?state_id=<id>`
+para un filtro exacto y `?include=state` para anidar el estado. Devuelve las
+ciudades ordenadas por `id` ascendente.
+
+```bash
+curl "http://localhost:3001/cities?state_id=4&include=state" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 10,
+    "name": "Maracay",
+    "state_id": 4,
+    "state": { "id": 4, "name": "Aragua", "code": "VE-D" }
+  }
+]
+```
+
+Sin `include=state` cada ciudad solo devuelve `id`, `name` y `state_id`. Con
+`state_id` inválido responde `422` con
+`{ "errors": { "state_id": "Invalid state" } }`.
+
+Errores:
+
 | Código | Cuerpo                                          |
 | ------ | ----------------------------------------------- |
 | `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "User is blocked" }`              |
+| `422`  | `{ "errors": { "state_id": "Invalid state" } }` |
+
+### `GET /cities/:id`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve una ciudad con el
+contrato simple, sin el estado anidado.
+
+```bash
+curl http://localhost:3001/cities/10 -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+{ "id": 10, "name": "Maracay", "state_id": 4 }
+```
+
+Errores:
+
+| Código | Cuerpo                                      |
+| ------ | ------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`             |
+| `403`  | `{ "message": "User is blocked" }`          |
+| `404`  | `{ "message": "City not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid city id" } }` |
+
+### `PUT /cities/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Actualiza `name` y/o
+`state_id`; al menos uno debe estar presente. Responde `202` con la ciudad
+actualizada.
+
+```bash
+curl -X PUT http://localhost:3001/cities/10 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Turmero"}'
+```
+
+Respuesta `202`:
+
+```json
+{ "id": 10, "name": "Turmero", "state_id": 4 }
+```
+
+Errores:
+
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `400`  | `{ "message": "name or state_id is required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                 |
 | `403`  | `{ "message": "Forbidden" }`                    |
-| `404`  | `{ "message": "Product not found" }`            |
-| `422`  | `{ "errors": { "id": "Invalid product id" } }`  |
+| `404`  | `{ "message": "City not found" }`               |
+| `409`  | `{ "message": "City already exists" }`          |
+| `422`  | `{ "errors": { "id": "Invalid city id" } }`     |
+| `422`  | `{ "errors": { "state_id": "Invalid state" } }` |
+
+### `DELETE /cities/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Elimina la ciudad y
+responde `204` sin cuerpo. Si un proveedor la referencia responde `409` con
+`{ "message": "City is in use" }` y no la elimina.
+
+```bash
+curl -X DELETE http://localhost:3001/cities/10 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                      |
+| ------ | ------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`             |
+| `403`  | `{ "message": "Forbidden" }`                |
+| `404`  | `{ "message": "City not found" }`           |
+| `409`  | `{ "message": "City is in use" }`           |
+| `422`  | `{ "errors": { "id": "Invalid city id" } }` |
+
+### Semillas de estados y ciudades
+
+`npm run db:seed` carga 24 estados (23 entidades federales + Distrito Capital,
+sin Dependencias Federales `VE-W`) y 38 ciudades: la capital de cada estado más
+Puerto La Cruz, El Tigre, Ciudad Guayana, Puerto Cabello, Punto Fijo, Cabimas,
+Acarigua, Araure, Valera, Guarenas, Guatire, Petare, Baruta y El Vigía. Ambas
+semillas son idempotentes (`ignoreDuplicates`) y su `down` elimina primero las
+ciudades sembradas y luego los estados sembrados, sin tocar registros creados
+por usuarios. Si un estado falta al sembrar ciudades, el seeder falla con un
+mensaje que indica el estado y la ciudad.
 
 ## Logs y manejo de errores
 

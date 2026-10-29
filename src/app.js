@@ -16,6 +16,8 @@ const warehousesRouter = require("./warehouses");
 const categoriesRouter = require("./categories");
 const imagesRouter = require("./images");
 const productsRouter = require("./products");
+const statesRouter = require("./states");
+const citiesRouter = require("./cities");
 
 const app = express();
 
@@ -36,6 +38,8 @@ app.use("/warehouses", warehousesRouter);
 app.use("/categories", categoriesRouter);
 app.use("/images", imagesRouter);
 app.use("/products", productsRouter);
+app.use("/states", statesRouter);
+app.use("/cities", citiesRouter);
 
 app.use(notFound);
 app.use(errorHandler);

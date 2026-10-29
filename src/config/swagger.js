@@ -32,6 +32,16 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Catalog products linked to a category and an image: creation, listing, lookup, update and deletion.",
       },
+      {
+        name: "States",
+        description:
+          "Venezuelan states catalog: creation, listing, lookup, update and deletion.",
+      },
+      {
+        name: "Cities",
+        description:
+          "Cities catalog linked to a state: creation, listing, lookup, update and deletion.",
+      },
     ],
     components: {
       securitySchemes: {
@@ -186,6 +196,27 @@ const swaggerSpec = swaggerJsdoc({
             reference: { type: "string", example: "IBU-400" },
             category_id: { type: "integer", example: 1 },
             image_id: { type: "integer", example: 1 },
+          },
+        },
+        State: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            name: { type: "string", example: "Aragua" },
+            code: { type: "string", example: "VE-D" },
+          },
+        },
+        City: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 10 },
+            name: { type: "string", example: "Maracay" },
+            state_id: { type: "integer", example: 4 },
+            state: {
+              $ref: "#/components/schemas/State",
+              description:
+                "Only present when the list is requested with include=state",
+            },
           },
         },
         ErrorMessage: {

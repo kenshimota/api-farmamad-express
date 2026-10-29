@@ -1,0 +1,154 @@
+# Archivo: cities.http
+# Módulo: cities  ->  POST /cities, GET /cities, GET /cities/:id,
+#                     PUT /cities/:id, DELETE /cities/:id
+# Protegido: lectura para cualquier usuario autenticado; escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /cities — crea una ciudad (201)
+# name admite 2–100 caracteres; state_id debe existir.
+# El par (name, state_id) es único.
+POST {{baseUrl}}/cities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Maracay",
+  "state_id": 4
+}
+
+### POST /cities — sin token (401 Unauthorized)
+POST {{baseUrl}}/cities
+Content-Type: application/json
+
+{
+  "name": "Maracay",
+  "state_id": 4
+}
+
+### POST /cities — faltan campos (400)
+POST {{baseUrl}}/cities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /cities — estado inexistente (422)
+POST {{baseUrl}}/cities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Maracay",
+  "state_id": 99999
+}
+
+### POST /cities — ciudad duplicada en el mismo estado (409)
+POST {{baseUrl}}/cities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Maracay",
+  "state_id": 4
+}
+
+### GET /cities — lista las ciudades (200)
+# Devuelve id, name y state_id ordenados por id ascendente; [] si no hay.
+GET {{baseUrl}}/cities
+Authorization: Bearer {{token}}
+
+### GET /cities?state_id=4 — filtra por estado (200)
+GET {{baseUrl}}/cities?state_id=4
+Authorization: Bearer {{token}}
+
+### GET /cities?state_id=4&include=state — incluye el estado anidado (200)
+GET {{baseUrl}}/cities?state_id=4&include=state
+Authorization: Bearer {{token}}
+
+### GET /cities?state_id=abc — filtro inválido (422)
+GET {{baseUrl}}/cities?state_id=abc
+Authorization: Bearer {{token}}
+
+### GET /cities — sin token (401 Unauthorized)
+GET {{baseUrl}}/cities
+
+### GET /cities/:id — consulta una ciudad (200)
+# Sustituye 10 por el id de la ciudad. No incluye el estado anidado.
+GET {{baseUrl}}/cities/10
+Authorization: Bearer {{token}}
+
+### GET /cities/:id — id inexistente (404)
+GET {{baseUrl}}/cities/99999
+Authorization: Bearer {{token}}
+
+### GET /cities/:id — id inválido (422)
+GET {{baseUrl}}/cities/abc
+Authorization: Bearer {{token}}
+
+### PUT /cities/:id — actualiza name y/o state_id (202)
+# Se puede enviar solo name, solo state_id o ambos; al menos uno es obligatorio.
+PUT {{baseUrl}}/cities/10
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Turmero",
+  "state_id": 4
+}
+
+### PUT /cities/:id — estado inexistente (422)
+PUT {{baseUrl}}/cities/10
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "state_id": 99999
+}
+
+### PUT /cities/:id — ciudad duplicada en el estado (409)
+PUT {{baseUrl}}/cities/10
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Maracay",
+  "state_id": 4
+}
+
+### PUT /cities/:id — sin campos (400)
+PUT {{baseUrl}}/cities/10
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /cities/:id — id inexistente (404)
+PUT {{baseUrl}}/cities/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Turmero"
+}
+
+### DELETE /cities/:id — elimina una ciudad (204, sin cuerpo)
+# Solo si ningún proveedor la referencia.
+DELETE {{baseUrl}}/cities/10
+Authorization: Bearer {{token}}
+
+### DELETE /cities/:id — ciudad en uso (409)
+DELETE {{baseUrl}}/cities/10
+Authorization: Bearer {{token}}
+
+### DELETE /cities/:id — id inexistente (404)
+DELETE {{baseUrl}}/cities/99999
+Authorization: Bearer {{token}}
+
+### DELETE /cities/:id — id inválido (422)
+DELETE {{baseUrl}}/cities/abc
+Authorization: Bearer {{token}}
+
+### DELETE /cities/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/cities/10
