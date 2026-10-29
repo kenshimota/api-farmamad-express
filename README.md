@@ -3180,6 +3180,169 @@ curl -X DELETE http://localhost:3001/lots/1 \
 | `422`  | `{ "errors": { "section_id": "Section does not belong to the shelf" } }` |
 | `422`  | `{ "errors": { "expiration_date": "expiration_date must be a valid date (YYYY-MM-DD)" } }` |
 
+## Vendedores por cliente (customer_sellers)
+
+Cada cliente puede tener **como máximo un vendedor responsable**, mientras que
+un vendedor puede tener **muchos clientes**. La relación vive en la tabla
+puente `customer_sellers` (modelo `CustomerSeller`) y no modifica la tabla
+`customers`. Está preparada para evolucionar a varios vendedores por cliente en
+el futuro.
+
+Reglas de negocio:
+
+- `customer_id` es obligatorio y único: un cliente no puede tener dos
+  vendedores. Un segundo `POST` para el mismo cliente responde `409` y la
+  restricción única de la base de datos también protege dos peticiones
+  simultáneas.
+- `seller_id` debe referenciar un usuario existente con rol `seller` y que no
+  esté bloqueado. La comprobación se hace al asignar o reasignar, no en cada
+  lectura.
+- `assigned_at` lo asigna el servidor y se renueva al reasignar. El cliente no
+  puede enviarlo y nunca se exponen `createdAt` ni `updatedAt`.
+- Borrar un cliente o un vendedor elimina la asignación por cascada
+  (`ON DELETE CASCADE`), sin bloquear el borrado.
+- `PUT` no puede cambiar `customer_id`; enviar otro valor responde `422`. Para
+  mover la asignación a otro cliente se elimina y se crea de nuevo.
+- Eliminar una asignación no borra ni al cliente ni al vendedor.
+- Las respuestas incluyen `customer` (`id`, `fullName`, `email`, `direction`) y
+  `seller` (`id`, `username`, `email`, `name`) mediante `include` de Sequelize,
+  sin N+1.
+
+Roles:
+
+- Lectura (`GET`): `admin`, `dispatcher` y `seller` (solo sus asignaciones).
+- Escritura (`POST`, `PUT`, `DELETE`): `admin` y `seller` (solo las propias).
+- `manager_warehouse`, `customer` y `support` reciben `403`.
+
+| Endpoint                       | `admin` | `seller`           | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ------------------------------ | ------- | ------------------ | ------------ | ------------------- | --------- | ---------- |
+| `GET /customer-sellers`        | ✅      | ✅ solo propias    | ✅           | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /customer-sellers/:id`    | ✅      | ✅ solo propias    | ✅           | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `POST /customer-sellers`       | ✅      | ✅ solo a sí mismo | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `PUT /customer-sellers/:id`    | ✅      | ✅ solo propias    | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /customer-sellers/:id` | ✅      | ✅ solo propias    | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+### `POST /customer-sellers`
+
+Requiere `customer_id` y `seller_id`. El `admin` puede asignar cualquier
+vendedor válido; un `seller` solo puede asignarse a sí mismo.
+
+```bash
+curl -X POST http://localhost:3001/customer-sellers \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id":8,"seller_id":12}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "customer_id": 8,
+  "seller_id": 12,
+  "assigned_at": "2026-10-29T16:00:00.000Z",
+  "customer": {
+    "id": 8,
+    "fullName": "Juan Pérez",
+    "email": "juan@example.com",
+    "direction": "Av. Monseñor Rivero 123"
+  },
+  "seller": {
+    "id": 12,
+    "username": "vendedor1",
+    "email": "vendedor1@farmamad.com",
+    "name": "Carlos Gómez"
+  }
+}
+```
+
+### `GET /customer-sellers`
+
+Lista las asignaciones ordenadas por `customer_id` ascendente. Filtros
+opcionales exactos: `customer_id` y `seller_id`. Un `seller` siempre ve solo
+sus filas: si omite `seller_id` se filtra por su token y si pide otro vendedor
+recibe `403`. Si el cliente filtrado no tiene asignación devuelve `[]`.
+
+```bash
+curl "http://localhost:3001/customer-sellers?seller_id=12" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "customer_id": 8,
+    "seller_id": 12,
+    "assigned_at": "2026-10-29T16:00:00.000Z",
+    "customer": {
+      "id": 8,
+      "fullName": "Juan Pérez",
+      "email": "juan@example.com",
+      "direction": "Av. Monseñor Rivero 123"
+    },
+    "seller": {
+      "id": 12,
+      "username": "vendedor1",
+      "email": "vendedor1@farmamad.com",
+      "name": "Carlos Gómez"
+    }
+  }
+]
+```
+
+### `GET /customer-sellers/:id`
+
+Devuelve una asignación con sus datos anidados. Un `seller` solo puede
+consultar las propias; otra asignación responde `403`. Un id inválido responde
+`422` y una asignación inexistente `404 Assignment not found`.
+
+```bash
+curl http://localhost:3001/customer-sellers/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /customer-sellers/:id`
+
+Reasigna el vendedor y responde `202` con `assigned_at` renovado. Requiere
+`seller_id`. El `admin` puede reasignar a cualquier vendedor válido; un
+`seller` solo puede modificar una asignación propia y el nuevo vendedor debe ser
+él mismo. `customer_id` es inmutable: si se envía otro valor responde `422`.
+
+```bash
+curl -X PUT http://localhost:3001/customer-sellers/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"seller_id":15}'
+```
+
+### `DELETE /customer-sellers/:id`
+
+Elimina solo la asignación y responde `204` sin cuerpo. El cliente queda sin
+vendedor y puede asignarse de nuevo; ni el cliente ni el usuario vendedor se
+borran.
+
+```bash
+curl -X DELETE http://localhost:3001/customer-sellers/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Errores del módulo
+
+| Código | Cuerpo                                                             |
+| ------ | ------------------------------------------------------------------ |
+| `400`  | `{ "message": "customer_id and seller_id are required" }`          |
+| `400`  | `{ "message": "seller_id is required" }`                           |
+| `401`  | `{ "message": "Unauthorized" }`                                    |
+| `403`  | `{ "message": "Forbidden" }`                                       |
+| `404`  | `{ "message": "Assignment not found" }`                            |
+| `409`  | `{ "message": "Customer already has a seller" }`                   |
+| `422`  | `{ "errors": { "seller_id": "Invalid seller" } }`                  |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer" } }`              |
+| `422`  | `{ "errors": { "customer_id": "customer_id cannot be changed" } }` |
+| `422`  | `{ "errors": { "id": "Invalid assignment id" } }`                  |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,

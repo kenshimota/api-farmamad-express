@@ -83,6 +83,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Physical product lots with expiration date, item state, stock, reservations and their warehouse, shelf and section location.",
       },
+      {
+        name: "Customer sellers",
+        description:
+          "Assignment of each customer to the seller responsible for it, with one seller per customer and many customers per seller.",
+      },
     ],
     components: {
       securitySchemes: {
