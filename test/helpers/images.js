@@ -2,7 +2,9 @@ const request = require("supertest");
 const app = require("../../src/app");
 const User = require("../../src/models/user");
 const Role = require("../../src/models/role");
+const Category = require("../../src/models/category");
 const Image = require("../../src/models/image");
+const Product = require("../../src/models/product");
 
 const PASSWORD = "secret123";
 const BODY = {
@@ -95,11 +97,22 @@ function as(method, path, token) {
 }
 
 /**
- * Truncates the images and users tables of the test database.
- * @returns {Promise<void>} Resolves once both tables are empty.
+ * Truncates the products, images, categories and users tables of the test
+ * database. Products go first so the restrictive foreign keys never block the
+ * cleanup, and every related table is cleared to keep the suites independent
+ * from their execution order.
+ * @returns {Promise<void>} Resolves once the tables are empty.
  */
 async function resetDatabase() {
+  await Product.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
   await Image.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
+  await Category.destroy({
     where: {},
     truncate: { cascade: true, restartIdentity: true },
   });

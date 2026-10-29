@@ -27,6 +27,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Reusable image registry: creation, listing, lookup, update and deletion.",
       },
+      {
+        name: "Products",
+        description:
+          "Catalog products linked to a category and an image: creation, listing, lookup, update and deletion.",
+      },
     ],
     components: {
       securitySchemes: {
@@ -167,6 +172,20 @@ const swaggerSpec = swaggerJsdoc({
               format: "uri",
               example: "https://cdn.farmamad.com/products/ibuprofeno-thumb.png",
             },
+          },
+        },
+        Product: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            name: { type: "string", example: "Ibuprofeno 400 mg" },
+            description: {
+              type: "string",
+              example: "Analgésico y antiinflamatorio",
+            },
+            reference: { type: "string", example: "IBU-400" },
+            category_id: { type: "integer", example: 1 },
+            image_id: { type: "integer", example: 1 },
           },
         },
         ErrorMessage: {

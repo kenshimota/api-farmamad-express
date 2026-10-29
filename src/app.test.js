@@ -45,6 +45,12 @@ jest.mock("./models/image", () => ({
   findByPk: jest.fn(),
 }));
 
+jest.mock("./models/product", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+}));
+
 const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");

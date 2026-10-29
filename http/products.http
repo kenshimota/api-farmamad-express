@@ -1,0 +1,178 @@
+# Archivo: products.http
+# Módulo: products  ->  POST /products, GET /products, GET /products/:id,
+#                       PUT /products/:id, DELETE /products/:id
+# Protegido: lectura para cualquier usuario autenticado; escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+# Crea primero una categoría y una imagen y usa sus ids en category_id e image_id.
+
+### POST /products — crea un producto (201)
+# name (máx 150), description, reference (única, máx 100), category_id e image_id son obligatorios.
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 1,
+  "image_id": 1
+}
+
+### POST /products — sin token (401 Unauthorized)
+POST {{baseUrl}}/products
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 1,
+  "image_id": 1
+}
+
+### POST /products — faltan campos (400)
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /products — reference inválida (422)
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "   ",
+  "category_id": 1,
+  "image_id": 1
+}
+
+### POST /products — categoría inexistente (422)
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 99999,
+  "image_id": 1
+}
+
+### POST /products — imagen inexistente (422)
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 1,
+  "image_id": 99999
+}
+
+### POST /products — reference duplicada (409)
+# Ejecuta antes una creación con la misma reference.
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 1,
+  "image_id": 1
+}
+
+### GET /products — lista los productos (200)
+# Devuelve id, name, description, reference, category_id e image_id ordenados por id ascendente; [] si no hay.
+GET {{baseUrl}}/products
+Authorization: Bearer {{token}}
+
+### GET /products — sin token (401 Unauthorized)
+GET {{baseUrl}}/products
+
+### GET /products/:id — consulta un producto (200)
+# Sustituye 1 por el id del producto.
+GET {{baseUrl}}/products/1
+Authorization: Bearer {{token}}
+
+### GET /products/:id — id inexistente (404)
+GET {{baseUrl}}/products/99999
+Authorization: Bearer {{token}}
+
+### GET /products/:id — id inválido (422)
+GET {{baseUrl}}/products/abc
+Authorization: Bearer {{token}}
+
+### PUT /products/:id — actualiza un producto (202)
+# Reemplaza el recurso: los cinco campos son obligatorios.
+PUT {{baseUrl}}/products/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 800 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-800",
+  "category_id": 1,
+  "image_id": 1
+}
+
+### PUT /products/:id — faltan campos (400)
+PUT {{baseUrl}}/products/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /products/:id — reference duplicada (409)
+PUT {{baseUrl}}/products/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 800 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 1,
+  "image_id": 1
+}
+
+### PUT /products/:id — id inexistente (404)
+PUT {{baseUrl}}/products/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 800 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-800",
+  "category_id": 1,
+  "image_id": 1
+}
+
+### DELETE /products/:id — elimina un producto (204, sin cuerpo)
+# Sustituye 1 por el id del producto a eliminar.
+DELETE {{baseUrl}}/products/1
+Authorization: Bearer {{token}}
+
+### DELETE /products/:id — id inexistente (404)
+DELETE {{baseUrl}}/products/99999
+Authorization: Bearer {{token}}
+
+### DELETE /products/:id — id inválido (422)
+DELETE {{baseUrl}}/products/abc
+Authorization: Bearer {{token}}
+
+### DELETE /products/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/products/1
