@@ -22,8 +22,15 @@ const SECRET = "test-secret";
 const AUTH_USER = { id: 1, username: "admin", isBlocked: false };
 const storedRoles = [
   { id: 1, name: "admin", createdAt: new Date("2026-09-10T00:00:00Z") },
-  { id: 2, name: "seller", createdAt: new Date("2026-09-10T00:00:00Z") },
-  { id: 5, name: "customer", createdAt: new Date("2026-09-10T00:00:00Z") },
+  { id: 2, name: "customer", createdAt: new Date("2026-09-10T00:00:00Z") },
+  { id: 3, name: "seller", createdAt: new Date("2026-09-10T00:00:00Z") },
+  { id: 4, name: "dispatcher", createdAt: new Date("2026-09-10T00:00:00Z") },
+  {
+    id: 5,
+    name: "manager_warehouse",
+    createdAt: new Date("2026-09-10T00:00:00Z"),
+  },
+  { id: 6, name: "support", createdAt: new Date("2026-09-10T00:00:00Z") },
 ];
 
 /**
@@ -63,8 +70,11 @@ describe("GET /roles", () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual([
       { id: 1, name: "admin" },
-      { id: 2, name: "seller" },
-      { id: 5, name: "customer" },
+      { id: 2, name: "customer" },
+      { id: 3, name: "seller" },
+      { id: 4, name: "dispatcher" },
+      { id: 5, name: "manager_warehouse" },
+      { id: 6, name: "support" },
     ]);
     expect(response.body[0]).not.toHaveProperty("createdAt");
     expect(response.body[0]).not.toHaveProperty("updatedAt");
@@ -112,7 +122,7 @@ describe("GET /roles", () => {
     expect(Role.findAll).not.toHaveBeenCalled();
   });
 
-  it.each(["seller", "delivery", "freelance_delivery", "customer"])(
+  it.each(["seller", "dispatcher", "manager_warehouse", "support", "customer"])(
     "responds 403 when the authenticated user is %s",
     async (role) => {
       const response = await get(tokenFor(role));

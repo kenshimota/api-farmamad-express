@@ -4,7 +4,7 @@
 # Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
 
 ### POST /users — crea un usuario (201)
-# Roles válidos (tabla roles): admin, seller, delivery, freelance_delivery, customer.
+# Roles válidos (tabla roles): admin, customer, seller, dispatcher, manager_warehouse, support.
 POST {{baseUrl}}/users
 Authorization: Bearer {{token}}
 Content-Type: application/json

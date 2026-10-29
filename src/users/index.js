@@ -25,7 +25,8 @@ const router = Router();
  *     summary: Creates a user; only administrators can do it
  *     description: >-
  *       Creates the user and sends a welcome email to the given address. A
- *       delivery failure does not change the response.
+ *       delivery failure does not change the response. The `role` must be one
+ *       of the names returned by `GET /roles`.
  *     tags:
  *       - Users
  *     security:
@@ -60,7 +61,16 @@ const router = Router();
  *                 example: María
  *               role:
  *                 type: string
- *                 description: Name of a role stored in the roles table
+ *                 description: >-
+ *                   Role name from the catalog: admin, customer, seller,
+ *                   dispatcher, manager_warehouse or support.
+ *                 enum:
+ *                   - admin
+ *                   - customer
+ *                   - seller
+ *                   - dispatcher
+ *                   - manager_warehouse
+ *                   - support
  *                 example: seller
  *     responses:
  *       201:

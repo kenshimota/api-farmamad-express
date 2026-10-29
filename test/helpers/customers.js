@@ -23,11 +23,20 @@ const PUBLIC_CUSTOMER = {
 const USERS = {
   admin: { username: "admin", email: "admin@superking.com", name: "Admin" },
   seller: { username: "maria", email: "maria@superking.com", name: "María" },
-  delivery: { username: "pedro", email: "pedro@superking.com", name: "Pedro" },
-  freelance_delivery: {
+  dispatcher: {
+    username: "pedro",
+    email: "pedro@superking.com",
+    name: "Pedro",
+  },
+  manager_warehouse: {
     username: "luis",
     email: "luis@superking.com",
     name: "Luis",
+  },
+  support: {
+    username: "sofia",
+    email: "sofia@superking.com",
+    name: "Sofía",
   },
   customer: { username: "ana", email: "ana@superking.com", name: "Ana" },
 };

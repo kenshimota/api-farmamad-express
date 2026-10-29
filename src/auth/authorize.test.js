@@ -23,7 +23,7 @@ describe("authorize", () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it.each(["seller", "delivery", "freelance_delivery", "customer"])(
+  it.each(["seller", "dispatcher", "manager_warehouse", "support", "customer"])(
     "responds 403 when the user role is %s",
     (role) => {
       const req = { user: { role } };

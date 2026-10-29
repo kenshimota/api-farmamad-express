@@ -38,6 +38,25 @@ describe("swagger spec", () => {
     expect(swaggerSpec.components.schemas.User.properties.role).toBeDefined();
   });
 
+  it("documents the six valid role names in the catalog and POST /users", () => {
+    const roles = [
+      "admin",
+      "customer",
+      "seller",
+      "dispatcher",
+      "manager_warehouse",
+      "support",
+    ];
+    const createUser =
+      swaggerSpec.paths["/users"].post.requestBody.content["application/json"]
+        .schema.properties.role;
+
+    expect(swaggerSpec.components.schemas.Role.properties.name.enum).toEqual(
+      roles,
+    );
+    expect(createUser.enum).toEqual(roles);
+  });
+
   it("documents the Customer schema without audit fields", () => {
     expect(swaggerSpec.components.schemas.Customer).toMatchObject({
       type: "object",

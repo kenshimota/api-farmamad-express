@@ -77,7 +77,7 @@ beforeEach(() => {
 });
 
 describe("GET /customers", () => {
-  it.each(["admin", "seller", "delivery"])(
+  it.each(["admin", "seller", "dispatcher"])(
     "returns the public customers for a %s",
     async (role) => {
       Customer.findAll.mockResolvedValue(storedCustomers);
@@ -128,7 +128,7 @@ describe("GET /customers", () => {
     expect(Customer.findAll).not.toHaveBeenCalled();
   });
 
-  it.each(["freelance_delivery", "customer"])(
+  it.each(["manager_warehouse", "support", "customer"])(
     "responds 403 when the authenticated user is %s",
     async (role) => {
       const response = await get("/", tokenFor(role));
@@ -151,7 +151,7 @@ describe("GET /customers", () => {
 });
 
 describe("GET /customers/:id", () => {
-  it.each(["admin", "seller", "delivery"])(
+  it.each(["admin", "seller", "dispatcher"])(
     "returns one public customer for a %s",
     async (role) => {
       Customer.findByPk.mockResolvedValue(storedCustomers[0]);
@@ -200,7 +200,7 @@ describe("GET /customers/:id", () => {
     expect(response.body).toEqual({ message: "Unauthorized" });
   });
 
-  it.each(["freelance_delivery", "customer"])(
+  it.each(["manager_warehouse", "support", "customer"])(
     "responds 403 when the authenticated user is %s",
     async (role) => {
       const response = await get("/1", tokenFor(role));

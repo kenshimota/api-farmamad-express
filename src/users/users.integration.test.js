@@ -82,7 +82,14 @@ describe("POST /users with a real database", () => {
     role: "seller",
   };
 
-  it.each(["seller", "delivery", "freelance_delivery", "customer"])(
+  it.each([
+    "admin",
+    "customer",
+    "seller",
+    "dispatcher",
+    "manager_warehouse",
+    "support",
+  ])(
     "allows an administrator to create a user with the %s role",
     async (role) => {
       await createUser({
@@ -173,22 +180,25 @@ describe("POST /users with a real database", () => {
     expect(response.body).toEqual({ message: "User already exists" });
   });
 
-  it("responds 422 when the role does not exist", async () => {
-    await createUser({
-      username: "admin",
-      email: "admin@superking.com",
-      role: "admin",
-    });
-    const token = await tokenFor("admin");
+  it.each(["superadmin", "delivery", "freelance_delivery"])(
+    "responds 422 when the role %s is not in the catalog",
+    async (role) => {
+      await createUser({
+        username: "admin",
+        email: "admin@superking.com",
+        role: "admin",
+      });
+      const token = await tokenFor("admin");
 
-    const response = await request(app)
-      .post("/users")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ ...body, role: "superadmin" });
+      const response = await request(app)
+        .post("/users")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ ...body, role });
 
-    expect(response.status).toBe(422);
-    expect(response.body).toEqual({ errors: { role: "Invalid role" } });
-  });
+      expect(response.status).toBe(422);
+      expect(response.body).toEqual({ errors: { role: "Invalid role" } });
+    },
+  );
 
   it("responds 400 when required fields are missing", async () => {
     await createUser({

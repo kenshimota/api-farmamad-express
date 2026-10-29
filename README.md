@@ -78,13 +78,18 @@ Si `CORS_ORIGIN` no está definida o está vacía, se permite cualquier origen.
 Los roles viven en la tabla `roles` (no son un ENUM de Postgres) y se cargan
 con el seeder idempotente `seeders/20260910000001-roles.js`:
 
-| Rol                  | Uso                                                    |
-| -------------------- | ------------------------------------------------------ |
-| `admin`              | Administra el sistema; único que puede crear usuarios. |
-| `seller`             | Gestiona ventas y pedidos.                             |
-| `delivery`           | Repartidor de la empresa.                              |
-| `freelance_delivery` | Repartidor independiente.                              |
-| `customer`           | Usuario final.                                         |
+| Rol                 | Uso                                                           |
+| ------------------- | ------------------------------------------------------------- |
+| `admin`             | Administra el sistema; único que puede crear usuarios.        |
+| `customer`          | Usuario final.                                                |
+| `seller`            | Gestiona ventas y pedidos.                                    |
+| `dispatcher`        | Repartidor o coordinador de entregas; puede leer clientes.    |
+| `manager_warehouse` | Responsable de almacén; todavía sin permisos administrativos. |
+| `support`           | Atención al cliente; todavía sin permisos administrativos.    |
+
+Los antiguos roles `delivery` y `freelance_delivery` ya no existen. La
+migración `migrations/20260910000006-align-roles-catalog.js` reasigna a
+`dispatcher` los usuarios que los tenían y elimina las filas obsoletas.
 
 ## Endpoints
 
@@ -337,12 +342,15 @@ siendo `201` y el fallo se registra con `logger.error(...)`.
 
 ### `POST /users`
 
-Protegido: requiere un JWT con rol `admin`. Crea un usuario con
-cualquiera de los roles existentes en la tabla `roles`.
+Protegido: requiere un JWT con rol `admin`. Crea un usuario con uno de los
+seis roles del catálogo: `admin`, `customer`, `seller`, `dispatcher`,
+`manager_warehouse` o `support`.
 
 Campos: `username`, `email`, `password` (mínimo 8 caracteres) y `role`
 (requeridos); `name` (opcional). Si `username` o `email` ya existen responde
-`409`; si el rol no existe responde `422`.
+`409`; si el rol no existe en el catálogo (por ejemplo `delivery`,
+`freelance_delivery` o cualquier otro valor) responde `422` con
+`{ "errors": { "role": "Invalid role" } }`.
 
 Tras crearlo, la API envía el **correo de bienvenida** al `email` del usuario
 (ver _Correo de bienvenida_); un fallo de envío no cambia la respuesta `201`.
@@ -400,13 +408,17 @@ curl http://localhost:3001/roles -H "Authorization: Bearer <jwt>"
 
 Respuesta `200`:
 
+Los `id` dependen del orden en que se hayan insertado los roles; el ejemplo
+muestra un catálogo recién creado, siempre ordenado por `id` ascendente.
+
 ```json
 [
   { "id": 1, "name": "admin" },
-  { "id": 2, "name": "seller" },
-  { "id": 3, "name": "delivery" },
-  { "id": 4, "name": "freelance_delivery" },
-  { "id": 5, "name": "customer" }
+  { "id": 2, "name": "customer" },
+  { "id": 3, "name": "seller" },
+  { "id": 4, "name": "dispatcher" },
+  { "id": 5, "name": "manager_warehouse" },
+  { "id": 6, "name": "support" }
 ]
 ```
 
@@ -536,13 +548,13 @@ devuelve como **números** con hasta 7 decimales. Ninguna respuesta incluye
 
 Permisos por endpoint:
 
-| Endpoint                | `admin` | `seller` | `delivery` | `freelance_delivery` | `customer` |
-| ----------------------- | ------- | -------- | ---------- | -------------------- | ---------- |
-| `POST /customers`       | ✅      | ✅       | ❌ `403`   | ❌ `403`             | ❌ `403`   |
-| `GET /customers`        | ✅      | ✅       | ✅         | ❌ `403`             | ❌ `403`   |
-| `GET /customers/:id`    | ✅      | ✅       | ✅         | ❌ `403`             | ❌ `403`   |
-| `PUT /customers/:id`    | ✅      | ✅       | ❌ `403`   | ❌ `403`             | ❌ `403`   |
-| `DELETE /customers/:id` | ✅      | ✅       | ❌ `403`   | ❌ `403`             | ❌ `403`   |
+| Endpoint                | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ----------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /customers`       | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /customers`        | ✅      | ✅       | ✅           | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /customers/:id`    | ✅      | ✅       | ✅           | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `PUT /customers/:id`    | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /customers/:id` | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
 
 Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` en
 todos los endpoints, y sin token (o con token inválido/expirado) la respuesta es
@@ -577,17 +589,17 @@ Respuesta `201`:
 
 Errores:
 
-| Código | Cuerpo                                                                         |
-| ------ | ------------------------------------------------------------------------------ |
+| Código | Cuerpo                                                                             |
+| ------ | ---------------------------------------------------------------------------------- |
 | `400`  | `{ "message": "fullName, latitude, longitude, direction and email are required" }` |
-| `401`  | `{ "message": "Unauthorized" }`                                                |
-| `403`  | `{ "message": "Forbidden" }`                                                   |
-| `409`  | `{ "message": "Customer already exists" }`                                     |
-| `422`  | `{ "errors": { "latitude": "Latitud inválida" } }`                             |
+| `401`  | `{ "message": "Unauthorized" }`                                                    |
+| `403`  | `{ "message": "Forbidden" }`                                                       |
+| `409`  | `{ "message": "Customer already exists" }`                                         |
+| `422`  | `{ "errors": { "latitude": "Latitud inválida" } }`                                 |
 
 ### `GET /customers`
 
-Protegido: requiere un JWT con rol `admin`, `seller` o `delivery`. Devuelve la
+Protegido: requiere un JWT con rol `admin`, `seller` o `dispatcher`. Devuelve la
 colección completa ordenada por `id` ascendente. Si no hay clientes responde
 `200` con `[]` (nunca `404`).
 
@@ -619,7 +631,7 @@ Errores:
 
 ### `GET /customers/:id`
 
-Protegido: requiere un JWT con rol `admin`, `seller` o `delivery`. Devuelve un
+Protegido: requiere un JWT con rol `admin`, `seller` o `dispatcher`. Devuelve un
 único cliente.
 
 ```bash
@@ -641,12 +653,12 @@ Respuesta `200`:
 
 Errores:
 
-| Código | Cuerpo                                            |
-| ------ | ------------------------------------------------- |
-| `401`  | `{ "message": "Unauthorized" }`                   |
-| `403`  | `{ "message": "Forbidden" }`                      |
-| `404`  | `{ "message": "Customer not found" }`             |
-| `422`  | `{ "errors": { "id": "Invalid customer id" } }`   |
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "Forbidden" }`                    |
+| `404`  | `{ "message": "Customer not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid customer id" } }` |
 
 ### `PUT /customers/:id`
 
@@ -774,11 +786,11 @@ npm run test:integration # contra Postgres real (requiere docker-compose up -d d
 
 El pipeline vive en `.github/workflows/ci.yml` y tiene tres jobs:
 
-| Job      | Cuándo corre        | Qué hace                                                              |
-| -------- | ------------------- | --------------------------------------------------------------------- |
-| `test`   | Push y pull request | `npm test` y `npm run test:integration` contra un servicio Postgres.  |
-| `build`  | Solo tags (`v1.2.3`) | Construye y publica en Docker Hub la imagen con el tag y `latest`.   |
-| `deploy` | Solo tags           | Despliega en la VM, corre migraciones/seeders y valida el contenedor. |
+| Job      | Cuándo corre         | Qué hace                                                              |
+| -------- | -------------------- | --------------------------------------------------------------------- |
+| `test`   | Push y pull request  | `npm test` y `npm run test:integration` contra un servicio Postgres.  |
+| `build`  | Solo tags (`v1.2.3`) | Construye y publica en Docker Hub la imagen con el tag y `latest`.    |
+| `deploy` | Solo tags            | Despliega en la VM, corre migraciones/seeders y valida el contenedor. |
 
 Para desplegar una versión basta con crear un tag:
 
@@ -790,15 +802,15 @@ git push origin v1.0.0
 Secrets y variables requeridos en GitHub (Settings → Secrets and variables →
 Actions):
 
-| Nombre                                                                              | Tipo   | Uso                                           |
-| ----------------------------------------------------------------------------------- | ------ | --------------------------------------------- |
-| `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`                                             | Secret | Credenciales de Docker Hub.                   |
-| `DOCKERHUB_IMAGE`                                                                   | Var    | Nombre de la imagen, p. ej. `api-farmamad-express`. |
-| `VM_HOSTNAME`, `VM_PORT`, `VM_USERNAME`, `VM_PASSWORD`                              | Secret | Acceso SSH a la VM de despliegue.             |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`                           | Secret | Base de datos de producción.                  |
-| `JWT_SECRET`, `JWT_EXPIRES_IN`                                                      | Secret | Configuración de autenticación.               |
-| `GMAIL_USERNAME`, `GMAIL_TOKEN`                                                     | Secret | Envío de correos de recuperación.             |
-| `LOG_LEVEL`                                                                         | Var    | Nivel de logs del contenedor (opcional).      |
+| Nombre                                                    | Tipo   | Uso                                                 |
+| --------------------------------------------------------- | ------ | --------------------------------------------------- |
+| `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`                   | Secret | Credenciales de Docker Hub.                         |
+| `DOCKERHUB_IMAGE`                                         | Var    | Nombre de la imagen, p. ej. `api-farmamad-express`. |
+| `VM_HOSTNAME`, `VM_PORT`, `VM_USERNAME`, `VM_PASSWORD`    | Secret | Acceso SSH a la VM de despliegue.                   |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Secret | Base de datos de producción.                        |
+| `JWT_SECRET`, `JWT_EXPIRES_IN`                            | Secret | Configuración de autenticación.                     |
+| `GMAIL_USERNAME`, `GMAIL_TOKEN`                           | Secret | Envío de correos de recuperación.                   |
+| `LOG_LEVEL`                                               | Var    | Nivel de logs del contenedor (opcional).            |
 
 El contenedor se llama `bread-king-api`, se une a la red `maseferlat` y se
 recrea con `/app/create-container`; el healthcheck final usa `/app/check-container`.

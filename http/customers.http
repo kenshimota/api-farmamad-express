@@ -1,7 +1,7 @@
 # Archivo: customers.http
 # Módulo: customers  ->  POST /customers, GET /customers, GET /customers/:id,
 #                        PUT /customers/:id, DELETE /customers/:id
-# Protegido: escritura requiere rol admin o seller; lectura también delivery.
+# Protegido: escritura requiere rol admin o seller; lectura también dispatcher.
 # Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
 
 ### POST /customers — registra un cliente (201)

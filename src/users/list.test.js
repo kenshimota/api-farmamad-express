@@ -126,7 +126,7 @@ describe("GET /users", () => {
     expect(User.findAll).not.toHaveBeenCalled();
   });
 
-  it.each(["seller", "delivery", "freelance_delivery", "customer"])(
+  it.each(["seller", "dispatcher", "manager_warehouse", "support", "customer"])(
     "responds 403 when the authenticated user is %s",
     async (role) => {
       const response = await get(tokenFor(role));

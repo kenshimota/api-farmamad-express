@@ -22,8 +22,10 @@ function toPublicRole(role) {
  *     summary: Lists the role catalog; only administrators can do it
  *     description: >
  *       Returns every role stored in the roles table, ordered by id ascending.
- *       The `name` values are the ones accepted by `POST /users`, so a client
- *       can use this endpoint to populate a role selector.
+ *       The catalog contains exactly six names: `admin`, `customer`, `seller`,
+ *       `dispatcher`, `manager_warehouse` and `support`. These are the values
+ *       accepted by `POST /users`, so a client can use this endpoint to
+ *       populate a role selector.
  *     tags:
  *       - Roles
  *     security:
