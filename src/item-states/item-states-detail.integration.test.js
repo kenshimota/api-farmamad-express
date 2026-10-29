@@ -1,10 +1,11 @@
 process.env.JWT_SECRET = process.env.JWT_SECRET || "integration-test-secret";
 
 const request = require("supertest");
-const { DataTypes } = require("sequelize");
 const app = require("../app");
 const sequelize = require("../database");
 const ItemState = require("../models/item-state");
+const Cost = require("../models/cost");
+const { createProduct } = require("../../test/helpers/products");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 const {
   BODY,
@@ -13,8 +14,6 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/item-states");
-
-const USAGE_TABLE = "item_state_usage_test";
 
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
@@ -107,6 +106,34 @@ describe("PUT /item-states/:id with a real database", () => {
     });
   });
 
+  it("responds 409 and keeps the name when a real cost references the item state", async () => {
+    const itemState = await createItemState();
+    const product = await createProduct({ reference: "ITEM-STATE-RENAME" });
+    const token = await tokenFor("seller");
+    const cost = await Cost.create({
+      product_id: product.id,
+      item_state_id: itemState.id,
+      cost: 10,
+    });
+
+    try {
+      const response = await as(
+        "put",
+        `/item-states/${itemState.id}`,
+        token,
+      ).send({ name: "available" });
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({ message: "Item state is in use" });
+      await expect(ItemState.findByPk(itemState.id)).resolves.toMatchObject({
+        name: "sellable",
+      });
+    } finally {
+      await cost.destroy();
+      await product.destroy();
+    }
+  });
+
   it("responds 409 when the name belongs to another item state", async () => {
     await createItemState({ name: "sellable" });
     const other = await createItemState({
@@ -188,38 +215,17 @@ describe("DELETE /item-states/:id with a real database", () => {
     },
   );
 
-  it("responds 409 and keeps the item state when a real foreign key references it", async () => {
+  it("responds 409 and keeps the item state when a real cost references it", async () => {
     const itemState = await createItemState();
+    const product = await createProduct({ reference: "ITEM-STATE-DELETE" });
     const token = await tokenFor("admin");
-    const queryInterface = sequelize.getQueryInterface();
-
-    await queryInterface.dropTable(USAGE_TABLE).catch(() => undefined);
+    const cost = await Cost.create({
+      product_id: product.id,
+      item_state_id: itemState.id,
+      cost: 10,
+    });
 
     try {
-      await queryInterface.createTable(USAGE_TABLE, {
-        id: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
-          autoIncrement: true,
-          primaryKey: true,
-        },
-        item_state_id: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
-        },
-      });
-      await queryInterface.addConstraint(USAGE_TABLE, {
-        fields: ["item_state_id"],
-        type: "foreign key",
-        name: `${USAGE_TABLE}_item_state_id_fkey`,
-        references: { table: "item_states", field: "id" },
-        onUpdate: "CASCADE",
-        onDelete: "RESTRICT",
-      });
-      await queryInterface.bulkInsert(USAGE_TABLE, [
-        { item_state_id: itemState.id },
-      ]);
-
       const response = await as(
         "delete",
         `/item-states/${itemState.id}`,
@@ -230,7 +236,8 @@ describe("DELETE /item-states/:id with a real database", () => {
       expect(response.body).toEqual({ message: "Item state is in use" });
       await expect(ItemState.findByPk(itemState.id)).resolves.not.toBeNull();
     } finally {
-      await queryInterface.dropTable(USAGE_TABLE);
+      await cost.destroy();
+      await product.destroy();
     }
   });
 

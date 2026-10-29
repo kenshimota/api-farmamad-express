@@ -1,0 +1,213 @@
+# Archivo: costs.http
+# Módulo: costs  ->  POST /costs, GET /costs, GET /costs/:id,
+#                    GET /costs/product/:product_id, PUT /costs/:id,
+#                    DELETE /costs/:id
+# Protegido: lectura para admin, seller y manager_warehouse;
+#            escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+# Ajusta product_id e item_state_id por los ids reales de tu base de datos.
+
+### POST /costs — crea el costo de un producto para un estado (201)
+# La combinación (product_id, item_state_id) es única. cost admite >= 0,
+# máximo 2 decimales y máximo 9 enteros.
+POST {{baseUrl}}/costs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 1,
+  "cost": 12.5
+}
+
+### POST /costs — sin token (401 Unauthorized)
+POST {{baseUrl}}/costs
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 1,
+  "cost": 12.5
+}
+
+### POST /costs — faltan campos (400)
+POST {{baseUrl}}/costs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /costs — producto inexistente (422)
+POST {{baseUrl}}/costs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 99999,
+  "item_state_id": 1,
+  "cost": 12.5
+}
+
+### POST /costs — estado de ítem inexistente (422)
+POST {{baseUrl}}/costs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 99999,
+  "cost": 12.5
+}
+
+### POST /costs — costo negativo (422)
+POST {{baseUrl}}/costs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 1,
+  "cost": -1
+}
+
+### POST /costs — más de 2 decimales (422)
+POST {{baseUrl}}/costs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 1,
+  "cost": 12.345
+}
+
+### POST /costs — combinación duplicada (409)
+# Ejecuta antes una creación con el mismo product_id e item_state_id.
+POST {{baseUrl}}/costs
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 1,
+  "cost": 20
+}
+
+### GET /costs — lista ordenada por product_id e item_state_id (200, [] si no hay)
+GET {{baseUrl}}/costs
+Authorization: Bearer {{token}}
+
+### GET /costs?product_id=1 — filtra por producto (200)
+GET {{baseUrl}}/costs?product_id=1
+Authorization: Bearer {{token}}
+
+### GET /costs?item_state_id=1 — filtra por estado (200)
+GET {{baseUrl}}/costs?item_state_id=1
+Authorization: Bearer {{token}}
+
+### GET /costs?product_id=abc — filtro inválido (422)
+GET {{baseUrl}}/costs?product_id=abc
+Authorization: Bearer {{token}}
+
+### GET /costs — sin token (401 Unauthorized)
+GET {{baseUrl}}/costs
+
+### GET /costs/:id — consulta un costo (200)
+GET {{baseUrl}}/costs/1
+Authorization: Bearer {{token}}
+
+### GET /costs/:id — id inexistente (404)
+GET {{baseUrl}}/costs/99999
+Authorization: Bearer {{token}}
+
+### GET /costs/:id — id inválido (422)
+GET {{baseUrl}}/costs/abc
+Authorization: Bearer {{token}}
+
+### GET /costs/product/:product_id — costos de un producto (200, [] si no hay)
+GET {{baseUrl}}/costs/product/1
+Authorization: Bearer {{token}}
+
+### GET /costs/product/:product_id — producto inválido (422)
+GET {{baseUrl}}/costs/product/abc
+Authorization: Bearer {{token}}
+
+### PUT /costs/:id — actualiza el costo (202)
+# Se puede enviar cualquier combinación de cost, product_id e item_state_id;
+# al menos uno es obligatorio.
+PUT {{baseUrl}}/costs/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cost": 20
+}
+
+### PUT /costs/:id — cambia producto y estado (202)
+PUT {{baseUrl}}/costs/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "product_id": 1,
+  "item_state_id": 2
+}
+
+### PUT /costs/:id — sin campos (400)
+PUT {{baseUrl}}/costs/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /costs/:id — combinación duplicada (409)
+PUT {{baseUrl}}/costs/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "item_state_id": 1
+}
+
+### PUT /costs/:id — id inexistente (404)
+PUT {{baseUrl}}/costs/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cost": 20
+}
+
+### PUT /costs/:id — id inválido (422)
+PUT {{baseUrl}}/costs/abc
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cost": 20
+}
+
+### PUT /costs/:id — sin token (401 Unauthorized)
+PUT {{baseUrl}}/costs/1
+Content-Type: application/json
+
+{
+  "cost": 20
+}
+
+### DELETE /costs/:id — elimina un costo (204, sin cuerpo)
+DELETE {{baseUrl}}/costs/1
+Authorization: Bearer {{token}}
+
+### DELETE /costs/:id — id inexistente (404)
+DELETE {{baseUrl}}/costs/99999
+Authorization: Bearer {{token}}
+
+### DELETE /costs/:id — id inválido (422)
+DELETE {{baseUrl}}/costs/abc
+Authorization: Bearer {{token}}
+
+### DELETE /costs/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/costs/1

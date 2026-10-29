@@ -3,8 +3,10 @@ jest.mock("../models/item-state", () => ({
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
+jest.mock("../models/cost", () => ({ findOne: jest.fn() }));
 
 const ItemState = require("../models/item-state");
+const Cost = require("../models/cost");
 const { createItemStateRepository, LIST_ORDER } = require("./repository");
 
 const repository = createItemStateRepository();
@@ -13,6 +15,7 @@ beforeEach(() => {
   ItemState.create.mockReset();
   ItemState.findAll.mockReset();
   ItemState.findByPk.mockReset();
+  Cost.findOne.mockReset();
 });
 
 describe("itemStateRepository", () => {
@@ -73,9 +76,18 @@ describe("itemStateRepository", () => {
     expect(itemState.destroy).toHaveBeenCalledTimes(1);
   });
 
-  it("reports no references until costs, stocks and purchases exist", async () => {
-    await expect(repository.isReferenced(1)).resolves.toBe(false);
+  it("reports whether costs reference the item state", async () => {
+    Cost.findOne.mockResolvedValueOnce({ id: 1 });
+    Cost.findOne.mockResolvedValueOnce(null);
+
+    await expect(repository.isReferenced(1)).resolves.toBe(true);
     await expect(repository.isReferenced(99)).resolves.toBe(false);
+    expect(Cost.findOne).toHaveBeenCalledWith({
+      where: { item_state_id: 1 },
+    });
+    expect(Cost.findOne).toHaveBeenCalledWith({
+      where: { item_state_id: 99 },
+    });
   });
 
   it("uses an injected model instead of the default one", async () => {
