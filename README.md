@@ -2731,6 +2731,271 @@ curl "http://localhost:3001/currencies/2/history" \
 | `409`  | `{ "message": "Base currency cannot be deactivated" }`      |
 | `422`  | `{ "errors": { "rate": "rate must be greater than 0" } }`   |
 
+## Estantes y secciones (shelves, shelf_sections)
+
+Jerarquía física del inventario:
+
+```text
+warehouse (HU-11)
+  └── shelf
+        └── shelf_section
+```
+
+Cada estante pertenece a **una** bodega y cada sección a **un** estante. Las
+tablas son `shelves` (modelo `Shelf`) y `shelf_sections` (modelo
+`ShelfSection`). `code` es obligatorio, se guarda en **mayúsculas**, acepta
+`[A-Za-z0-9_-]{1,50}` y es único dentro de su padre ignorando mayúsculas. `name`
+(máximo 100) y `description` (máximo 255) son opcionales. Ninguna respuesta
+incluye `createdAt` ni `updatedAt`.
+
+Reglas de integridad:
+
+- `warehouse_id` es inmutable: no se puede mover un estante de bodega por
+  `PUT` (`422`).
+- `shelf_id` es inmutable: no se puede mover una sección de estante por `PUT`
+  (`422`).
+- Borrar una bodega con estantes está bloqueado por la FK `RESTRICT`.
+- Borrar un estante elimina sus secciones en cascada.
+- Si HU-24 (`lots`) ya está instalada y un lote referencia el estante o una de
+  sus secciones, el borrado responde `409` y no elimina nada. La comprobación es
+  defensiva: mientras la tabla `lots` no exista, el borrado funciona con
+  normalidad y la FK se sigue traduciendo a `409` cuando aparezca.
+
+Roles:
+
+- Lectura (`GET`): `admin`, `seller`, `manager_warehouse` y `dispatcher`.
+- Escritura (`POST`, `PUT`, `DELETE`): `admin` y `manager_warehouse`.
+
+| Endpoint                                         | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ------------------------------------------------ | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /shelves`                                  | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `GET /shelves`                                   | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `GET /shelves/:id`                               | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `PUT /shelves/:id`                               | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `DELETE /shelves/:id`                            | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `POST /shelves/:shelf_id/sections`               | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `GET /shelves/:shelf_id/sections`                | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `GET /shelves/:shelf_id/sections/:section_id`    | ✅      | ✅       | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `PUT /shelves/:shelf_id/sections/:section_id`    | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `DELETE /shelves/:shelf_id/sections/:section_id` | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+
+Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` y sin
+token (o con token inválido/expirado) la respuesta es `401` con
+`{ "message": "Unauthorized" }`.
+
+### `POST /shelves`
+
+Requiere `warehouse_id` y `code`; `name` y `description` son opcionales. El
+`code` se recorta y se guarda en mayúsculas. La bodega debe existir.
+
+```bash
+curl -X POST http://localhost:3001/shelves \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"warehouse_id":1,"code":"A1","name":"Estante A1","description":"Pasillo principal"}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "warehouse_id": 1,
+  "code": "A1",
+  "name": "Estante A1",
+  "description": "Pasillo principal",
+  "sections": []
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                              |
+| ------ | ------------------------------------------------------------------- |
+| `400`  | `{ "message": "warehouse_id and code are required" }`               |
+| `401`  | `{ "message": "Unauthorized" }`                                     |
+| `403`  | `{ "message": "Forbidden" }`                                        |
+| `409`  | `{ "message": "Shelf already exists" }`                             |
+| `422`  | `{ "errors": { "warehouse_id": "Invalid warehouse id" } }`          |
+| `422`  | `{ "errors": { "code": "code must match ^[A-Za-z0-9_-]{1,50}$" } }` |
+
+### `GET /shelves`
+
+Lista los estantes ordenados por `warehouse_id` y luego por `code`, ambos
+ascendentes. Filtro opcional exacto `warehouse_id` (entero positivo). Con
+`include=sections` cada estante incluye su arreglo `sections` ordenado por
+`code`; la consulta se resuelve con un `include` de Sequelize, sin N+1.
+
+```bash
+curl "http://localhost:3001/shelves?warehouse_id=1&include=sections" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "warehouse_id": 1,
+    "code": "A1",
+    "name": "Estante A1",
+    "description": "Pasillo principal",
+    "sections": [
+      {
+        "id": 1,
+        "shelf_id": 1,
+        "code": "A1-01",
+        "name": "Nivel 1",
+        "description": null
+      },
+      {
+        "id": 2,
+        "shelf_id": 1,
+        "code": "A1-02",
+        "name": "Nivel 2",
+        "description": null
+      }
+    ]
+  }
+]
+```
+
+Sin `include=sections` los objetos no llevan la clave `sections`. Un
+`warehouse_id` inválido o un `include` distinto de `sections` responde `422`.
+
+### `GET /shelves/:id`
+
+Devuelve el estante con sus secciones ordenadas por `code`. Un id inválido
+responde `422` y un estante inexistente `404`.
+
+```bash
+curl http://localhost:3001/shelves/1 -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /shelves/:id`
+
+Actualiza `code`, `name` y `description`; responde `202` con el estante
+actualizado y sus secciones. Debe enviarse al menos un campo editable.
+`warehouse_id` es inmutable y responde `422` si se envía.
+
+```bash
+curl -X PUT http://localhost:3001/shelves/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"A1","name":"Estante A1 actualizado","description":"Pasillo principal, lado izquierdo"}'
+```
+
+Errores:
+
+| Código | Cuerpo                                                               |
+| ------ | -------------------------------------------------------------------- |
+| `400`  | `{ "message": "At least one field is required" }`                    |
+| `404`  | `{ "message": "Shelf not found" }`                                   |
+| `409`  | `{ "message": "Shelf already exists" }`                              |
+| `422`  | `{ "errors": { "warehouse_id": "warehouse_id cannot be changed" } }` |
+| `422`  | `{ "errors": { "id": "Invalid shelf id" } }`                         |
+
+### `DELETE /shelves/:id`
+
+Elimina el estante y sus secciones en cascada. Responde `204` sin cuerpo. Si un
+lote de HU-24 referencia el estante o alguna de sus secciones, responde `409`
+con `{ "message": "Shelf has lots" }` y no elimina nada.
+
+```bash
+curl -X DELETE http://localhost:3001/shelves/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `POST /shelves/:shelf_id/sections`
+
+Crea una sección dentro del estante. Requiere `code`; `name` y `description`
+son opcionales. Si el estante no existe responde `404`.
+
+```bash
+curl -X POST http://localhost:3001/shelves/1/sections \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"A1-03","name":"Nivel 3"}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 3,
+  "shelf_id": 1,
+  "code": "A1-03",
+  "name": "Nivel 3",
+  "description": null
+}
+```
+
+Errores: `400` si falta `code`, `404 Shelf not found`, `409 Section already
+exists` y `422` para `shelf_id` o campos inválidos.
+
+### `GET /shelves/:shelf_id/sections`
+
+Lista las secciones del estante ordenadas por `code` ascendente. Un estante
+inexistente responde `404`; un `shelf_id` inválido responde `422`.
+
+```bash
+curl http://localhost:3001/shelves/1/sections \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `GET /shelves/:shelf_id/sections/:section_id`
+
+Devuelve una sección. La búsqueda está acotada al estante de la URL: una sección
+de otro estante responde `404 Section not found` (no se puede operar cambiando
+el `shelf_id`).
+
+```bash
+curl http://localhost:3001/shelves/1/sections/3 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /shelves/:shelf_id/sections/:section_id`
+
+Actualiza `code`, `name` y `description`; responde `202`. Exige al menos un
+campo editable y rechaza `shelf_id` con `422 shelf_id cannot be changed`.
+
+```bash
+curl -X PUT http://localhost:3001/shelves/1/sections/3 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"A1-03","name":"Nivel 3 actualizado"}'
+```
+
+### `DELETE /shelves/:shelf_id/sections/:section_id`
+
+Elimina la sección y responde `204` sin cuerpo. Si un lote la referencia,
+responde `409` con `{ "message": "Section has lots" }` y no elimina nada.
+
+```bash
+curl -X DELETE http://localhost:3001/shelves/1/sections/3 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Errores del módulo
+
+| Código | Cuerpo                                                               |
+| ------ | -------------------------------------------------------------------- |
+| `400`  | `{ "message": "warehouse_id and code are required" }`                |
+| `400`  | `{ "message": "code is required" }`                                  |
+| `400`  | `{ "message": "At least one field is required" }`                    |
+| `401`  | `{ "message": "Unauthorized" }`                                      |
+| `403`  | `{ "message": "Forbidden" }`                                         |
+| `404`  | `{ "message": "Shelf not found" }`                                   |
+| `404`  | `{ "message": "Section not found" }`                                 |
+| `409`  | `{ "message": "Shelf already exists" }`                              |
+| `409`  | `{ "message": "Section already exists" }`                            |
+| `409`  | `{ "message": "Shelf has lots" }`                                    |
+| `409`  | `{ "message": "Section has lots" }`                                  |
+| `422`  | `{ "errors": { "warehouse_id": "Invalid warehouse id" } }`           |
+| `422`  | `{ "errors": { "shelf_id": "Invalid shelf id" } }`                   |
+| `422`  | `{ "errors": { "section_id": "Invalid section id" } }`               |
+| `422`  | `{ "errors": { "warehouse_id": "warehouse_id cannot be changed" } }` |
+| `422`  | `{ "errors": { "shelf_id": "shelf_id cannot be changed" } }`         |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,

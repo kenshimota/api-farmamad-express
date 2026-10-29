@@ -37,6 +37,10 @@ describe("swagger spec", () => {
         "/currencies",
         "/currencies/{id}",
         "/currencies/{id}/history",
+        "/shelves",
+        "/shelves/{id}",
+        "/shelves/{shelf_id}/sections",
+        "/shelves/{shelf_id}/sections/{section_id}",
       ]),
     );
   });
