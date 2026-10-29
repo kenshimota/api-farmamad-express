@@ -4,9 +4,11 @@ jest.mock("../models/item-state", () => ({
   findByPk: jest.fn(),
 }));
 jest.mock("../models/cost", () => ({ findOne: jest.fn() }));
+jest.mock("../models/stock", () => ({ findOne: jest.fn() }));
 
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
+const Stock = require("../models/stock");
 const { createItemStateRepository, LIST_ORDER } = require("./repository");
 
 const repository = createItemStateRepository();
@@ -16,6 +18,7 @@ beforeEach(() => {
   ItemState.findAll.mockReset();
   ItemState.findByPk.mockReset();
   Cost.findOne.mockReset();
+  Stock.findOne.mockReset();
 });
 
 describe("itemStateRepository", () => {
@@ -78,14 +81,36 @@ describe("itemStateRepository", () => {
 
   it("reports whether costs reference the item state", async () => {
     Cost.findOne.mockResolvedValueOnce({ id: 1 });
-    Cost.findOne.mockResolvedValueOnce(null);
 
     await expect(repository.isReferenced(1)).resolves.toBe(true);
-    await expect(repository.isReferenced(99)).resolves.toBe(false);
     expect(Cost.findOne).toHaveBeenCalledWith({
       where: { item_state_id: 1 },
     });
+    expect(Stock.findOne).not.toHaveBeenCalled();
+  });
+
+  it("reports whether stocks reference the item state", async () => {
+    Cost.findOne.mockResolvedValueOnce(null);
+    Stock.findOne.mockResolvedValueOnce({ id: 2 });
+
+    await expect(repository.isReferenced(2)).resolves.toBe(true);
     expect(Cost.findOne).toHaveBeenCalledWith({
+      where: { item_state_id: 2 },
+    });
+    expect(Stock.findOne).toHaveBeenCalledWith({
+      where: { item_state_id: 2 },
+    });
+  });
+
+  it("returns false when neither costs nor stocks reference the item state", async () => {
+    Cost.findOne.mockResolvedValueOnce(null);
+    Stock.findOne.mockResolvedValueOnce(null);
+
+    await expect(repository.isReferenced(99)).resolves.toBe(false);
+    expect(Cost.findOne).toHaveBeenCalledWith({
+      where: { item_state_id: 99 },
+    });
+    expect(Stock.findOne).toHaveBeenCalledWith({
       where: { item_state_id: 99 },
     });
   });

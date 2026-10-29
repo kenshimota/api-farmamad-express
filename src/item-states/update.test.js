@@ -1,11 +1,11 @@
 process.env.JWT_SECRET = "test-secret";
-
 jest.mock("../models/item-state", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
 jest.mock("../models/cost", () => ({ findOne: jest.fn() }));
+jest.mock("../models/stock", () => ({ findOne: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");

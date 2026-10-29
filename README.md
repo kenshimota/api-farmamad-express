@@ -1431,7 +1431,12 @@ Errores:
 | `401`  | `{ "message": "Unauthorized" }`                |
 | `403`  | `{ "message": "Forbidden" }`                   |
 | `404`  | `{ "message": "Product not found" }`           |
+| `409`  | `{ "message": "Product is in use" }`           |
 | `422`  | `{ "errors": { "id": "Invalid product id" } }` |
+
+Un producto referenciado por un costo o por una fila de inventario responde
+`409` con `{ "message": "Product is in use" }` y no se elimina: las claves
+foráneas `products` → `costs` y `products` → `stocks` son `RESTRICT`.
 
 ## Estados
 
@@ -2037,8 +2042,8 @@ con el recurso actualizado. `description: null` borra la descripción.
 `name` es la clave estable: solo se puede cambiar si el registro **no** está
 referenciado por costos (HU-19), stocks (HU-20) ni ítems de compra (HU-21); si
 lo está, responde `409` con `{ "message": "Item state is in use" }`. La
-comprobación ya consulta la tabla real `costs` y las claves foráneas
-restrictivas cubren el resto de tablas cuando se creen.
+comprobación consulta las tablas `costs` y `stocks`; las claves foráneas
+restrictivas cubren las compras cuando se creen en HU-21.
 
 ```bash
 curl -X PUT http://localhost:3001/item-states/1 \
@@ -2059,10 +2064,9 @@ Errores: `400` cuando no se envía ningún campo, `401`, `403`, `404`
 
 Protegido: requiere rol `admin` o `seller`. Elimina el estado y responde `204`
 sin cuerpo. Si está referenciado por costos, stocks o ítems de compra responde
-`409` con `{ "message": "Item state is in use" }` y no lo elimina. La tabla
-`costs` ya aplica esa restricción; las claves foráneas restrictivas de stocks y
-compras se sumarán con HU-20 y HU-21. Un estado inexistente responde `404` y un
-id inválido `422`.
+`409` con `{ "message": "Item state is in use" }` y no lo elimina. Las tablas
+`costs` y `stocks` ya aplican esa restricción; las compras se sumarán con
+HU-21. Un estado inexistente responde `404` y un id inválido `422`.
 
 ```bash
 curl -X DELETE http://localhost:3001/item-states/1 \
@@ -2220,6 +2224,134 @@ inexistente responde `404` y un id inválido `422`.
 curl -X DELETE http://localhost:3001/costs/1 \
   -H "Authorization: Bearer <jwt>"
 ```
+
+## Inventario (stocks)
+
+El inventario vive en la tabla `stocks` (modelo `Stock`) y guarda **una fila
+por combinación `(product_id, item_state_id)`** con la cantidad disponible. En
+esta historia la API es de **solo lectura**: las filas se crean y se incrementan
+automáticamente al confirmar compras (HU-21), no mediante endpoints públicos.
+
+| Columna         | Tipo      | Restricciones                                        |
+| --------------- | --------- | ---------------------------------------------------- |
+| `id`            | INTEGER   | PK, autoincremental                                  |
+| `product_id`    | INTEGER   | Requerido, FK `products.id` con `RESTRICT`           |
+| `item_state_id` | INTEGER   | Requerido, FK `item_states.id` con `RESTRICT`        |
+| `quantity`      | INTEGER   | Requerido, `>= 0`, por defecto `0`                    |
+| `createdAt`     | TIMESTAMP | Auditoría, no se expone en la API                    |
+| `updatedAt`     | TIMESTAMP | Auditoría, no se expone en la API                    |
+
+La restricción única `(product_id, item_state_id)` impide duplicados y el
+`CHECK (quantity >= 0)` impide cantidades negativas. La respuesta pública de
+`GET /stocks` es:
+
+```json
+{
+  "id": 3,
+  "product_id": 15,
+  "item_state_id": 1,
+  "quantity": 40,
+  "item_state": {
+    "id": 1,
+    "name": "sellable",
+    "label": "Vendible",
+    "is_sellable": true
+  }
+}
+```
+
+| Endpoint                         | admin | seller | manager_warehouse | dispatcher | support | customer |
+| -------------------------------- | ----- | ------ | ----------------- | ---------- | ------- | -------- |
+| `GET /stocks`                    | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /stocks/:id`                | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /stocks/product/:product_id`| ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /stocks/available`          | ✅    | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+| `GET /stocks/available/:product_id`| ✅  | ✅     | ✅                | ❌ `403`   | ❌ `403` | ❌ `403` |
+
+No existe `POST`, `PUT` ni `DELETE` público para `stocks`; esas rutas responden
+`404`.
+
+### `GET /stocks`
+
+Protegido para `admin`, `seller` y `manager_warehouse`. Devuelve el inventario
+ordenado por `product_id` y `item_state_id` ascendente, con el estado anidado.
+Los filtros son opcionales y exactos: `?product_id=`, `?item_state_id=` y
+`?in_stock=true|false` (`true` deja solo `quantity > 0`). Un filtro inválido
+responde `422` con `{ "errors": { "product_id": "Invalid id" } }`.
+
+```bash
+curl "http://localhost:3001/stocks?product_id=15&in_stock=true" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `GET /stocks/:id` y `GET /stocks/product/:product_id`
+
+`GET /stocks/:id` devuelve el detalle o `404` con
+`{ "message": "Stock not found" }`; un id no numérico responde `422` con
+`{ "errors": { "id": "Invalid stock id" } }`. `GET /stocks/product/:product_id`
+devuelve todos los estados del producto, ordenados por `item_state_id`; si no
+hay filas responde `200` con `[]`, incluso si el producto no existe.
+
+```bash
+curl http://localhost:3001/stocks/1 \
+  -H "Authorization: Bearer <jwt>"
+
+curl http://localhost:3001/stocks/product/15 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `GET /stocks/available`
+
+Protegido para `admin`, `seller` y `manager_warehouse`. Requiere
+`?product_id=` y devuelve solo las filas con `quantity > 0` cuyo estado tiene
+`is_sellable = true`, ordenadas por `item_state.name`. Cada fila incluye el
+costo vigente de `costs` para la misma combinación o `cost: null` si no existe;
+la fila **no se oculta** para que el faltante de costo sea visible. La consulta
+cruza `stocks`, `item_states` y `costs` con un join de Sequelize, sin N+1.
+`GET /stocks/available/:product_id` es un alias de la misma consulta.
+
+```bash
+curl "http://localhost:3001/stocks/available?product_id=15" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "product_id": 15,
+    "item_state_id": 1,
+    "quantity": 40,
+    "cost": 20.0,
+    "item_state": {
+      "id": 1,
+      "name": "sellable",
+      "label": "Vendible",
+      "is_sellable": true
+    }
+  }
+]
+```
+
+Errores comunes del módulo:
+
+| Código | Cuerpo                                           |
+| ------ | ------------------------------------------------ |
+| `401`  | `{ "message": "Unauthorized" }`                  |
+| `403`  | `{ "message": "Forbidden" }`                     |
+| `404`  | `{ "message": "Stock not found" }`               |
+| `422`  | `{ "errors": { "product_id": "Invalid id" } }`   |
+
+### Incremento desde compras (HU-21)
+
+El módulo expone internamente `stockRepository.applyPurchaseItems(items, {
+transaction })`. Por cada `(product_id, item_state_id)` agrupa las cantidades,
+crea la fila si no existe (`findOrCreate`) o incrementa la existente con
+`increment` atómico bajo bloqueo de fila, siempre dentro de la transacción
+recibida. Si un ítem falla, la transacción revierte todos los cambios; dos
+compras concurrentes no pierden incrementos. No hay endpoint público que llame
+a esta función.
 
 ## Logs y manejo de errores
 

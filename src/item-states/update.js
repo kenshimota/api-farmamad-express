@@ -24,8 +24,8 @@ const UPDATE_FIELDS = Object.freeze([
  *       `is_sellable` (at least one) and responds 202 with the updated
  *       resource. `name` is the stable key: it can only change when the item
  *       state is not referenced by costs, stocks or purchase items; otherwise
- *       the API answers 409 `Item state is in use`. Costs are checked now;
- *       stocks and purchase items join the check with HU-20 and HU-21.
+ *       the API answers 409 `Item state is in use`. Costs and stocks are
+ *       checked before renaming; purchase items join the check with HU-21.
  *     tags:
  *       - Item states
  *     security:

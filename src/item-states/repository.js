@@ -9,9 +9,11 @@ const LIST_ORDER = Object.freeze([["name", "ASC"]]);
  * @param {object} [model] - Sequelize model used for the queries.
  * @param {object} [costModel] - Cost model used for the reference check; it
  *   is loaded on demand so item state unit tests never need the cost model.
+ * @param {object} [stockModel] - Stock model used for the reference check; it
+ *   is loaded on demand so item state unit tests never need the stock model.
  * @returns {object} Item state repository.
  */
-function createItemStateRepository(model = ItemState, costModel) {
+function createItemStateRepository(model = ItemState, costModel, stockModel) {
   return {
     /**
      * Persists a new item state.
@@ -69,20 +71,29 @@ function createItemStateRepository(model = ItemState, costModel) {
     },
 
     /**
-     * Tells whether an item state is referenced by a cost. Stocks and purchase
-     * items will join this check with HU-20 and HU-21; their restrictive
-     * foreign keys will also raise a `SequelizeForeignKeyConstraintError`,
-     * which the delete handler already maps to 409 `Item state is in use`.
+     * Tells whether an item state is referenced by a cost or by a stock row.
+     * Purchase items will join this check with HU-21; their restrictive
+     * foreign key will also raise a `SequelizeForeignKeyConstraintError`, which
+     * the delete handler already maps to 409 `Item state is in use`.
      * @param {number} itemStateId - Item state id.
-     * @returns {Promise<boolean>} True when a cost references the item state.
+     * @returns {Promise<boolean>} True when a cost or a stock references it.
      */
     async isReferenced(itemStateId) {
-      const modelToUse = costModel ?? require("../models/cost");
-      const cost = await modelToUse.findOne({
+      const costModelToUse = costModel ?? require("../models/cost");
+      const stockModelToUse = stockModel ?? require("../models/stock");
+      const cost = await costModelToUse.findOne({
         where: { item_state_id: itemStateId },
       });
 
-      return cost !== null && cost !== undefined;
+      if (cost !== null && cost !== undefined) {
+        return true;
+      }
+
+      const stock = await stockModelToUse.findOne({
+        where: { item_state_id: itemStateId },
+      });
+
+      return stock !== null && stock !== undefined;
     },
   };
 }
