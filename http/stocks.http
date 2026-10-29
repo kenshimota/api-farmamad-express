@@ -1,0 +1,85 @@
+# Archivo: stocks.http
+# Módulo: stocks  ->  GET /stocks, GET /stocks/:id,
+#                    GET /stocks/product/:product_id,
+#                    GET /stocks/available, GET /stocks/available/:product_id
+# Protegido: solo lectura para admin, seller y manager_warehouse.
+# No existe POST, PUT ni DELETE público para stocks.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+# Ajusta product_id y los ids por los datos reales de tu base de datos.
+
+### GET /stocks — lista todo el inventario (200, [] si no hay)
+# Ordenado por product_id y item_state_id. Cada fila incluye item_state anidado.
+GET {{baseUrl}}/stocks
+Authorization: Bearer {{token}}
+
+### GET /stocks?product_id=1 — filtra por producto (200)
+GET {{baseUrl}}/stocks?product_id=1
+Authorization: Bearer {{token}}
+
+### GET /stocks?item_state_id=1 — filtra por estado (200)
+GET {{baseUrl}}/stocks?item_state_id=1
+Authorization: Bearer {{token}}
+
+### GET /stocks?in_stock=true — solo cantidad > 0 (200)
+GET {{baseUrl}}/stocks?in_stock=true
+Authorization: Bearer {{token}}
+
+### GET /stocks?product_id=1&item_state_id=1&in_stock=true — filtros combinados (200)
+GET {{baseUrl}}/stocks?product_id=1&item_state_id=1&in_stock=true
+Authorization: Bearer {{token}}
+
+### GET /stocks?product_id=abc — filtro inválido (422)
+GET {{baseUrl}}/stocks?product_id=abc
+Authorization: Bearer {{token}}
+
+### GET /stocks?in_stock=maybe — filtro inválido (422)
+GET {{baseUrl}}/stocks?in_stock=maybe
+Authorization: Bearer {{token}}
+
+### GET /stocks — sin token (401 Unauthorized)
+GET {{baseUrl}}/stocks
+
+### GET /stocks/:id — consulta una fila de inventario (200)
+GET {{baseUrl}}/stocks/1
+Authorization: Bearer {{token}}
+
+### GET /stocks/:id — id inexistente (404)
+GET {{baseUrl}}/stocks/99999
+Authorization: Bearer {{token}}
+
+### GET /stocks/:id — id inválido (422)
+GET {{baseUrl}}/stocks/abc
+Authorization: Bearer {{token}}
+
+### GET /stocks/product/:product_id — inventario de un producto (200, [] si no hay)
+GET {{baseUrl}}/stocks/product/1
+Authorization: Bearer {{token}}
+
+### GET /stocks/product/:product_id — producto inválido (422)
+GET {{baseUrl}}/stocks/product/abc
+Authorization: Bearer {{token}}
+
+### GET /stocks/available?product_id=1 — stock vendible con costo vigente (200)
+# Solo quantity > 0 e item_state.is_sellable = true, ordenado por item_state.name.
+# Si no hay costo registrado, la fila se devuelve con "cost": null.
+GET {{baseUrl}}/stocks/available?product_id=1
+Authorization: Bearer {{token}}
+
+### GET /stocks/available — falta product_id (422)
+GET {{baseUrl}}/stocks/available
+Authorization: Bearer {{token}}
+
+### GET /stocks/available?product_id=abc — product_id inválido (422)
+GET {{baseUrl}}/stocks/available?product_id=abc
+Authorization: Bearer {{token}}
+
+### GET /stocks/available/1 — alias de la vista disponible (200)
+GET {{baseUrl}}/stocks/available/1
+Authorization: Bearer {{token}}
+
+### GET /stocks/available/abc — alias con product_id inválido (422)
+GET {{baseUrl}}/stocks/available/abc
+Authorization: Bearer {{token}}
+
+### GET /stocks/available?product_id=1 — sin token (401 Unauthorized)
+GET {{baseUrl}}/stocks/available?product_id=1

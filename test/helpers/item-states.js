@@ -4,6 +4,7 @@ const User = require("../../src/models/user");
 const Role = require("../../src/models/role");
 const ItemState = require("../../src/models/item-state");
 const Cost = require("../../src/models/cost");
+const Stock = require("../../src/models/stock");
 const Product = require("../../src/models/product");
 const Category = require("../../src/models/category");
 const Image = require("../../src/models/image");
@@ -103,6 +104,10 @@ function as(method, path, token) {
  * @returns {Promise<void>} Resolves once the tables are empty.
  */
 async function resetDatabase() {
+  await Stock.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
   await Cost.destroy({
     where: {},
     truncate: { cascade: true, restartIdentity: true },

@@ -23,6 +23,11 @@ describe("swagger spec", () => {
         "/images/{id}",
         "/suppliers",
         "/suppliers/{id}",
+        "/stocks",
+        "/stocks/{id}",
+        "/stocks/product/{product_id}",
+        "/stocks/available",
+        "/stocks/available/{product_id}",
       ]),
     );
   });
@@ -161,6 +166,33 @@ describe("swagger spec", () => {
     ).toBeDefined();
     expect(swaggerSpec.tags).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "Suppliers" })]),
+    );
+  });
+
+  it("documents the Stock and AvailableStock schemas without audit fields", () => {
+    expect(swaggerSpec.components.schemas.Stock).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        product_id: { type: "integer" },
+        item_state_id: { type: "integer" },
+        quantity: { type: "integer" },
+      },
+    });
+    expect(swaggerSpec.components.schemas.Stock.properties).not.toHaveProperty(
+      "createdAt",
+    );
+    expect(swaggerSpec.components.schemas.AvailableStock).toMatchObject({
+      type: "object",
+      properties: {
+        product_id: { type: "integer" },
+        item_state_id: { type: "integer" },
+        quantity: { type: "integer" },
+        cost: { type: "number", nullable: true },
+      },
+    });
+    expect(swaggerSpec.tags).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "Stocks" })]),
     );
   });
 
