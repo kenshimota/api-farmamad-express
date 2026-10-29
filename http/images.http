@@ -1,0 +1,168 @@
+# Archivo: images.http
+# Módulo: images  ->  POST /images, GET /images, GET /images/:id,
+#                     PUT /images/:id, DELETE /images/:id
+# Protegido: lectura para cualquier usuario autenticado; escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /images — crea una imagen (201)
+# url, reference y thumbnail son obligatorios; pathname es opcional (null para S3).
+# reference se recorta y admite hasta 100 caracteres; es única.
+POST {{baseUrl}}/images
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://cdn.farmamad.com/products/ibuprofeno.png",
+  "pathname": "/uploads/products/ibuprofeno.png",
+  "reference": "ibuprofeno-400",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-thumb.png"
+}
+
+### POST /images — sin pathname, imagen en S3 (201, pathname null)
+POST {{baseUrl}}/images
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://cdn.farmamad.com/products/paracetamol.png",
+  "reference": "paracetamol-500",
+  "thumbnail": "https://cdn.farmamad.com/products/paracetamol-thumb.png"
+}
+
+### POST /images — sin token (401 Unauthorized)
+POST {{baseUrl}}/images
+Content-Type: application/json
+
+{
+  "url": "https://cdn.farmamad.com/products/ibuprofeno.png",
+  "reference": "ibuprofeno-400",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-thumb.png"
+}
+
+### POST /images — faltan campos (400)
+POST {{baseUrl}}/images
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /images — url inválida (422)
+POST {{baseUrl}}/images
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "not-a-url",
+  "reference": "ibuprofeno-400",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-thumb.png"
+}
+
+### POST /images — reference duplicada (409)
+# Ejecuta antes una creación con la misma reference.
+POST {{baseUrl}}/images
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://cdn.farmamad.com/products/ibuprofeno.png",
+  "reference": "ibuprofeno-400",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-thumb.png"
+}
+
+### GET /images — lista las imágenes (200)
+# Devuelve id, url, pathname, reference y thumbnail ordenados por id ascendente; [] si no hay.
+GET {{baseUrl}}/images
+Authorization: Bearer {{token}}
+
+### GET /images — sin token (401 Unauthorized)
+GET {{baseUrl}}/images
+
+### GET /images/:id — consulta una imagen (200)
+# Sustituye 1 por el id de la imagen.
+GET {{baseUrl}}/images/1
+Authorization: Bearer {{token}}
+
+### GET /images/:id — id inexistente (404)
+GET {{baseUrl}}/images/99999
+Authorization: Bearer {{token}}
+
+### GET /images/:id — id inválido (422)
+GET {{baseUrl}}/images/abc
+Authorization: Bearer {{token}}
+
+### PUT /images/:id — actualiza una imagen (202)
+# Reemplaza el recurso: url, reference y thumbnail son obligatorios;
+# si se omite pathname se guarda null.
+PUT {{baseUrl}}/images/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://cdn.farmamad.com/products/ibuprofeno-800.png",
+  "pathname": "/uploads/products/ibuprofeno-800.png",
+  "reference": "ibuprofeno-800",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-800-thumb.png"
+}
+
+### PUT /images/:id — sin pathname (202, pathname null)
+PUT {{baseUrl}}/images/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://cdn.farmamad.com/products/ibuprofeno-800.png",
+  "reference": "ibuprofeno-800",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-800-thumb.png"
+}
+
+### PUT /images/:id — faltan campos (400)
+PUT {{baseUrl}}/images/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /images/:id — reference duplicada (409)
+PUT {{baseUrl}}/images/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://cdn.farmamad.com/products/ibuprofeno-800.png",
+  "reference": "paracetamol-500",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-800-thumb.png"
+}
+
+### PUT /images/:id — id inexistente (404)
+PUT {{baseUrl}}/images/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://cdn.farmamad.com/products/ibuprofeno-800.png",
+  "reference": "ibuprofeno-800",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-800-thumb.png"
+}
+
+### DELETE /images/:id — elimina una imagen (204, sin cuerpo)
+# Sustituye 1 por el id de la imagen a eliminar.
+DELETE {{baseUrl}}/images/1
+Authorization: Bearer {{token}}
+
+### DELETE /images/:id — imagen en uso (409)
+# Ocurre cuando un producto referencia la imagen.
+DELETE {{baseUrl}}/images/1
+Authorization: Bearer {{token}}
+
+### DELETE /images/:id — id inexistente (404)
+DELETE {{baseUrl}}/images/99999
+Authorization: Bearer {{token}}
+
+### DELETE /images/:id — id inválido (422)
+DELETE {{baseUrl}}/images/abc
+Authorization: Bearer {{token}}
+
+### DELETE /images/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/images/1

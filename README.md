@@ -1067,6 +1067,186 @@ Errores:
 | `409`  | `{ "message": "Category is in use" }`           |
 | `422`  | `{ "errors": { "id": "Invalid category id" } }` |
 
+## Imágenes
+
+Las imágenes viven en la tabla `images` (modelo `Image`). `url`, `reference` y
+`thumbnail` son obligatorios; `pathname` es opcional y se guarda como `null`
+cuando la imagen solo existe en S3. `url` y `thumbnail` son URLs de hasta 2048
+caracteres, `reference` es única y admite hasta 100 caracteres (se recorta), y
+`pathname` es una ruta de hasta 2048 caracteres que también se recorta. Ninguna
+respuesta incluye `createdAt` ni `updatedAt`: solo se exponen `id`, `url`,
+`pathname`, `reference` y `thumbnail`.
+
+Permisos por endpoint:
+
+| Endpoint             | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| -------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /images`       | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /images`        | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `GET /images/:id`    | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `PUT /images/:id`    | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /images/:id` | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` en
+todos los endpoints, y sin token (o con token inválido/expirado) la respuesta es
+`401` con `{ "message": "Unauthorized" }`.
+
+### `POST /images`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos: `url`,
+`reference` y `thumbnail`; `pathname` es opcional. Los campos desconocidos y de
+auditoría se descartan. Si se omite `pathname`, se guarda `null` (caso S3).
+
+```bash
+curl -X POST http://localhost:3001/images \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://cdn.farmamad.com/products/ibuprofeno.png","pathname":"/uploads/products/ibuprofeno.png","reference":"ibuprofeno-400","thumbnail":"https://cdn.farmamad.com/products/ibuprofeno-thumb.png"}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "url": "https://cdn.farmamad.com/products/ibuprofeno.png",
+  "pathname": "/uploads/products/ibuprofeno.png",
+  "reference": "ibuprofeno-400",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-thumb.png"
+}
+```
+
+Si la imagen se sube a S3, se omite `pathname` y se responde con
+`"pathname": null`.
+
+Errores:
+
+| Código | Cuerpo                                                       |
+| ------ | ------------------------------------------------------------ |
+| `400`  | `{ "message": "url, reference and thumbnail are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                              |
+| `403`  | `{ "message": "Forbidden" }`                                 |
+| `409`  | `{ "message": "Image already exists" }`                      |
+| `422`  | `{ "errors": { "url": "URL inválida" } }`                    |
+
+### `GET /images`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve la colección
+completa ordenada por `id` ascendente. Si no hay imágenes responde `200` con
+`[]` (nunca `404`).
+
+```bash
+curl http://localhost:3001/images -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "url": "https://cdn.farmamad.com/products/ibuprofeno.png",
+    "pathname": "/uploads/products/ibuprofeno.png",
+    "reference": "ibuprofeno-400",
+    "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-thumb.png"
+  }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                             |
+| ------ | ---------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`    |
+| `403`  | `{ "message": "User is blocked" }` |
+
+### `GET /images/:id`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve una única imagen.
+
+```bash
+curl http://localhost:3001/images/1 -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 1,
+  "url": "https://cdn.farmamad.com/products/ibuprofeno.png",
+  "pathname": "/uploads/products/ibuprofeno.png",
+  "reference": "ibuprofeno-400",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-thumb.png"
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                       |
+| ------ | -------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`              |
+| `403`  | `{ "message": "User is blocked" }`           |
+| `404`  | `{ "message": "Image not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid image id" } }` |
+
+### `PUT /images/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Reemplaza el recurso y
+exige `url`, `reference` y `thumbnail`; `pathname` es opcional y, si se omite,
+se guarda `null`. Aplica las mismas validaciones y el mismo `409` por
+`reference` duplicada que la creación.
+
+```bash
+curl -X PUT http://localhost:3001/images/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://cdn.farmamad.com/products/ibuprofeno-800.png","pathname":"/uploads/products/ibuprofeno-800.png","reference":"ibuprofeno-800","thumbnail":"https://cdn.farmamad.com/products/ibuprofeno-800-thumb.png"}'
+```
+
+Respuesta `202`:
+
+```json
+{
+  "id": 1,
+  "url": "https://cdn.farmamad.com/products/ibuprofeno-800.png",
+  "pathname": "/uploads/products/ibuprofeno-800.png",
+  "reference": "ibuprofeno-800",
+  "thumbnail": "https://cdn.farmamad.com/products/ibuprofeno-800-thumb.png"
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                       |
+| ------ | ------------------------------------------------------------ |
+| `400`  | `{ "message": "url, reference and thumbnail are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                              |
+| `403`  | `{ "message": "Forbidden" }`                                 |
+| `404`  | `{ "message": "Image not found" }`                           |
+| `409`  | `{ "message": "Image already exists" }`                      |
+| `422`  | `{ "errors": { "id": "Invalid image id" } }`                 |
+
+### `DELETE /images/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Elimina la imagen de
+forma permanente y responde `204` sin cuerpo. Si un producto la referencia,
+responde `409` con `{ "message": "Image is in use" }` y no la elimina.
+
+```bash
+curl -X DELETE http://localhost:3001/images/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                       |
+| ------ | -------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`              |
+| `403`  | `{ "message": "Forbidden" }`                 |
+| `404`  | `{ "message": "Image not found" }`           |
+| `409`  | `{ "message": "Image is in use" }`           |
+| `422`  | `{ "errors": { "id": "Invalid image id" } }` |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,

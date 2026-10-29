@@ -14,6 +14,7 @@ const rolesRouter = require("./roles");
 const customersRouter = require("./customers");
 const warehousesRouter = require("./warehouses");
 const categoriesRouter = require("./categories");
+const imagesRouter = require("./images");
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use("/roles", rolesRouter);
 app.use("/customers", customersRouter);
 app.use("/warehouses", warehousesRouter);
 app.use("/categories", categoriesRouter);
+app.use("/images", imagesRouter);
 
 app.use(notFound);
 app.use(errorHandler);
