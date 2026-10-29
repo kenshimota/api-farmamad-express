@@ -19,6 +19,8 @@ describe("swagger spec", () => {
         "/warehouses/{id}",
         "/categories",
         "/categories/{id}",
+        "/images",
+        "/images/{id}",
       ]),
     );
   });
@@ -109,6 +111,25 @@ describe("swagger spec", () => {
     ).not.toHaveProperty("createdAt");
     expect(swaggerSpec.tags).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "Categories" })]),
+    );
+  });
+
+  it("documents the Image schema without audit fields", () => {
+    expect(swaggerSpec.components.schemas.Image).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        url: { type: "string", format: "uri" },
+        pathname: { type: "string", nullable: true },
+        reference: { type: "string" },
+        thumbnail: { type: "string", format: "uri" },
+      },
+    });
+    expect(swaggerSpec.components.schemas.Image.properties).not.toHaveProperty(
+      "createdAt",
+    );
+    expect(swaggerSpec.tags).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "Images" })]),
     );
   });
 
