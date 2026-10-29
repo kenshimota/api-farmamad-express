@@ -78,6 +78,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Shelves inside a warehouse and the sections inside each shelf, with codes unique per parent.",
       },
+      {
+        name: "Lots",
+        description:
+          "Physical product lots with expiration date, item state, stock, reservations and their warehouse, shelf and section location.",
+      },
     ],
     components: {
       securitySchemes: {

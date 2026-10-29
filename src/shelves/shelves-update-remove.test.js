@@ -11,6 +11,10 @@ jest.mock("../models/shelf-section", () => ({
   findOne: jest.fn(),
   findByPk: jest.fn(),
 }));
+jest.mock("../models/lot", () => ({
+  count: jest.fn(),
+  getAttributes: jest.fn(() => ({})),
+}));
 jest.mock("../models/warehouse", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 

@@ -2,11 +2,13 @@ const authSchemas = require("./swagger-auth-schemas");
 const purchaseSchemas = require("./swagger-purchase-schemas");
 const currencySchemas = require("./swagger-currency-schemas");
 const shelfSchemas = require("./swagger-shelf-schemas");
+const lotSchemas = require("./swagger-lot-schemas");
 const schemas = {
   ...authSchemas,
   ...purchaseSchemas,
   ...currencySchemas,
   ...shelfSchemas,
+  ...lotSchemas,
   Customer: {
     type: "object",
     properties: {

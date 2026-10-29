@@ -114,6 +114,7 @@ jest.mock("./models/currency-rate-history", () => ({
 
 jest.mock("./models/shelf");
 jest.mock("./models/shelf-section");
+jest.mock("./models/lot");
 
 const request = require("supertest");
 const app = require("./app");
