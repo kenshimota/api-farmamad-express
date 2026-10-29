@@ -34,6 +34,9 @@ describe("swagger spec", () => {
         "/purchases/{purchase_id}/items/{item_id}",
         "/purchases/{id}/confirm",
         "/purchases/{id}/cancel",
+        "/currencies",
+        "/currencies/{id}",
+        "/currencies/{id}/history",
       ]),
     );
   });
@@ -227,6 +230,39 @@ describe("swagger spec", () => {
     ).toBeUndefined();
     expect(swaggerSpec.tags).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "Purchases" })]),
+    );
+  });
+
+  it("documents the Currency and CurrencyRateHistory schemas", () => {
+    expect(swaggerSpec.components.schemas.Currency).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        code: { type: "string" },
+        name: { type: "string" },
+        symbol: { type: "string" },
+        rate: { type: "number" },
+        is_base: { type: "boolean" },
+        is_active: { type: "boolean" },
+      },
+    });
+    expect(
+      swaggerSpec.components.schemas.Currency.properties,
+    ).not.toHaveProperty("createdAt");
+    expect(swaggerSpec.components.schemas.CurrencyRateHistory).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        currency_id: { type: "integer" },
+        previous_rate: { type: "number", nullable: true },
+        new_rate: { type: "number" },
+        changed_by: { type: "object", nullable: true },
+        changed_at: { type: "string", format: "date-time" },
+        reason: { type: "string", nullable: true },
+      },
+    });
+    expect(swaggerSpec.tags).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "Currencies" })]),
     );
   });
 

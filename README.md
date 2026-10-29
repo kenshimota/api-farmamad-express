@@ -2530,6 +2530,207 @@ línea de compra (además de `costs` o `stocks`) responde `409` con
 `{ "message": "Item state is in use" }`. Los productos usados por una línea de
 compra tampoco se pueden borrar (`409 Product is in use`).
 
+## Monedas (currencies)
+
+Catálogo de monedas aceptadas por el sistema y registro append-only del
+historial de tasas. `rate` es la cantidad de **VES que equivale a 1 unidad de
+la moneda**: `USDT = 1000.29` y `USD_BCV = 889.89`. La moneda base es el
+bolívar (`VES`), su tasa siempre es `1` y no se puede editar ni desactivar.
+
+Roles:
+
+- Lectura (`GET`): `admin`, `seller`, `manager_warehouse` y `dispatcher`.
+- Escritura (`POST`, `PUT`, `DELETE`): solo `admin`.
+
+### Semilla inicial
+
+El seeder `seeders/<timestamp>-currencies.js` inserta `VES`, `USDT` y
+`USD_BCV` si no existen. Es idempotente y **nunca sobrescribe** una tasa ya
+modificada por un administrador: solo crea las monedas faltantes. Cada moneda
+insertada por la semilla deja una fila de historial con
+`changed_by = null` y `reason = "seed"`.
+
+```bash
+npm run db:seed
+```
+
+### `GET /currencies`
+
+Lista las monedas activas, la base primero y luego por `code` ascendente. Con
+`?include_inactive=true` (solo `admin`) incluye las desactivadas.
+
+```bash
+curl "http://localhost:3001/currencies" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "code": "VES",
+    "name": "Bolívar",
+    "symbol": "Bs",
+    "rate": 1,
+    "is_base": true,
+    "is_active": true
+  },
+  {
+    "id": 2,
+    "code": "USDT",
+    "name": "Tether",
+    "symbol": "$",
+    "rate": 1000.29,
+    "is_base": false,
+    "is_active": true
+  }
+]
+```
+
+### `GET /currencies/:id`
+
+Devuelve una moneda por id, incluso si está inactiva. Responde `404` cuando no
+existe.
+
+```bash
+curl "http://localhost:3001/currencies/2" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `POST /currencies`
+
+Crea una moneda (solo `admin`). Normaliza `code` a mayúsculas y siempre la
+crea como **no base y activa**; `is_base` e `is_active` enviados por el cliente
+se ignoran. Inserta la primera fila de historial dentro de la misma
+transacción.
+
+```bash
+curl -X POST http://localhost:3001/currencies \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"EUR","name":"Euro","symbol":"€","rate":970.5}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 4,
+  "code": "EUR",
+  "name": "Euro",
+  "symbol": "€",
+  "rate": 970.5,
+  "is_base": false,
+  "is_active": true
+}
+```
+
+Si el `code` ya existe (aunque esté inactivo o cambie solo mayúsculas) responde
+`409` con `{ "message": "Currency already exists" }`.
+
+### `PUT /currencies/:id`
+
+Actualiza `name`, `symbol`, `rate`, `is_active` y el `reason` opcional (solo
+`admin`). Responde `202`. `code` e `is_base` son inmutables y se ignoran.
+
+```bash
+curl -X PUT http://localhost:3001/currencies/2 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"rate":1005.75,"reason":"Actualización diaria BCV"}'
+```
+
+Respuesta `202`:
+
+```json
+{
+  "id": 2,
+  "code": "USDT",
+  "name": "Tether",
+  "symbol": "$",
+  "rate": 1005.75,
+  "is_base": false,
+  "is_active": true
+}
+```
+
+Reglas:
+
+- Cuando `rate` cambia, la actualización y la fila de historial se guardan en
+  una sola transacción.
+- Cambiar solo `name`, `symbol` o `is_active` **no** genera historial.
+- Enviar la misma `rate` tampoco genera historial.
+- `is_active = true` reactiva una moneda desactivada.
+- La moneda base no puede cambiar `rate` (`409 Base currency rate cannot be
+changed`) ni desactivarse (`409 Base currency cannot be deactivated`).
+- `rate` debe ser mayor que `0`, con máximo 6 decimales y máximo
+  `999999999999`; si no, responde `422`.
+
+### `DELETE /currencies/:id`
+
+Desactiva lógicamente la moneda (solo `admin`): marca `is_active = false`,
+conserva el historial y responde `204` sin cuerpo. No existe borrado físico.
+
+```bash
+curl -X DELETE http://localhost:3001/currencies/4 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+La moneda base responde `409`. Una moneda inexistente o ya inactiva responde
+`404`.
+
+### `GET /currencies/:id/history`
+
+Devuelve el historial de tasas ordenado por `changed_at` descendente. Cada fila
+incluye el usuario anidado o `null` cuando el cambio vino de la semilla o el
+usuario fue eliminado. El historial no se puede editar ni borrar por API.
+
+```bash
+curl "http://localhost:3001/currencies/2/history" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 5,
+    "currency_id": 2,
+    "previous_rate": 1000.29,
+    "new_rate": 1005.75,
+    "changed_by": {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@farmamad.com"
+    },
+    "changed_at": "2026-10-29T15:30:00.000Z",
+    "reason": "Actualización diaria BCV"
+  },
+  {
+    "id": 1,
+    "currency_id": 2,
+    "previous_rate": null,
+    "new_rate": 1000.29,
+    "changed_by": null,
+    "changed_at": "2026-10-29T12:00:00.000Z",
+    "reason": "seed"
+  }
+]
+```
+
+### Errores del módulo
+
+| Código | Cuerpo                                                      |
+| ------ | ----------------------------------------------------------- |
+| `400`  | `{ "message": "code, name, symbol and rate are required" }` |
+| `400`  | `{ "message": "At least one field is required" }`           |
+| `401`  | `{ "message": "Unauthorized" }`                             |
+| `403`  | `{ "message": "Forbidden" }`                                |
+| `404`  | `{ "message": "Currency not found" }`                       |
+| `409`  | `{ "message": "Currency already exists" }`                  |
+| `409`  | `{ "message": "Base currency rate cannot be changed" }`     |
+| `409`  | `{ "message": "Base currency cannot be deactivated" }`      |
+| `422`  | `{ "errors": { "rate": "rate must be greater than 0" } }`   |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
