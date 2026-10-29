@@ -1933,6 +1933,156 @@ Errores:
 | `409`  | `{ "message": "Supplier is in use" }`            |
 | `422`  | `{ "errors": { "id": "Invalid supplier id" } }`  |
 
+## Estados de ítem
+
+Los estados de ítem viven en la tabla `item_states` (modelo `ItemState`) y
+describen la condición de un producto: vendible, maltratado, vencido, en
+cuarentena o reservado. **No deben confundirse con `states` (HU-16)**, que son
+los estados geográficos de Venezuela; en este módulo los nombres de archivo,
+tabla y variables usan siempre `item_state(s)`.
+
+| Columna       | Tipo        | Restricciones                                  |
+| ------------- | ----------- | ---------------------------------------------- |
+| `id`          | INTEGER     | PK, autoincremental                            |
+| `name`        | STRING(50)  | Requerido, único sin distinguir mayúsculas     |
+| `label`       | STRING(100) | Requerido                                      |
+| `description` | STRING(255) | Opcional                                       |
+| `is_sellable` | BOOLEAN     | Requerido, por defecto `false`                 |
+| `createdAt`   | TIMESTAMP   | Auditoría, no se expone en la API              |
+| `updatedAt`   | TIMESTAMP   | Auditoría, no se expone en la API              |
+
+`name` es la clave estable (`snake_case`, solo `[a-z0-9_]`, 2–50 caracteres) que
+usarán costos, stocks y compras. `label` es el texto visible (2–100
+caracteres). `is_sellable` indica si, en principio, un producto en ese estado
+puede venderse; no reemplaza validaciones futuras de stock ni precio.
+
+La respuesta pública de un estado de ítem es:
+
+```json
+{
+  "id": 1,
+  "name": "sellable",
+  "label": "Vendible",
+  "description": null,
+  "is_sellable": true
+}
+```
+
+| Endpoint                 | admin | seller | dispatcher | manager_warehouse | support | customer |
+| ------------------------ | ----- | ------ | ---------- | ----------------- | ------- | -------- |
+| `POST /item-states`      | ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
+| `GET /item-states`       | ✅    | ✅     | ✅         | ✅                | ✅      | ✅       |
+| `GET /item-states/:id`   | ✅    | ✅     | ✅         | ✅                | ✅      | ✅       |
+| `PUT /item-states/:id`   | ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
+| `DELETE /item-states/:id`| ✅    | ✅     | ❌ `403`   | ❌ `403`          | ❌ `403` | ❌ `403` |
+
+### `POST /item-states`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Crea un estado y
+responde `201` con el recurso público. `name` y `label` son obligatorios;
+`description` e `is_sellable` son opcionales (`false` por defecto).
+
+```bash
+curl -X POST http://localhost:3001/item-states \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "returned",
+    "label": "Devuelto",
+    "description": "Devuelto por el cliente",
+    "is_sellable": false
+  }'
+```
+
+Errores:
+
+| Código | Cuerpo                                                        |
+| ------ | ------------------------------------------------------------- |
+| `400`  | `{ "message": "name and label are required" }`                |
+| `401`  | `{ "message": "Unauthorized" }`                               |
+| `403`  | `{ "message": "Forbidden" }`                                  |
+| `409`  | `{ "message": "Item state already exists" }`                  |
+| `422`  | `{ "errors": { "name": "name must be snake_case" } }`         |
+
+### `GET /item-states`
+
+Protegido: cualquier usuario autenticado. Devuelve los estados ordenados por
+`name` ascendente. El filtro opcional `is_sellable=true|false` es exacto:
+
+```bash
+curl "http://localhost:3001/item-states?is_sellable=true" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Un valor de filtro distinto de `true` o `false` responde `422` con
+`{ "errors": { "is_sellable": "is_sellable must be a boolean" } }`.
+
+### `GET /item-states/:id`
+
+Protegido: cualquier usuario autenticado. Devuelve el detalle o `404` con
+`{ "message": "Item state not found" }`. Un id no numérico responde `422` con
+`{ "errors": { "id": "Invalid item state id" } }`.
+
+```bash
+curl http://localhost:3001/item-states/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /item-states/:id`
+
+Protegido: requiere rol `admin` o `seller`. Acepta cualquier combinación de
+`name`, `label`, `description` e `is_sellable` (al menos uno) y responde `202`
+con el recurso actualizado. `description: null` borra la descripción.
+
+`name` es la clave estable: solo se puede cambiar si el registro **no** está
+referenciado por costos, stocks ni ítems de compra; si lo está, responde `409`
+con `{ "message": "Item state is in use" }`. Hasta que existan esas tablas
+(HU-19/20/21) la comprobación devuelve `false` y las claves foráneas
+restrictivas quedan preparadas para el mismo `409`.
+
+```bash
+curl -X PUT http://localhost:3001/item-states/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "label": "Disponible",
+    "description": null,
+    "is_sellable": true
+  }'
+```
+
+Errores: `400` cuando no se envía ningún campo, `401`, `403`, `404`
+(`Item state not found`), `409` (`Item state already exists` o
+`Item state is in use`) y `422` para campos inválidos.
+
+### `DELETE /item-states/:id`
+
+Protegido: requiere rol `admin` o `seller`. Elimina el estado y responde `204`
+sin cuerpo. Si está referenciado por costos, stocks o ítems de compra responde
+`409` con `{ "message": "Item state is in use" }` y no lo elimina. Un estado
+inexistente responde `404` y un id inválido `422`.
+
+```bash
+curl -X DELETE http://localhost:3001/item-states/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Semilla de estados de ítem
+
+`npm run db:seed` ejecuta `seeders/20260910000004-item-states.js`, que inserta
+de forma idempotente cinco estados:
+
+| `name`       | `label`    | `is_sellable` |
+| ------------ | ---------- | ------------- |
+| `sellable`   | Vendible   | `true`        |
+| `damaged`    | Maltratado | `false`       |
+| `expired`    | Vencido    | `false`       |
+| `quarantine` | Cuarentena | `false`       |
+| `reserved`   | Reservado  | `false`       |
+
+El `down` elimina únicamente esos cinco registros y omite los que ya estén
+referenciados por otras tablas.
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
