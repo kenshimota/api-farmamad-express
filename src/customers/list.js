@@ -11,7 +11,7 @@ const router = Router();
  * @openapi
  * /customers:
  *   get:
- *     summary: Lists every customer; administrators, sellers and delivery users can do it
+ *     summary: Lists every customer; administrators, sellers and dispatcher users can do it
  *     tags:
  *       - Customers
  *     security:
@@ -49,7 +49,7 @@ const router = Router();
 router.get(
   "/",
   authenticate,
-  authorize("admin", "seller", "delivery"),
+  authorize("admin", "seller", "dispatcher"),
   async (req, res) => {
     const customers = await Customer.findAll({ order: [["id", "ASC"]] });
 
@@ -61,7 +61,7 @@ router.get(
  * @openapi
  * /customers/{id}:
  *   get:
- *     summary: Returns one customer; administrators, sellers and delivery users can do it
+ *     summary: Returns one customer; administrators, sellers and dispatcher users can do it
  *     tags:
  *       - Customers
  *     security:
@@ -120,7 +120,7 @@ router.get(
 router.get(
   "/:id",
   authenticate,
-  authorize("admin", "seller", "delivery"),
+  authorize("admin", "seller", "dispatcher"),
   loadCustomer,
   (req, res) => res.json(toPublicCustomer(req.customer)),
 );

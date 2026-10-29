@@ -138,7 +138,7 @@ describe("POST /customers", () => {
     expect(Customer.create).not.toHaveBeenCalled();
   });
 
-  it.each(["delivery", "freelance_delivery", "customer"])(
+  it.each(["dispatcher", "manager_warehouse", "support", "customer"])(
     "responds 403 when the authenticated user is %s",
     async (role) => {
       const response = await post(validBody, tokenFor(role));

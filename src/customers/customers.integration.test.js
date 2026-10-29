@@ -57,7 +57,7 @@ describe("POST /customers with a real database", () => {
     expect(response.body).toEqual({ message: "Unauthorized" });
   });
 
-  it.each(["delivery", "freelance_delivery", "customer"])(
+  it.each(["dispatcher", "manager_warehouse", "support", "customer"])(
     "responds 403 for a %s",
     async (role) => {
       const token = await tokenFor(role);
@@ -122,7 +122,7 @@ describe("GET /customers with a real database", () => {
       direction: "Calle 2 #45",
       email: "ana@example.com",
     });
-    const token = await tokenFor("delivery");
+    const token = await tokenFor("dispatcher");
 
     const response = await as("get", "/customers", token);
 
@@ -149,7 +149,7 @@ describe("GET /customers with a real database", () => {
     expect(response.body).toEqual([]);
   });
 
-  it.each(["freelance_delivery", "customer"])(
+  it.each(["manager_warehouse", "support", "customer"])(
     "responds 403 for a %s",
     async (role) => {
       const token = await tokenFor(role);
@@ -246,9 +246,9 @@ describe("PUT /customers/:id with a real database", () => {
     });
   });
 
-  it("responds 403 for a delivery user", async () => {
+  it("responds 403 for a dispatcher user", async () => {
     const customer = await createCustomer();
-    const token = await tokenFor("delivery");
+    const token = await tokenFor("dispatcher");
 
     const response = await as("put", `/customers/${customer.id}`, token).send(
       BODY,
@@ -285,9 +285,9 @@ describe("DELETE /customers/:id with a real database", () => {
     });
   });
 
-  it("responds 403 for a delivery user", async () => {
+  it("responds 403 for a dispatcher user", async () => {
     const customer = await createCustomer();
-    const token = await tokenFor("delivery");
+    const token = await tokenFor("dispatcher");
 
     const response = await as("delete", `/customers/${customer.id}`, token);
 

@@ -1,6 +1,13 @@
 "use strict";
 
-const ROLES = ["admin", "seller", "delivery", "freelance_delivery", "customer"];
+const ROLES = [
+  "admin",
+  "customer",
+  "seller",
+  "dispatcher",
+  "manager_warehouse",
+  "support",
+];
 
 /** @type {import('sequelize-cli').Seeder} */
 module.exports = {

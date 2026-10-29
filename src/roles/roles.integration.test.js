@@ -5,15 +5,17 @@ const app = require("../app");
 const sequelize = require("../database");
 const User = require("../models/user");
 const Role = require("../models/role");
+const seeder = require("../../seeders/20260910000001-roles");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 
 const PASSWORD = "secret123";
 const SEEDED_ROLES = [
   "admin",
-  "seller",
-  "delivery",
-  "freelance_delivery",
   "customer",
+  "seller",
+  "dispatcher",
+  "manager_warehouse",
+  "support",
 ];
 
 /**
@@ -111,6 +113,19 @@ describe("GET /roles with a real database", () => {
     for (const role of response.body) {
       expect(Object.keys(role).sort()).toEqual(["id", "name"]);
     }
+  });
+
+  it("keeps exactly six unique roles when the seeder runs repeatedly", async () => {
+    const queryInterface = sequelize.getQueryInterface();
+
+    await seeder.up(queryInterface);
+    await seeder.up(queryInterface);
+
+    const roles = await Role.findAll();
+    expect(roles).toHaveLength(6);
+    expect(roles.map((role) => role.name).sort()).toEqual(
+      [...SEEDED_ROLES].sort(),
+    );
   });
 
   it("returns the names accepted by POST /users", async () => {
