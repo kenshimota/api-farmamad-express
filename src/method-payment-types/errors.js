@@ -1,8 +1,8 @@
 const {
-  ForeignKeyConstraintError,
-  UniqueConstraintError,
-} = require("sequelize");
-const { isHttpError, sendHttpError } = require("../shared/http-error");
+  createHttpError,
+  createPersistenceErrorHandler,
+  sendHttpError,
+} = require("../shared/http-error");
 
 /**
  * Builds an error that carries the HTTP status and body a router must send.
@@ -12,12 +12,7 @@ const { isHttpError, sendHttpError } = require("../shared/http-error");
  * @returns {Error & { status: number, body: object }} The HTTP error.
  */
 function httpError(status, body) {
-  const error = new Error(body.message ?? "Method payment type error");
-
-  error.status = status;
-  error.body = body;
-
-  return error;
+  return createHttpError(status, body, "Method payment type error");
 }
 
 /**
@@ -64,9 +59,6 @@ function invalidCurrency() {
 
 /**
  * Builds a persistence error handler from the strategies each operation needs.
- * Controlled HTTP errors pass through, each injected Sequelize constraint is
- * translated by its own factory and unknown errors are rethrown so the global
- * handler works.
  * @param {object} [strategies] - Error factories per persistence constraint.
  * @param {() => Error} [strategies.unique] - Duplicated code mapping.
  * @param {() => Error} [strategies.foreignKey] - Foreign key mapping.
@@ -74,22 +66,8 @@ function invalidCurrency() {
  *   import("express").Response} The translation middleware body.
  * @throws {unknown} The original error when it cannot be classified.
  */
-function createMethodPaymentTypeErrorHandler({ unique, foreignKey } = {}) {
-  return function handleMethodPaymentTypePersistenceError(error, res) {
-    if (isHttpError(error)) {
-      return sendHttpError(res, error);
-    }
-
-    if (unique && error instanceof UniqueConstraintError) {
-      return sendHttpError(res, unique());
-    }
-
-    if (foreignKey && error instanceof ForeignKeyConstraintError) {
-      return sendHttpError(res, foreignKey());
-    }
-
-    throw error;
-  };
+function createMethodPaymentTypeErrorHandler(strategies) {
+  return createPersistenceErrorHandler(strategies);
 }
 
 /**

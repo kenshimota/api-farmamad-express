@@ -98,6 +98,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Payment method categories (PayPal, Binance, bank transfer, mobile payment) with one currency and the definition of the fields their concrete methods require.",
       },
+      {
+        name: "Method payments",
+        description:
+          "Concrete payment methods (PayPal account, Binance wallet, bank account, mobile payment) with JSONB details validated against their type and the currency inherited from it.",
+      },
     ],
     components: {
       securitySchemes: {
