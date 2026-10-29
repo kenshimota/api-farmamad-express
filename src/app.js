@@ -13,6 +13,7 @@ const usersRouter = require("./users");
 const rolesRouter = require("./roles");
 const customersRouter = require("./customers");
 const warehousesRouter = require("./warehouses");
+const categoriesRouter = require("./categories");
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use("/users", usersRouter);
 app.use("/roles", rolesRouter);
 app.use("/customers", customersRouter);
 app.use("/warehouses", warehousesRouter);
+app.use("/categories", categoriesRouter);
 
 app.use(notFound);
 app.use(errorHandler);

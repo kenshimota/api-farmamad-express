@@ -17,6 +17,8 @@ describe("swagger spec", () => {
         "/customers/{id}",
         "/warehouses",
         "/warehouses/{id}",
+        "/categories",
+        "/categories/{id}",
       ]),
     );
   });
@@ -91,6 +93,22 @@ describe("swagger spec", () => {
     ).not.toHaveProperty("createdAt");
     expect(swaggerSpec.tags).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "Warehouses" })]),
+    );
+  });
+
+  it("documents the Category schema without audit fields", () => {
+    expect(swaggerSpec.components.schemas.Category).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        name: { type: "string" },
+      },
+    });
+    expect(
+      swaggerSpec.components.schemas.Category.properties,
+    ).not.toHaveProperty("createdAt");
+    expect(swaggerSpec.tags).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "Categories" })]),
     );
   });
 
