@@ -916,6 +916,157 @@ Errores:
 | `404`  | `{ "message": "Warehouse not found" }`           |
 | `422`  | `{ "errors": { "id": "Invalid warehouse id" } }` |
 
+## Categorías
+
+Las categorías viven en la tabla `categories` (modelo `Category`). `name` es
+obligatorio, único y admite hasta 100 caracteres; la API lo recorta antes de
+guardarlo. Ninguna respuesta incluye `createdAt` ni `updatedAt`: solo se exponen
+`id` y `name`.
+
+Permisos por endpoint:
+
+| Endpoint                 | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ------------------------ | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /categories`       | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /categories`        | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `GET /categories/:id`    | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `PUT /categories/:id`    | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /categories/:id` | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` en
+todos los endpoints, y sin token (o con token inválido/expirado) la respuesta es
+`401` con `{ "message": "Unauthorized" }`.
+
+### `POST /categories`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Campo requerido: `name`
+(no vacío, tampoco solo espacios, máximo 100 caracteres). Los campos
+desconocidos y de auditoría se descartan.
+
+```bash
+curl -X POST http://localhost:3001/categories \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Analgésicos"}'
+```
+
+Respuesta `201`:
+
+```json
+{ "id": 1, "name": "Analgésicos" }
+```
+
+Errores:
+
+| Código | Cuerpo                                        |
+| ------ | --------------------------------------------- |
+| `400`  | `{ "message": "name is required" }`           |
+| `401`  | `{ "message": "Unauthorized" }`               |
+| `403`  | `{ "message": "Forbidden" }`                  |
+| `409`  | `{ "message": "Category already exists" }`    |
+| `422`  | `{ "errors": { "name": "Nombre inválido" } }` |
+
+### `GET /categories`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve la colección
+completa ordenada por `id` ascendente. Si no hay categorías responde `200` con
+`[]` (nunca `404`).
+
+```bash
+curl http://localhost:3001/categories -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  { "id": 1, "name": "Analgésicos" },
+  { "id": 2, "name": "Antiinflamatorios" }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                             |
+| ------ | ---------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`    |
+| `403`  | `{ "message": "User is blocked" }` |
+
+### `GET /categories/:id`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve una única
+categoría.
+
+```bash
+curl http://localhost:3001/categories/1 -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+{ "id": 1, "name": "Analgésicos" }
+```
+
+Errores:
+
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "User is blocked" }`              |
+| `404`  | `{ "message": "Category not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid category id" } }` |
+
+### `PUT /categories/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Reemplaza el recurso y
+exige `name`, con las mismas validaciones y el mismo `409` por nombre duplicado
+que la creación.
+
+```bash
+curl -X PUT http://localhost:3001/categories/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Antiinflamatorios"}'
+```
+
+Respuesta `202`:
+
+```json
+{ "id": 1, "name": "Antiinflamatorios" }
+```
+
+Errores:
+
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `400`  | `{ "message": "name is required" }`             |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "Forbidden" }`                    |
+| `404`  | `{ "message": "Category not found" }`           |
+| `409`  | `{ "message": "Category already exists" }`      |
+| `422`  | `{ "errors": { "id": "Invalid category id" } }` |
+
+### `DELETE /categories/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Elimina la categoría de
+forma permanente y responde `204` sin cuerpo. Si un producto la referencia,
+responde `409` con `{ "message": "Category is in use" }` y no la elimina.
+
+```bash
+curl -X DELETE http://localhost:3001/categories/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                          |
+| ------ | ----------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                 |
+| `403`  | `{ "message": "Forbidden" }`                    |
+| `404`  | `{ "message": "Category not found" }`           |
+| `409`  | `{ "message": "Category is in use" }`           |
+| `422`  | `{ "errors": { "id": "Invalid category id" } }` |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,

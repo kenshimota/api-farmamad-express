@@ -17,6 +17,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Warehouse registry: creation, listing, lookup, update and deletion.",
       },
+      {
+        name: "Categories",
+        description:
+          "Product category registry: creation, listing, lookup, update and deletion.",
+      },
     ],
     components: {
       securitySchemes: {
@@ -128,6 +133,13 @@ const swaggerSpec = swaggerJsdoc({
               type: "string",
               example: "Av. Monseñor Rivero 123",
             },
+          },
+        },
+        Category: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            name: { type: "string", example: "Analgésicos" },
           },
         },
         ErrorMessage: {

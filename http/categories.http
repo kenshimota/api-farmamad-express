@@ -1,0 +1,128 @@
+# Archivo: categories.http
+# Módulo: categories  ->  POST /categories, GET /categories, GET /categories/:id,
+#                         PUT /categories/:id, DELETE /categories/:id
+# Protegido: lectura para cualquier usuario autenticado; escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /categories — crea una categoría (201)
+# name se recorta y admite hasta 100 caracteres; es obligatorio y único.
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Analgésicos"
+}
+
+### POST /categories — sin token (401 Unauthorized)
+POST {{baseUrl}}/categories
+Content-Type: application/json
+
+{
+  "name": "Analgésicos"
+}
+
+### POST /categories — falta name (400)
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /categories — name inválido (422)
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "   "
+}
+
+### POST /categories — name duplicado (409)
+# Ejecuta antes una creación con el mismo nombre.
+POST {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Analgésicos"
+}
+
+### GET /categories — lista las categorías (200)
+# Devuelve id y name ordenados por id ascendente; [] si no hay.
+GET {{baseUrl}}/categories
+Authorization: Bearer {{token}}
+
+### GET /categories — sin token (401 Unauthorized)
+GET {{baseUrl}}/categories
+
+### GET /categories/:id — consulta una categoría (200)
+# Sustituye 1 por el id de la categoría.
+GET {{baseUrl}}/categories/1
+Authorization: Bearer {{token}}
+
+### GET /categories/:id — id inexistente (404)
+GET {{baseUrl}}/categories/99999
+Authorization: Bearer {{token}}
+
+### GET /categories/:id — id inválido (422)
+GET {{baseUrl}}/categories/abc
+Authorization: Bearer {{token}}
+
+### PUT /categories/:id — actualiza una categoría (202)
+# Reemplaza el recurso: name es obligatorio.
+PUT {{baseUrl}}/categories/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Antiinflamatorios"
+}
+
+### PUT /categories/:id — falta name (400)
+PUT {{baseUrl}}/categories/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /categories/:id — name duplicado (409)
+PUT {{baseUrl}}/categories/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Antiinflamatorios"
+}
+
+### PUT /categories/:id — id inexistente (404)
+PUT {{baseUrl}}/categories/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Antiinflamatorios"
+}
+
+### DELETE /categories/:id — elimina una categoría (204, sin cuerpo)
+# Sustituye 1 por el id de la categoría a eliminar.
+DELETE {{baseUrl}}/categories/1
+Authorization: Bearer {{token}}
+
+### DELETE /categories/:id — categoría en uso (409)
+# Ocurre cuando un producto referencia la categoría.
+DELETE {{baseUrl}}/categories/1
+Authorization: Bearer {{token}}
+
+### DELETE /categories/:id — id inexistente (404)
+DELETE {{baseUrl}}/categories/99999
+Authorization: Bearer {{token}}
+
+### DELETE /categories/:id — id inválido (422)
+DELETE {{baseUrl}}/categories/abc
+Authorization: Bearer {{token}}
+
+### DELETE /categories/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/categories/1
