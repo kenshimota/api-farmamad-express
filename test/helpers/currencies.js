@@ -4,6 +4,7 @@ const User = require("../../src/models/user");
 const Role = require("../../src/models/role");
 const Currency = require("../../src/models/currency");
 const CurrencyRateHistory = require("../../src/models/currency-rate-history");
+const MethodPaymentType = require("../../src/models/method-payment-type");
 
 const PASSWORD = "secret123";
 const CURRENCY = Object.freeze({
@@ -124,11 +125,14 @@ function as(method, path, token) {
 }
 
 /**
- * Truncates every table used by the currencies suites. History and currencies
- * go first so the restrictive foreign key never blocks the cleanup.
+ * Truncates every table used by the currencies suites. Method payment types,
+ * history and currencies go first so the restrictive foreign keys never block
+ * the cleanup.
  * @returns {Promise<void>} Resolves once the tables are empty.
  */
 async function resetDatabase() {
+  // HU-28 keeps a RESTRICT foreign key from method_payment_types to currencies.
+  await MethodPaymentType.destroy({ where: {} });
   await CurrencyRateHistory.destroy({
     where: {},
     truncate: { cascade: true, restartIdentity: true },

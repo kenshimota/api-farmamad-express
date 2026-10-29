@@ -114,6 +114,7 @@ jest.mock("./models/shelf-section");
 jest.mock("./models/lot");
 jest.mock("./models/customer-seller");
 jest.mock("./models/tax");
+jest.mock("./models/method-payment-type");
 
 const request = require("supertest");
 const app = require("./app");

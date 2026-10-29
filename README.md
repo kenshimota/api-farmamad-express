@@ -3611,6 +3611,191 @@ curl -X DELETE http://localhost:3001/taxes/1 \
 | `422`  | `{ "errors": { "id": "Invalid tax id" } }`                   |
 | `422`  | `{ "errors": { "is_active": "Invalid is_active" } }`         |
 
+## Tipos de métodos de pago (method_payment_types)
+
+Catálogo de categorías de pago (HU-28). Cada fila de `method_payment_types`
+(modelo `MethodPaymentType`) representa un tipo de método de pago y define:
+
+- `code`: clave estable, mayúsculas, única ignorando mayúsculas/minúsculas e
+  inmutable.
+- `name`: nombre visible.
+- `currency_id`: moneda del tipo (HU-22), heredada por todos sus métodos de
+  pago concretos (HU-29).
+- `fields`: arreglo JSONB con la definición de los datos que debe enviar un
+  método de pago de ese tipo.
+- `description`: texto opcional.
+- `is_active`: bandera para dejar de ofrecerlo sin borrarlo.
+
+Las respuestas serializan `id`, `code`, `name`, `currency_id`, `currency`
+(`id`, `code`, `name`, `symbol`), `fields`, `description` e `is_active`. Los
+timestamps no se exponen y la moneda se resuelve con un `include` de
+Sequelize, sin consultas N+1.
+
+Reglas de negocio:
+
+- `code` se normaliza a mayúsculas, mide entre 2 y 30 caracteres, solo acepta
+  `[A-Z0-9_]` y es único ignorando mayúsculas mediante un índice funcional
+  sobre `LOWER(code)`. Un `PUT` que lo envíe lo ignora.
+- `name` es obligatorio, de 1 a 100 caracteres. `description` admite hasta 255
+  caracteres y se devuelve como `null` cuando no se envía o llega vacía.
+- `currency_id` debe existir y estar activa al crear el tipo o al cambiarlo.
+  Si no, responde `422` con `{ "errors": { "currency_id": "Invalid currency" } }`.
+- `fields` se valida en el servidor según RF-05. Un `fields` inválido responde
+  `422` con `{ "errors": { "fields": "Invalid fields definition" } }`.
+- `fields` y `currency_id` solo se pueden cambiar mientras el tipo no tenga
+  métodos de pago concretos. Si ya tiene, responde `409` con
+  `{ "message": "Payment type has methods" }`.
+- `DELETE` es físico y responde `204`; si el tipo tiene métodos, responde
+  `409`. Para dejar de usarlo sin borrarlo, use `PUT` con `is_active = false`.
+
+### Definición de `fields`
+
+`fields` es un arreglo de máximo 20 objetos. Cada objeto tiene exactamente
+`key`, `label`, `type`, `required` y, opcionalmente, `max_length`; no se
+admiten propiedades adicionales ni claves repetidas.
+
+| Propiedad    | Regla                                                          |
+| ------------ | -------------------------------------------------------------- |
+| `key`        | Requerido, `^[a-z][a-z0-9_]{1,40}$`, único dentro del tipo.     |
+| `label`      | Requerido, 1–100 caracteres.                                    |
+| `type`       | Requerido: `text`, `email`, `phone`, `integer` o `boolean`.     |
+| `required`   | Requerido, booleano estricto.                                   |
+| `max_length` | Opcional, entero 1–255; solo para `text`, `email` y `phone`.    |
+
+```json
+[
+  {
+    "key": "email",
+    "label": "Correo de PayPal",
+    "type": "email",
+    "required": true,
+    "max_length": 150
+  }
+]
+```
+
+### Roles
+
+- Lectura (`GET`): `admin`, `seller` y `dispatcher`.
+- Escritura (`POST`, `PUT`, `DELETE`): solo `admin`.
+- `manager_warehouse`, `support` y `customer` reciben `403`.
+
+### Semilla inicial
+
+El seeder `seeders/20260910000006-method-payment-types.js` crea `PAYPAL`,
+`BINANCE`, `BANK` y `PAGO_MOVIL` si no existen, resolviendo la moneda por
+`code`: `PAYPAL → USD_BCV`, `BINANCE → USDT`, `BANK → VES` y
+`PAGO_MOVIL → VES`. Es idempotente y **nunca sobrescribe** un tipo existente ni
+sus `fields`. Requiere que el seeder de monedas (HU-22) se haya ejecutado; si
+falta `USD_BCV`, `USDT` o `VES`, falla con un mensaje que indica ejecutar el
+seeder de monedas.
+
+```bash
+npm run db:seed
+```
+
+### `POST /method-payment-types`
+
+Crea un tipo (solo `admin`). Requiere `code`, `name` y `currency_id`;
+`fields` es `[]` por defecto, `description` es opcional e `is_active` vale
+`true` por defecto.
+
+```bash
+curl -X POST http://localhost:3001/method-payment-types \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"PAYPAL","name":"PayPal","currency_id":3,"description":"Pagos por PayPal","fields":[{"key":"email","label":"Correo de PayPal","type":"email","required":true}]}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "code": "PAYPAL",
+  "name": "PayPal",
+  "currency_id": 3,
+  "currency": {
+    "id": 3,
+    "code": "USD_BCV",
+    "name": "Dólar BCV",
+    "symbol": "$"
+  },
+  "fields": [
+    {
+      "key": "email",
+      "label": "Correo de PayPal",
+      "type": "email",
+      "required": true
+    }
+  ],
+  "description": "Pagos por PayPal",
+  "is_active": true
+}
+```
+
+### `GET /method-payment-types`
+
+Lista todos los tipos ordenados por `code` ascendente, incluidos los inactivos,
+con su moneda anidada. Filtros exactos opcionales: `?currency_id=` y
+`?is_active=true|false`.
+
+```bash
+curl "http://localhost:3001/method-payment-types?currency_id=1&is_active=true" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `GET /method-payment-types/:id`
+
+Devuelve el detalle del tipo, esté activo o inactivo, o `404` si no existe.
+
+```bash
+curl http://localhost:3001/method-payment-types/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /method-payment-types/:id`
+
+Actualiza `name`, `description`, `is_active` y, si el tipo no tiene métodos,
+`currency_id` y `fields` (solo `admin`). Responde `202`. `code` es inmutable y
+se ignora si se envía. Si el tipo ya tiene métodos y se intenta cambiar
+`currency_id` o `fields`, responde `409 Payment type has methods`.
+
+```bash
+curl -X PUT http://localhost:3001/method-payment-types/3 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Banco Nacional (VES)","description":"Cuentas en bolívares"}'
+```
+
+### `DELETE /method-payment-types/:id`
+
+Borra físicamente el tipo y responde `204` sin cuerpo. Si tiene métodos de pago
+concretos responde `409 Payment type has methods`; para dejar de usarlo sin
+borrarlo, actualícelo con `"is_active": false`.
+
+```bash
+curl -X DELETE http://localhost:3001/method-payment-types/3 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Errores del módulo
+
+| Código | Cuerpo                                                        |
+| ------ | ------------------------------------------------------------- |
+| `400`  | `{ "message": "code, name and currency_id are required" }`     |
+| `400`  | `{ "message": "At least one field is required" }`              |
+| `401`  | `{ "message": "Unauthorized" }`                               |
+| `403`  | `{ "message": "Forbidden" }`                                  |
+| `404`  | `{ "message": "Payment type not found" }`                     |
+| `409`  | `{ "message": "Payment type already exists" }`                |
+| `409`  | `{ "message": "Payment type has methods" }`                   |
+| `422`  | `{ "errors": { "currency_id": "Invalid currency" } }`         |
+| `422`  | `{ "errors": { "fields": "Invalid fields definition" } }`     |
+| `422`  | `{ "errors": { "id": "Invalid payment type id" } }`           |
+| `422`  | `{ "errors": { "is_active": "Invalid is_active" } }`          |
+| `422`  | `{ "errors": { "currency_id": "Invalid currency_id" } }`      |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
