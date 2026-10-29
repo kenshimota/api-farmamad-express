@@ -257,7 +257,7 @@ describe("router composition", () => {
       .set("Authorization", `Bearer ${tokenFor()}`)
       .send(validBody);
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(response.body).toEqual({
       id: 1,
       name: validBody.name,

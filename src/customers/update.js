@@ -16,6 +16,9 @@ const router = Router();
  * /customers/{id}:
  *   put:
  *     summary: Updates every public field of a customer; only administrators and sellers can do it
+ *     description: >
+ *       Updates an existing customer. As with every PUT endpoint, a successful
+ *       update responds 202 Accepted with the updated resource in the body.
  *     tags:
  *       - Customers
  *     security:
@@ -66,7 +69,7 @@ const router = Router();
  *                 description: Optional; when omitted the stored value is kept
  *                 example: false
  *     responses:
- *       200:
+ *       202:
  *         description: Updated public customer data
  *         content:
  *           application/json:
@@ -137,7 +140,7 @@ router.put(
     try {
       await req.customer.update(req.validated);
 
-      return res.json(toPublicCustomer(req.customer));
+      return res.status(202).json(toPublicCustomer(req.customer));
     } catch (error) {
       return handleWriteError(error, res);
     }

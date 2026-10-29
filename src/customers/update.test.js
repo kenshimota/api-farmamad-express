@@ -88,14 +88,14 @@ beforeEach(() => {
 
 describe("PUT /customers/:id", () => {
   it.each(["admin", "seller"])(
-    "allows a %s to update every field and answers 200",
+    "allows a %s to update every field and answers 202",
     async (role) => {
       const customer = target();
       Customer.findByPk.mockResolvedValue(customer);
 
       const response = await put("1", validBody, tokenFor(role));
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(202);
       expect(response.body).toEqual({
         id: 1,
         fullName: "Juan Pérez Gómez",
@@ -116,7 +116,7 @@ describe("PUT /customers/:id", () => {
 
     const response = await put("1", validBody);
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(202);
     expect(customer.update).toHaveBeenCalledWith(validBody);
   });
 

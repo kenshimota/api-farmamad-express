@@ -81,7 +81,7 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/warehouses/abc
 Authorization: Bearer {{token}}
 
-### PUT /warehouses/:id — actualiza una bodega (200)
+### PUT /warehouses/:id — actualiza una bodega (202)
 # name y address son obligatorios; observations solo se actualiza si se envía.
 PUT {{baseUrl}}/warehouses/1
 Authorization: Bearer {{token}}
@@ -92,7 +92,7 @@ Content-Type: application/json
   "address": "Calle 3 #10"
 }
 
-### PUT /warehouses/:id — limpia observations (200)
+### PUT /warehouses/:id — limpia observations (202)
 PUT {{baseUrl}}/warehouses/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
