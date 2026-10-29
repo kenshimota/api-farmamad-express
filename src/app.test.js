@@ -107,15 +107,13 @@ jest.mock("./models/currency", () => ({
   findByPk: jest.fn(),
 }));
 
-jest.mock("./models/currency-rate-history", () => ({
-  create: jest.fn(),
-  findAll: jest.fn(),
-}));
+jest.mock("./models/currency-rate-history");
 
 jest.mock("./models/shelf");
 jest.mock("./models/shelf-section");
 jest.mock("./models/lot");
 jest.mock("./models/customer-seller");
+jest.mock("./models/tax");
 
 const request = require("supertest");
 const app = require("./app");
