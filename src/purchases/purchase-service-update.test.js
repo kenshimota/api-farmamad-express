@@ -7,8 +7,6 @@ const {
   stocksDouble,
 } = require("../../test/helpers/purchase-service-doubles");
 
-const ORIGINAL_TAX_RATE = process.env.PURCHASE_TAX_RATE;
-
 /**
  * Builds the service with fresh doubles.
  * @param {object} [overrides] - Dependency overrides.
@@ -41,7 +39,6 @@ function purchase(overrides = {}) {
     supplier_id: 2,
     status: "draft",
     subtotal: "0.00",
-    tax_rate: "16.00",
     tax_amount: "0.00",
     total: "0.00",
     notes: null,
@@ -50,39 +47,48 @@ function purchase(overrides = {}) {
   };
 }
 
-afterEach(() => {
-  if (ORIGINAL_TAX_RATE === undefined) {
-    delete process.env.PURCHASE_TAX_RATE;
-  } else {
-    process.env.PURCHASE_TAX_RATE = ORIGINAL_TAX_RATE;
-  }
-});
-
 describe("updatePurchase", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("recalculates the totals with the new tax rate", async () => {
+  it("recalculates the totals from the line taxes", async () => {
     const { service, repository, itemRepository } = setup();
     const stored = purchase();
     repository.findByIdForUpdate.mockResolvedValue(stored);
     repository.findById.mockResolvedValue(stored);
     itemRepository.list.mockResolvedValue([
-      { quantity: 2, unit_cost: "10.00" },
+      { quantity: 2, unit_cost: "10.00", tax_amount: "1.65" },
+    ]);
+
+    await service.updatePurchase(1, { notes: "Nueva" });
+
+    expect(repository.update).toHaveBeenCalledWith(
+      stored,
+      {
+        notes: "Nueva",
+        subtotal: "20.00",
+        tax_amount: "1.65",
+        total: "21.65",
+      },
+      { transaction: TRANSACTION },
+    );
+  });
+
+  it("ignores tax_rate when it reaches the service", async () => {
+    const { service, repository, itemRepository } = setup();
+    const stored = purchase();
+    repository.findByIdForUpdate.mockResolvedValue(stored);
+    repository.findById.mockResolvedValue(stored);
+    itemRepository.list.mockResolvedValue([
+      { quantity: 2, unit_cost: "10.00", tax_amount: "0.00" },
     ]);
 
     await service.updatePurchase(1, { tax_rate: 8.25, notes: "Nueva" });
 
     expect(repository.update).toHaveBeenCalledWith(
       stored,
-      {
-        tax_rate: "8.25",
-        notes: "Nueva",
-        subtotal: "20.00",
-        tax_amount: "1.65",
-        total: "21.65",
-      },
+      expect.not.objectContaining({ tax_rate: expect.anything() }),
       { transaction: TRANSACTION },
     );
   });
@@ -94,7 +100,7 @@ describe("updatePurchase", () => {
     jest.spyOn(Currency, "findOne").mockResolvedValue(other);
     repository.findByIdForUpdate.mockResolvedValue(stored);
     itemRepository.list.mockResolvedValue([
-      { quantity: 2, unit_cost: "10.00" },
+      { quantity: 2, unit_cost: "10.00", tax_amount: "0.00" },
     ]);
 
     await service.updatePurchase(1, { currency_id: 7 });

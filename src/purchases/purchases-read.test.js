@@ -63,6 +63,7 @@ const ITEM = {
   quantity: 40,
   unit_cost: "20.00",
   subtotal: "800.00",
+  tax_amount: "128.00",
 };
 const SUPPLIER = {
   id: 2,
@@ -89,7 +90,6 @@ const PURCHASE = {
   currency: CURRENCY,
   status: "draft",
   subtotal: "800.00",
-  tax_rate: "16.00",
   tax_amount: "128.00",
   total: "928.00",
   notes: null,
@@ -154,7 +154,6 @@ describe("GET /purchases", () => {
         currency: CURRENCY,
         status: "draft",
         subtotal: 800,
-        tax_rate: 16,
         tax_amount: 128,
         total: 928,
         notes: null,
@@ -185,6 +184,8 @@ describe("GET /purchases", () => {
         quantity: 40,
         unit_cost: 20,
         subtotal: 800,
+        tax_amount: 128,
+        total: 928,
       },
     ]);
     expect(purchaseService.listPurchases).toHaveBeenCalledWith({

@@ -4,7 +4,7 @@ const {
   purchaseHasNoItems,
   purchaseNotFound,
 } = require("./errors");
-const { calculateTotals, toDecimal } = require("./money");
+const { calculateTotals, toTotalsAmounts } = require("./money");
 
 /**
  * Creates the confirmation operation of the purchases service.
@@ -25,7 +25,8 @@ function createPurchaseConfirmOperations({
 }) {
   return {
     /**
-     * Confirms a draft atomically: recalculates the totals, upserts `costs`,
+     * Confirms a draft atomically: recalculates the totals from the line
+     * subtotals and taxes, upserts `costs` with the tax-free `unit_cost`,
      * increments `stocks` through the stock purchase service and marks the
      * purchase as confirmed. Any failure rolls the whole transaction back.
      * @param {number} id - Purchase id.
@@ -56,17 +57,11 @@ function createPurchaseConfirmOperations({
         await support.assertSupplier(purchase.supplier_id);
         await support.assertItemReferences(lines, "items");
 
-        const totals = calculateTotals(lines, purchase.tax_rate);
+        const totals = calculateTotals(lines);
 
-        await repository.update(
-          purchase,
-          {
-            subtotal: toDecimal(totals.subtotal),
-            tax_amount: toDecimal(totals.tax_amount),
-            total: toDecimal(totals.total),
-          },
-          { transaction },
-        );
+        await repository.update(purchase, toTotalsAmounts(totals), {
+          transaction,
+        });
 
         for (const line of lines) {
           await repository.upsertCost(

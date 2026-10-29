@@ -63,6 +63,7 @@ const ITEM = {
   quantity: 2,
   unit_cost: "10.00",
   subtotal: "20.00",
+  tax_amount: "3.20",
 };
 const PURCHASE = {
   id: 1,
@@ -70,7 +71,6 @@ const PURCHASE = {
   supplier_id: 2,
   status: "draft",
   subtotal: "20.00",
-  tax_rate: "16.00",
   tax_amount: "3.20",
   total: "23.20",
   notes: null,
@@ -81,6 +81,7 @@ const BODY = {
   item_state_id: 1,
   quantity: 2,
   unit_cost: 10,
+  tax_amount: 3.2,
 };
 
 /**
@@ -124,13 +125,35 @@ describe("PUT /purchases/:purchase_id/items/:item_id", () => {
     const response = await send("put", "/purchases/1/items/4", {
       quantity: 3,
       unit_cost: 12.5,
+      tax_amount: 6,
     });
 
     expect(response.status).toBe(202);
     expect(purchaseService.updateItem).toHaveBeenCalledWith(1, 4, {
       quantity: 3,
       unit_cost: 12.5,
+      tax_amount: 6,
     });
+  });
+
+  it("accepts tax_amount alone and validates its format", async () => {
+    const updated = await send("put", "/purchases/1/items/4", {
+      tax_amount: 4.5,
+    });
+    expect(updated.status).toBe(202);
+    expect(purchaseService.updateItem).toHaveBeenCalledWith(1, 4, {
+      tax_amount: 4.5,
+    });
+
+    const negative = await send("put", "/purchases/1/items/4", {
+      tax_amount: -1,
+    });
+    expect(negative.status).toBe(422);
+
+    const decimals = await send("put", "/purchases/1/items/4", {
+      tax_amount: 1.234,
+    });
+    expect(decimals.status).toBe(422);
   });
 
   it("responds 400 without fields and 422 for invalid ids", async () => {

@@ -18,8 +18,8 @@ La documentación interactiva (Swagger UI) está disponible en
 
 Variables de entorno relevantes: `PORT`, `NODE_ENV`, `LOG_LEVEL`, `NO_COLOR`,
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`,
-`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME`,
-`APP_URL` y `PURCHASE_TAX_RATE` (ver `.env.example`).
+`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME`
+y `APP_URL` (ver `.env.example`).
 
 `APP_NAME` es el nombre del producto que aparece en los correos (por defecto
 `Super King`) y `APP_URL` es el link de ingreso incluido en el correo de
@@ -2398,16 +2398,20 @@ a esta función.
 Las compras guardan la cabecera en `purchases` y sus líneas en
 `purchase_items`. El servidor asigna el `number` ascendente desde la secuencia
 PostgreSQL `purchases_number_seq`, ignora cualquier `number`, `status`,
-totales o `confirmed_at` enviado por el cliente y calcula siempre:
+totales o `confirmed_at` enviado por el cliente y calcula siempre a partir de
+las líneas:
 
 - `subtotal = Σ(quantity × unit_cost)`
-- `tax_amount = round(subtotal × tax_rate / 100, 2)`
+- `tax_amount = Σ(tax_amount de cada línea)`
 - `total = subtotal + tax_amount`
 
-El dinero usa `DECIMAL(12,2)` y el cálculo interno se hace en centavos para no
-arrastrar errores de coma flotante. `tax_rate` es configurable entre `0` y
-`100` con máximo dos decimales y toma `PURCHASE_TAX_RATE` (16 por defecto)
-cuando no se envía. Los timestamps de auditoría nunca se exponen.
+Cada línea guarda un `tax_amount` absoluto en la moneda de la compra (no una
+tasa ni una referencia al catálogo `taxes`). `unit_cost` y `subtotal` son
+montos antes de impuesto; el `total` de la línea es `subtotal + tax_amount` y se
+calcula al serializar. El dinero usa `DECIMAL(12,2)` y el cálculo interno se
+hace en centavos para no arrastrar errores de coma flotante. `tax_rate` ya no
+existe: si el cliente lo envía se ignora. Los timestamps de auditoría nunca se
+exponen.
 
 ### Ciclo de vida
 
@@ -2431,10 +2435,14 @@ es idempotente: repetir la confirmación responde `409`.
 ### `POST /purchases`
 
 Protegido para `admin` y `seller`. `supplier_id` es obligatorio; `currency_id`,
-`tax_rate`, `notes` e `items` son opcionales. `currency_id` toma la moneda por
-defecto (`USD_BCV`) cuando se omite, debe existir y estar activa si se envía, y
-todos los montos de la compra y de sus líneas quedan expresados en ella. Las
-líneas se validan contra `products` e `item_states` y no se repite
+`notes` e `items` son opcionales. `currency_id` toma la moneda por defecto
+(`USD_BCV`) cuando se omite, debe existir y estar activa si se envía, y todos
+los montos de la compra y de sus líneas quedan expresados en ella. Cada línea
+requiere `product_id`, `item_state_id`, `quantity`, `unit_cost` y un
+`tax_amount` absoluto (`>= 0`, máximo 2 decimales y 10 dígitos enteros); si
+falta el impuesto responde `422` con
+`{ "errors": { "items.0.tax_amount": "tax_amount is required" } }`. Las líneas
+se validan contra `products` e `item_states` y no se repite
 `(product_id, item_state_id)` en una misma compra (`409`). Responde `201` con la
 compra, su moneda y sus líneas.
 
@@ -2444,11 +2452,22 @@ curl -X POST http://localhost:3001/purchases \
   -H "Content-Type: application/json" \
   -d '{
     "supplier_id": 1,
-    "tax_rate": 16,
     "notes": "Reposición mensual",
     "items": [
-      { "product_id": 15, "item_state_id": 1, "quantity": 40, "unit_cost": 20.0 },
-      { "product_id": 15, "item_state_id": 2, "quantity": 3, "unit_cost": 12.5 }
+      {
+        "product_id": 15,
+        "item_state_id": 1,
+        "quantity": 40,
+        "unit_cost": 20.0,
+        "tax_amount": 128.0
+      },
+      {
+        "product_id": 15,
+        "item_state_id": 2,
+        "quantity": 3,
+        "unit_cost": 12.5,
+        "tax_amount": 6.0
+      }
     ]
   }'
 ```
@@ -2469,7 +2488,6 @@ Respuesta `201`:
   },
   "status": "draft",
   "subtotal": 837.5,
-  "tax_rate": 16,
   "tax_amount": 134,
   "total": 971.5,
   "notes": "Reposición mensual",
@@ -2480,7 +2498,9 @@ Respuesta `201`:
       "item_state_id": 1,
       "quantity": 40,
       "unit_cost": 20,
-      "subtotal": 800
+      "subtotal": 800,
+      "tax_amount": 128,
+      "total": 928
     },
     {
       "id": 2,
@@ -2488,7 +2508,9 @@ Respuesta `201`:
       "item_state_id": 2,
       "quantity": 3,
       "unit_cost": 12.5,
-      "subtotal": 37.5
+      "subtotal": 37.5,
+      "tax_amount": 6,
+      "total": 43.5
     }
   ]
 }
@@ -2505,7 +2527,13 @@ curl -X POST http://localhost:3001/purchases \
     "supplier_id": 1,
     "currency_id": 1,
     "items": [
-      { "product_id": 15, "item_state_id": 1, "quantity": 40, "unit_cost": 20.0 }
+      {
+        "product_id": 15,
+        "item_state_id": 1,
+        "quantity": 40,
+        "unit_cost": 20.0,
+        "tax_amount": 128.0
+      }
     ]
   }'
 ```
@@ -2529,20 +2557,22 @@ curl http://localhost:3001/purchases/1 \
 
 ### `PUT /purchases/:id`, `DELETE /purchases/:id` y `POST /purchases/:id/cancel`
 
-`PUT` acepta `supplier_id`, `currency_id`, `tax_rate` y/o `notes`, recalcula
-los totales y responde `202`. Cambiar `currency_id` solo se permite en `draft` y
-**no convierte** los montos: `unit_cost`, `subtotal`, `tax_amount` y `total`
-conservan su valor numérico. No acepta `items`. `DELETE` solo borra borradores (`204`, con
-cascada a las líneas) y `POST /purchases/:id/cancel` cambia el estado a
-`cancelled` (`200`) sin tocar `costs` ni `stocks`. Cualquier intento sobre una
-compra confirmada o cancelada responde `409` con
-`{ "message": "Purchase is not editable" }`.
+`PUT` acepta `supplier_id`, `currency_id` y/o `notes`, recalcula los totales
+desde los impuestos de las líneas y responde `202`. `tax_rate` se ignora; si es
+el único campo del cuerpo responde `400` con
+`{ "message": "At least one field is required" }`. Cambiar `currency_id` solo se
+permite en `draft` y **no convierte** los montos: `unit_cost`, `subtotal`,
+`tax_amount` y `total` conservan su valor numérico. No acepta `items`. `DELETE`
+solo borra borradores (`204`, con cascada a las líneas) y
+`POST /purchases/:id/cancel` cambia el estado a `cancelled` (`200`) sin tocar
+`costs` ni `stocks`. Cualquier intento sobre una compra confirmada o cancelada
+responde `409` con `{ "message": "Purchase is not editable" }`.
 
 ```bash
 curl -X PUT http://localhost:3001/purchases/1 \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{ "tax_rate": 8.25, "notes": "Reposición ajustada" }'
+  -d '{ "notes": "Reposición ajustada" }'
 
 curl -X POST http://localhost:3001/purchases/1/cancel \
   -H "Authorization: Bearer <jwt>"
@@ -2552,9 +2582,12 @@ curl -X POST http://localhost:3001/purchases/1/cancel \
 
 - `GET /purchases/:id/items` lista las líneas de un borrador.
 - `POST /purchases/:id/items` agrega una línea (`product_id`,
-  `item_state_id`, `quantity` y `unit_cost`) y responde `201`.
+  `item_state_id`, `quantity`, `unit_cost` y `tax_amount`) y responde `201`.
+  Sin `tax_amount` responde `400` con
+  `{ "message": "product_id, item_state_id, quantity, unit_cost and tax_amount are required" }`.
 - `PUT /purchases/:purchase_id/items/:item_id` actualiza cualquier combinación
-  de esos cuatro campos y responde `202`.
+  de esos cinco campos y responde `202`; si omite `tax_amount` conserva el
+  valor actual.
 - `DELETE /purchases/:purchase_id/items/:item_id` elimina la línea y responde
   `204`.
 
@@ -2570,12 +2603,12 @@ producto/estado repetido responde `409` con
 curl -X POST http://localhost:3001/purchases/1/items \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{ "product_id": 15, "item_state_id": 1, "quantity": 10, "unit_cost": 15.5 }'
+  -d '{ "product_id": 15, "item_state_id": 1, "quantity": 10, "unit_cost": 15.5, "tax_amount": 8.0 }'
 
 curl -X PUT http://localhost:3001/purchases/1/items/1 \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{ "quantity": 12, "unit_cost": 18.75 }'
+  -d '{ "quantity": 12, "unit_cost": 18.75, "tax_amount": 9.5 }'
 
 curl -X DELETE http://localhost:3001/purchases/1/items/1 \
   -H "Authorization: Bearer <jwt>"
@@ -2584,7 +2617,8 @@ curl -X DELETE http://localhost:3001/purchases/1/items/1 \
 ### `POST /purchases/:id/confirm`
 
 Protegido para `admin` y `seller`. En **una sola transacción** recalcula los
-totales, hace _upsert_ en `costs` por `(product_id, item_state_id)` (la última
+totales sumando subtotales e impuestos de las líneas, hace _upsert_ en `costs`
+por `(product_id, item_state_id)` usando `unit_cost` sin impuesto (la última
 compra confirmada gana), incrementa `stocks.quantity` con
 `stockRepository.applyPurchaseItems(items, { transaction })` y marca
 `status = confirmed` con `confirmed_at`. Si cualquier paso falla se revierte
@@ -2610,6 +2644,8 @@ curl -X POST http://localhost:3001/purchases/1/confirm \
 | `409`  | `{ "message": "Purchase is not editable" }` / `"Purchase already confirmed"` / `"Item already exists"` |
 | `422`  | `{ "errors": { ... } }` / `{ "message": "Purchase has no items" }`                                     |
 | `422`  | `{ "errors": { "currency_id": "Invalid currency" } }`                                                  |
+| `422`  | `{ "errors": { "items.0.tax_amount": "tax_amount is required" } }`                                     |
+| `422`  | `{ "errors": { "tax_amount": "tax_amount must be >= 0" } }`                                            |
 | `503`  | `{ "message": "Default transaction currency is not configured" }`                                      |
 
 ### Referencias activadas

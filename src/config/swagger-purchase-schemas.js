@@ -1,7 +1,13 @@
 const purchaseSchemas = {
   PurchaseItemInput: {
     type: "object",
-    required: ["product_id", "item_state_id", "quantity", "unit_cost"],
+    required: [
+      "product_id",
+      "item_state_id",
+      "quantity",
+      "unit_cost",
+      "tax_amount",
+    ],
     properties: {
       product_id: { type: "integer", minimum: 1, example: 15 },
       item_state_id: { type: "integer", minimum: 1, example: 1 },
@@ -16,6 +22,13 @@ const purchaseSchemas = {
         minimum: 0,
         multipleOf: 0.01,
         example: 20.0,
+      },
+      tax_amount: {
+        type: "number",
+        minimum: 0,
+        multipleOf: 0.01,
+        description: "Absolute tax amount of the line (not a rate)",
+        example: 128.0,
       },
     },
   },
@@ -37,6 +50,13 @@ const purchaseSchemas = {
         multipleOf: 0.01,
         example: 20.0,
       },
+      tax_amount: {
+        type: "number",
+        minimum: 0,
+        multipleOf: 0.01,
+        description: "Optional; the current value is kept when omitted",
+        example: 128.0,
+      },
     },
   },
   PurchaseItem: {
@@ -48,6 +68,12 @@ const purchaseSchemas = {
       quantity: { type: "integer", minimum: 1, example: 40 },
       unit_cost: { type: "number", example: 20.0 },
       subtotal: { type: "number", example: 800.0 },
+      tax_amount: { type: "number", example: 128.0 },
+      total: {
+        type: "number",
+        description: "subtotal + tax_amount",
+        example: 928.0,
+      },
     },
   },
   Purchase: {
@@ -68,7 +94,6 @@ const purchaseSchemas = {
         example: "draft",
       },
       subtotal: { type: "number", example: 837.5 },
-      tax_rate: { type: "number", minimum: 0, maximum: 100, example: 16 },
       tax_amount: { type: "number", example: 134.0 },
       total: { type: "number", example: 971.5 },
       notes: {

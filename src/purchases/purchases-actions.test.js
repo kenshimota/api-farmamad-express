@@ -61,7 +61,6 @@ const PURCHASE = {
   supplier_id: 2,
   status: "draft",
   subtotal: "20.00",
-  tax_rate: "16.00",
   tax_amount: "3.20",
   total: "23.20",
   notes: null,
@@ -111,13 +110,13 @@ describe("PUT /purchases/:id", () => {
       const response = await send(
         "put",
         "/purchases/1",
-        { tax_rate: 8.25, notes: "Nueva nota" },
+        { supplier_id: 3, notes: "Nueva nota" },
         tokenFor(role),
       );
 
       expect(response.status).toBe(202);
       expect(purchaseService.updatePurchase).toHaveBeenCalledWith(1, {
-        tax_rate: 8.25,
+        supplier_id: 3,
         notes: "Nueva nota",
       });
       expect(response.body.total).toBe(23.2);
@@ -132,6 +131,26 @@ describe("PUT /purchases/:id", () => {
     expect(ignored.status).toBe(400);
     expect(ignored.body).toEqual({ message: "At least one field is required" });
     expect(purchaseService.updatePurchase).not.toHaveBeenCalled();
+  });
+
+  it("ignores tax_rate and rejects it when it is the only field", async () => {
+    const onlyTaxRate = await send("put", "/purchases/1", { tax_rate: 8.25 });
+
+    expect(onlyTaxRate.status).toBe(400);
+    expect(onlyTaxRate.body).toEqual({
+      message: "At least one field is required",
+    });
+    expect(purchaseService.updatePurchase).not.toHaveBeenCalled();
+
+    const ignored = await send("put", "/purchases/1", {
+      tax_rate: 8.25,
+      notes: "Nueva",
+    });
+
+    expect(ignored.status).toBe(202);
+    expect(purchaseService.updatePurchase).toHaveBeenCalledWith(1, {
+      notes: "Nueva",
+    });
   });
 
   it("responds 409 and 404 when the service rejects the update", async () => {
@@ -157,7 +176,9 @@ describe("PUT /purchases/:id", () => {
     const invalidId = await send("put", "/purchases/abc", { notes: "x" });
     expect(invalidId.status).toBe(422);
 
-    const invalidBody = await send("put", "/purchases/1", { tax_rate: 101 });
+    const invalidBody = await send("put", "/purchases/1", {
+      notes: "x".repeat(1001),
+    });
     expect(invalidBody.status).toBe(422);
   });
 });

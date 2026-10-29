@@ -79,6 +79,7 @@ function line(refs) {
     item_state_id: refs.sellable.id,
     quantity: 2,
     unit_cost: 10,
+    tax_amount: 1.6,
   };
 }
 

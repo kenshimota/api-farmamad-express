@@ -1,9 +1,12 @@
 const {
   calculateLineSubtotal,
+  calculateLineTotal,
   calculateTotals,
   hasAtMostTwoDecimals,
   toCents,
   toDecimal,
+  toLineAmounts,
+  toTotalsAmounts,
 } = require("./money");
 
 describe("toCents", () => {
@@ -45,29 +48,67 @@ describe("calculateLineSubtotal", () => {
   });
 });
 
-describe("calculateTotals", () => {
-  it("calculates the subtotal, rounded tax and total", () => {
-    expect(
-      calculateTotals(
-        [
-          { quantity: 40, unit_cost: 20 },
-          { quantity: 3, unit_cost: 12.5 },
-        ],
-        16,
-      ),
-    ).toEqual({ subtotal: 837.5, tax_amount: 134, total: 971.5 });
+describe("calculateLineTotal", () => {
+  it("adds the tax to the subtotal in cents", () => {
+    expect(calculateLineTotal(800, 128)).toBe(928);
+    expect(calculateLineTotal(0.1, 0.2)).toBe(0.3);
   });
+});
 
-  it("rounds half cents with integer arithmetic", () => {
-    expect(calculateTotals([{ quantity: 1, unit_cost: 0.05 }], 8.25)).toEqual({
-      subtotal: 0.05,
-      tax_amount: 0,
-      total: 0.05,
+describe("toLineAmounts", () => {
+  it("formats the unit cost, subtotal and tax for the columns", () => {
+    expect(
+      toLineAmounts({ quantity: 3, unit_cost: 12.5, tax_amount: 6 }),
+    ).toEqual({
+      unit_cost: "12.50",
+      subtotal: "37.50",
+      tax_amount: "6.00",
     });
   });
 
+  it("defaults a missing tax to zero", () => {
+    expect(toLineAmounts({ quantity: 2, unit_cost: "10.00" })).toEqual({
+      unit_cost: "10.00",
+      subtotal: "20.00",
+      tax_amount: "0.00",
+    });
+  });
+});
+
+describe("toTotalsAmounts", () => {
+  it("formats the header totals for the columns", () => {
+    expect(
+      toTotalsAmounts({ subtotal: 837.5, tax_amount: 134, total: 971.5 }),
+    ).toEqual({ subtotal: "837.50", tax_amount: "134.00", total: "971.50" });
+  });
+});
+
+describe("calculateTotals", () => {
+  it("sums the line subtotals and the line taxes", () => {
+    expect(
+      calculateTotals([
+        { quantity: 40, unit_cost: 20, tax_amount: "128.00" },
+        { quantity: 3, unit_cost: 12.5, tax_amount: 6 },
+      ]),
+    ).toEqual({ subtotal: 837.5, tax_amount: 134, total: 971.5 });
+  });
+
+  it("treats a missing line tax as zero", () => {
+    expect(calculateTotals([{ quantity: 2, unit_cost: 10 }])).toEqual({
+      subtotal: 20,
+      tax_amount: 0,
+      total: 20,
+    });
+  });
+
+  it("keeps the total exact with integer arithmetic", () => {
+    expect(
+      calculateTotals([{ quantity: 1, unit_cost: 0.05, tax_amount: 0.01 }]),
+    ).toEqual({ subtotal: 0.05, tax_amount: 0.01, total: 0.06 });
+  });
+
   it("returns zero totals for an empty purchase", () => {
-    expect(calculateTotals([], 16)).toEqual({
+    expect(calculateTotals([])).toEqual({
       subtotal: 0,
       tax_amount: 0,
       total: 0,

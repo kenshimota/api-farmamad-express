@@ -2,23 +2,17 @@ const yup = require("yup");
 const { MAX_MONEY, hasAtMostTwoDecimals } = require("./money");
 
 const REQUIRED_PURCHASE_FIELDS = ["supplier_id"];
-const EDITABLE_PURCHASE_FIELDS = [
-  "supplier_id",
-  "currency_id",
-  "tax_rate",
-  "notes",
-];
+const EDITABLE_PURCHASE_FIELDS = ["supplier_id", "currency_id", "notes"];
 const REQUIRED_PURCHASE_ITEM_FIELDS = [
   "product_id",
   "item_state_id",
   "quantity",
   "unit_cost",
+  "tax_amount",
 ];
 const EDITABLE_PURCHASE_ITEM_FIELDS = [...REQUIRED_PURCHASE_ITEM_FIELDS];
 const MAX_NOTES_LENGTH = 1000;
 const MAX_QUANTITY = 1000000;
-const DEFAULT_TAX_RATE = 16;
-const MAX_TAX_RATE = 100;
 const SUPPLIER_ID_MESSAGE = "Invalid supplier id";
 const CURRENCY_ID_MESSAGE = "Invalid currency";
 const PRODUCT_ID_MESSAGE = "Invalid product id";
@@ -29,12 +23,14 @@ const QUANTITY_MAX_MESSAGE = "quantity must be <= 1000000";
 const UNIT_COST_MESSAGE = "unit_cost must be a number";
 const UNIT_COST_NEGATIVE_MESSAGE = "unit_cost must be >= 0";
 const UNIT_COST_DECIMALS_MESSAGE = "unit_cost must have at most 2 decimals";
-const TAX_RATE_MESSAGE = "tax_rate must be a number";
-const TAX_RATE_MIN_MESSAGE = "tax_rate must be >= 0";
-const TAX_RATE_MAX_MESSAGE = "tax_rate must be <= 100";
-const TAX_RATE_DECIMALS_MESSAGE = "tax_rate must have at most 2 decimals";
+const TAX_AMOUNT_MESSAGE = "tax_amount must be a number";
+const TAX_AMOUNT_NEGATIVE_MESSAGE = "tax_amount must be >= 0";
+const TAX_AMOUNT_DECIMALS_MESSAGE = "tax_amount must have at most 2 decimals";
+const TAX_AMOUNT_MAX_MESSAGE = "tax_amount must have at most 10 integer digits";
+const TAX_AMOUNT_REQUIRED_MESSAGE = "tax_amount is required";
 const NOTES_MESSAGE = "notes must have at most 1000 characters";
 const ITEMS_MESSAGE = "items must be an array";
+
 /**
  * Builds a schema for a positive integer identifier.
  * @param {string} message - Error message for invalid values.
@@ -59,9 +55,15 @@ function positiveInteger(message, required = true) {
  * @param {string} options.message - Type error message.
  * @param {string} options.minMessage - Message for values below zero.
  * @param {string} options.decimalsMessage - Message for 3+ decimals.
+ * @param {string} [options.maxMessage] - Message for values above the max.
  * @returns {import("yup").NumberSchema} The monetary schema.
  */
-function moneyField({ message, minMessage, decimalsMessage }) {
+function moneyField({
+  message,
+  minMessage,
+  decimalsMessage,
+  maxMessage = "value is too large",
+}) {
   return yup
     .number()
     .transform((value, originalValue) => {
@@ -88,35 +90,15 @@ function moneyField({ message, minMessage, decimalsMessage }) {
       );
     })
     .min(0, minMessage)
-    .max(MAX_MONEY, "value is too large")
+    .max(MAX_MONEY, maxMessage)
     .test("max-decimals", decimalsMessage, (value) =>
       value === undefined ? true : hasAtMostTwoDecimals(value),
     );
 }
 
 /**
- * Builds the optional tax rate schema: a number between 0 and 100 with at most
- * two decimals.
- * @returns {import("yup").NumberSchema} The tax rate schema.
- */
-function taxRateField() {
-  return moneyField({
-    message: TAX_RATE_MESSAGE,
-    minMessage: TAX_RATE_MIN_MESSAGE,
-    decimalsMessage: TAX_RATE_DECIMALS_MESSAGE,
-  })
-    .max(MAX_TAX_RATE, TAX_RATE_MAX_MESSAGE)
-    .test(
-      "tax-rate-min",
-      TAX_RATE_MIN_MESSAGE,
-      (value) => value === undefined || value >= 0,
-    );
-}
-
-/**
- * Builds the optional notes schema. Omitted and null values are accepted;
- * strings are trimmed, blank strings become null and 1001+ characters are
- * rejected.
+ * Builds the notes schema. Omitted and null values are accepted; strings are
+ * trimmed, blank strings become null and 1001+ characters are rejected.
  * @returns {import("yup").StringSchema} The notes schema.
  */
 function notesField() {
@@ -171,17 +153,34 @@ function unitCostField() {
   }).required(UNIT_COST_MESSAGE);
 }
 
+/**
+ * Builds the line tax schema: an absolute non-negative amount with at most two
+ * decimals and ten integer digits.
+ * @param {boolean} [required] - Whether the amount is mandatory.
+ * @returns {import("yup").NumberSchema} The tax amount schema.
+ */
+function taxAmountField(required = true) {
+  const schema = moneyField({
+    message: TAX_AMOUNT_MESSAGE,
+    minMessage: TAX_AMOUNT_NEGATIVE_MESSAGE,
+    decimalsMessage: TAX_AMOUNT_DECIMALS_MESSAGE,
+    maxMessage: TAX_AMOUNT_MAX_MESSAGE,
+  });
+
+  return required ? schema.required(TAX_AMOUNT_REQUIRED_MESSAGE) : schema;
+}
+
 const purchaseItemSchema = yup.object({
   product_id: positiveInteger(PRODUCT_ID_MESSAGE),
   item_state_id: positiveInteger(ITEM_STATE_ID_MESSAGE),
   quantity: quantityField(),
   unit_cost: unitCostField(),
+  tax_amount: taxAmountField(),
 });
 
 const createPurchaseSchema = yup.object({
   supplier_id: positiveInteger(SUPPLIER_ID_MESSAGE),
   currency_id: positiveInteger(CURRENCY_ID_MESSAGE, false),
-  tax_rate: taxRateField(),
   notes: notesField(),
   items: yup
     .array()
@@ -193,7 +192,6 @@ const createPurchaseSchema = yup.object({
 const updatePurchaseSchema = yup.object({
   supplier_id: positiveInteger(SUPPLIER_ID_MESSAGE, false),
   currency_id: positiveInteger(CURRENCY_ID_MESSAGE, false),
-  tax_rate: taxRateField(),
   notes: notesField(),
 });
 
@@ -204,37 +202,11 @@ const updatePurchaseItemSchema = yup.object({
   item_state_id: positiveInteger(ITEM_STATE_ID_MESSAGE, false),
   quantity: quantityField().notRequired(),
   unit_cost: unitCostField().notRequired(),
+  tax_amount: taxAmountField(false),
 });
-
-/**
- * Resolves the default tax rate from `PURCHASE_TAX_RATE`, falling back to 16
- * when the variable is absent or invalid.
- * @returns {number} The tax rate between 0 and 100.
- */
-function resolveDefaultTaxRate() {
-  const raw = process.env.PURCHASE_TAX_RATE;
-
-  if (raw === undefined || raw === "") {
-    return DEFAULT_TAX_RATE;
-  }
-
-  const value = Number(raw);
-
-  if (
-    !Number.isFinite(value) ||
-    value < 0 ||
-    value > MAX_TAX_RATE ||
-    !hasAtMostTwoDecimals(value)
-  ) {
-    return DEFAULT_TAX_RATE;
-  }
-
-  return value;
-}
 
 module.exports = {
   CURRENCY_ID_MESSAGE,
-  DEFAULT_TAX_RATE,
   EDITABLE_PURCHASE_FIELDS,
   EDITABLE_PURCHASE_ITEM_FIELDS,
   ITEMS_MESSAGE,
@@ -250,16 +222,16 @@ module.exports = {
   REQUIRED_PURCHASE_FIELDS,
   REQUIRED_PURCHASE_ITEM_FIELDS,
   SUPPLIER_ID_MESSAGE,
-  TAX_RATE_DECIMALS_MESSAGE,
-  TAX_RATE_MAX_MESSAGE,
-  TAX_RATE_MESSAGE,
-  TAX_RATE_MIN_MESSAGE,
+  TAX_AMOUNT_DECIMALS_MESSAGE,
+  TAX_AMOUNT_MAX_MESSAGE,
+  TAX_AMOUNT_MESSAGE,
+  TAX_AMOUNT_NEGATIVE_MESSAGE,
+  TAX_AMOUNT_REQUIRED_MESSAGE,
   UNIT_COST_DECIMALS_MESSAGE,
   UNIT_COST_MESSAGE,
   UNIT_COST_NEGATIVE_MESSAGE,
   createPurchaseItemSchema,
   createPurchaseSchema,
-  resolveDefaultTaxRate,
   updatePurchaseItemSchema,
   updatePurchaseSchema,
 };

@@ -17,9 +17,10 @@ const router = Router();
  *   post:
  *     summary: Adds a line to a draft purchase
  *     description: >
- *       Validates the product and item state references, rejects a repeated
- *       product/item state pair with 409, recalculates the purchase and
- *       responds 201 with the updated purchase and its lines.
+ *       Requires the line `tax_amount`, validates the product and item state
+ *       references, rejects a repeated product/item state pair with 409,
+ *       recalculates the purchase and responds 201 with the updated purchase
+ *       and its lines.
  *     tags: [Purchases]
  *     security:
  *       - bearerAuth: []

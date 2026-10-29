@@ -60,9 +60,10 @@ async function references() {
  * @param {object} refs - References.
  * @param {number} quantity - Quantity to add.
  * @param {number} unitCost - Unit cost.
+ * @param {number} [taxAmount] - Absolute tax amount of the line.
  * @returns {Promise<object>} The created line.
  */
-function addLine(purchase, refs, quantity, unitCost) {
+function addLine(purchase, refs, quantity, unitCost, taxAmount = 0) {
   return createPurchaseItem({
     purchase_id: purchase.id,
     product_id: refs.product.id,
@@ -70,6 +71,7 @@ function addLine(purchase, refs, quantity, unitCost) {
     quantity,
     unit_cost: unitCost,
     subtotal: quantity * unitCost,
+    tax_amount: taxAmount,
   });
 }
 
@@ -77,7 +79,7 @@ describe("POST /purchases/:id/confirm with a real database", () => {
   it("confirms atomically and updates costs and stocks", async () => {
     const refs = await references();
     const purchase = await createPurchase({ supplier_id: refs.supplier.id });
-    await addLine(purchase, refs, 40, 20);
+    await addLine(purchase, refs, 40, 20, 128);
     const token = await tokenFor("seller");
 
     const response = await as(
@@ -126,8 +128,8 @@ describe("POST /purchases/:id/confirm with a real database", () => {
     const refs = await references();
     const first = await createPurchase({ supplier_id: refs.supplier.id });
     const second = await createPurchase({ supplier_id: refs.supplier.id });
-    await addLine(first, refs, 2, 10);
-    await addLine(second, refs, 3, 12.5);
+    await addLine(first, refs, 2, 10, 2);
+    await addLine(second, refs, 3, 12.5, 3.75);
     const token = await tokenFor("admin");
 
     await as("post", `/purchases/${first.id}/confirm`, token);
@@ -164,7 +166,7 @@ describe("POST /purchases/:id/confirm with a real database", () => {
       quantity: 10,
     });
     const purchase = await createPurchase({ supplier_id: refs.supplier.id });
-    await addLine(purchase, refs, 4, 25);
+    await addLine(purchase, refs, 4, 25, 0);
     const token = await tokenFor("seller");
 
     const response = await as(
@@ -200,7 +202,7 @@ describe("POST /purchases/:id/confirm with a real database", () => {
 
     const refs = await references();
     const purchase = await createPurchase({ supplier_id: refs.supplier.id });
-    await addLine(purchase, refs, 1, 1);
+    await addLine(purchase, refs, 1, 1, 0);
     const first = await as("post", `/purchases/${purchase.id}/confirm`, token);
     expect(first.status).toBe(200);
 

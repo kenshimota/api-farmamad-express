@@ -37,11 +37,6 @@ const Purchase = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
-    tax_rate: {
-      type: DataTypes.DECIMAL(5, 2),
-      allowNull: false,
-      defaultValue: 16,
-    },
     tax_amount: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
