@@ -131,6 +131,7 @@ jest.mock("./models/lot", () => ({
   findOne: jest.fn(),
   getAttributes: jest.fn(() => ({})),
 }));
+jest.mock("./models/customer-seller");
 
 const request = require("supertest");
 const app = require("./app");
