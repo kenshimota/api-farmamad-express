@@ -4,6 +4,7 @@ const User = require("../../src/models/user");
 const Role = require("../../src/models/role");
 const State = require("../../src/models/state");
 const City = require("../../src/models/city");
+const Supplier = require("../../src/models/supplier");
 
 const PASSWORD = "secret123";
 const STATE_BODY = { name: "Aragua", code: "VE-D" };
@@ -111,11 +112,16 @@ function as(method, path, token) {
 }
 
 /**
- * Truncates the cities, states and users tables of the test database. Cities
- * go first so the restrictive foreign key never blocks the cleanup.
+ * Truncates the suppliers, cities, states and users tables of the test
+ * database. Suppliers go first so the restrictive foreign keys never block the
+ * cleanup.
  * @returns {Promise<void>} Resolves once the tables are empty.
  */
 async function resetDatabase() {
+  await Supplier.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
   await City.destroy({
     where: {},
     truncate: { cascade: true, restartIdentity: true },

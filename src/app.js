@@ -18,6 +18,7 @@ const imagesRouter = require("./images");
 const productsRouter = require("./products");
 const statesRouter = require("./states");
 const citiesRouter = require("./cities");
+const suppliersRouter = require("./suppliers");
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use("/images", imagesRouter);
 app.use("/products", productsRouter);
 app.use("/states", statesRouter);
 app.use("/cities", citiesRouter);
+app.use("/suppliers", suppliersRouter);
 
 app.use(notFound);
 app.use(errorHandler);

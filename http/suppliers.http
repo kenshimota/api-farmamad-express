@@ -1,0 +1,191 @@
+# Archivo: suppliers.http
+# Módulo: suppliers  ->  POST /suppliers, GET /suppliers, GET /suppliers/:id,
+#                        PUT /suppliers/:id, DELETE /suppliers/:id
+# Protegido: lectura para cualquier usuario autenticado; escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /suppliers — crea un proveedor (201)
+# identification es único sin distinguir mayúsculas y se guarda en mayúsculas.
+# email es obligatorio pero no único; city_id debe pertenecer a state_id.
+POST {{baseUrl}}/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Distribuidora La Salud C.A.",
+  "identification": "J-12345678-9",
+  "email": "ventas@lasalud.com",
+  "phone": "+58 212 555-1234",
+  "observations": "Entrega los martes",
+  "address": "Av. Principal, Galpón 4",
+  "city_id": 10,
+  "state_id": 4
+}
+
+### POST /suppliers?include=location — crea y anida city/state (201)
+POST {{baseUrl}}/suppliers?include=location
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Distribuidora La Salud C.A.",
+  "identification": "J-12345678-9",
+  "email": "ventas@lasalud.com",
+  "phone": "+58 212 555-1234",
+  "address": "Av. Principal, Galpón 4",
+  "city_id": 10,
+  "state_id": 4
+}
+
+### POST /suppliers — sin token (401 Unauthorized)
+POST {{baseUrl}}/suppliers
+Content-Type: application/json
+
+{
+  "name": "Distribuidora La Salud C.A."
+}
+
+### POST /suppliers — faltan campos (400)
+POST {{baseUrl}}/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /suppliers — ciudad incoherente con el estado (422)
+POST {{baseUrl}}/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Distribuidora La Salud C.A.",
+  "identification": "J-12345678-9",
+  "email": "ventas@lasalud.com",
+  "phone": "+58 212 555-1234",
+  "address": "Av. Principal, Galpón 4",
+  "city_id": 10,
+  "state_id": 99999
+}
+
+### POST /suppliers — identificación duplicada (409)
+POST {{baseUrl}}/suppliers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Otra Distribuidora",
+  "identification": "j-12345678-9",
+  "email": "otra@lasalud.com",
+  "phone": "+58 212 555-0000",
+  "address": "Calle 2 #5",
+  "city_id": 10,
+  "state_id": 4
+}
+
+### GET /suppliers — lista los proveedores (200)
+# Ordenados por name e incluyen city y state anidados; [] si no hay.
+GET {{baseUrl}}/suppliers
+Authorization: Bearer {{token}}
+
+### GET /suppliers?state_id=4 — filtra por estado (200)
+GET {{baseUrl}}/suppliers?state_id=4
+Authorization: Bearer {{token}}
+
+### GET /suppliers?city_id=10 — filtra por ciudad (200)
+GET {{baseUrl}}/suppliers?city_id=10
+Authorization: Bearer {{token}}
+
+### GET /suppliers?q=salud — busca por nombre o identificación (200)
+GET {{baseUrl}}/suppliers?q=salud
+Authorization: Bearer {{token}}
+
+### GET /suppliers?state_id=abc — filtro inválido (422)
+GET {{baseUrl}}/suppliers?state_id=abc
+Authorization: Bearer {{token}}
+
+### GET /suppliers — sin token (401 Unauthorized)
+GET {{baseUrl}}/suppliers
+
+### GET /suppliers/:id — consulta un proveedor (200)
+# Sustituye 1 por el id del proveedor. Incluye city y state anidados.
+GET {{baseUrl}}/suppliers/1
+Authorization: Bearer {{token}}
+
+### GET /suppliers/:id — id inexistente (404)
+GET {{baseUrl}}/suppliers/99999
+Authorization: Bearer {{token}}
+
+### GET /suppliers/:id — id inválido (422)
+GET {{baseUrl}}/suppliers/abc
+Authorization: Bearer {{token}}
+
+### PUT /suppliers/:id — actualiza campos editables (202)
+# Se puede enviar cualquier subconjunto de campos; al menos uno es obligatorio.
+# Si cambia city_id sin state_id, el estado se deriva de la ciudad.
+PUT {{baseUrl}}/suppliers/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Distribuidora Central",
+  "identification": "J-99999999-9",
+  "email": "nuevo@lasalud.com",
+  "city_id": 10
+}
+
+### PUT /suppliers/:id — ciudad incoherente con el estado (422)
+PUT {{baseUrl}}/suppliers/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "city_id": 10,
+  "state_id": 4
+}
+
+### PUT /suppliers/:id — identificación duplicada (409)
+PUT {{baseUrl}}/suppliers/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "identification": "J-12345678-9"
+}
+
+### PUT /suppliers/:id — sin campos (400)
+PUT {{baseUrl}}/suppliers/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /suppliers/:id — id inexistente (404)
+PUT {{baseUrl}}/suppliers/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Nuevo nombre"
+}
+
+### DELETE /suppliers/:id — elimina un proveedor (204, sin cuerpo)
+# Solo si no tiene compras asociadas.
+DELETE {{baseUrl}}/suppliers/1
+Authorization: Bearer {{token}}
+
+### DELETE /suppliers/:id — proveedor en uso (409)
+DELETE {{baseUrl}}/suppliers/1
+Authorization: Bearer {{token}}
+
+### DELETE /suppliers/:id — id inexistente (404)
+DELETE {{baseUrl}}/suppliers/99999
+Authorization: Bearer {{token}}
+
+### DELETE /suppliers/:id — id inválido (422)
+DELETE {{baseUrl}}/suppliers/abc
+Authorization: Bearer {{token}}
+
+### DELETE /suppliers/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/suppliers/1

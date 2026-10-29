@@ -42,6 +42,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Cities catalog linked to a state: creation, listing, lookup, update and deletion.",
       },
+      {
+        name: "Suppliers",
+        description:
+          "Supplier registry with contact data and location: creation, listing, lookup, update and deletion.",
+      },
     ],
     components: {
       securitySchemes: {
@@ -216,6 +221,54 @@ const swaggerSpec = swaggerJsdoc({
               $ref: "#/components/schemas/State",
               description:
                 "Only present when the list is requested with include=state",
+            },
+          },
+        },
+        Supplier: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            name: {
+              type: "string",
+              example: "Distribuidora La Salud C.A.",
+            },
+            identification: {
+              type: "string",
+              description:
+                "Unique ignoring case; stored uppercase and kept as text",
+              example: "J-12345678-9",
+            },
+            email: {
+              type: "string",
+              format: "email",
+              example: "ventas@lasalud.com",
+            },
+            phone: {
+              type: "string",
+              example: "+58 212 555-1234",
+            },
+            observations: {
+              type: "string",
+              nullable: true,
+              example: "Entrega los martes",
+            },
+            address: {
+              type: "string",
+              example: "Av. Principal, Galpón 4",
+            },
+            city_id: { type: "integer", example: 10 },
+            state_id: { type: "integer", example: 4 },
+            city: {
+              type: "object",
+              description:
+                "Nested city; present in the listing, the detail and POST with include=location",
+              properties: {
+                id: { type: "integer", example: 10 },
+                name: { type: "string", example: "Maracay" },
+              },
+            },
+            state: {
+              $ref: "#/components/schemas/State",
             },
           },
         },

@@ -1,7 +1,6 @@
 process.env.JWT_SECRET = process.env.JWT_SECRET || "integration-test-secret";
 
 const request = require("supertest");
-const { DataTypes } = require("sequelize");
 const app = require("../app");
 const sequelize = require("../database");
 const City = require("../models/city");
@@ -14,8 +13,7 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/cities");
-
-const USAGE_TABLE = "city_usage_hu16";
+const { createSupplier } = require("../../test/helpers/suppliers");
 
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
@@ -33,34 +31,13 @@ afterAll(async () => {
 });
 
 /**
- * Creates a throwaway table with a real restrictive foreign key to cities so
- * the 409 response of the delete endpoint can be exercised before the
- * suppliers table exists (HU-17).
- * @returns {Promise<void>}
+ * Creates a supplier that references the given city through the real foreign
+ * keys of the suppliers table.
+ * @param {object} city - Stored city instance.
+ * @returns {Promise<object>} The created supplier.
  */
-async function createUsageTable() {
-  const queryInterface = sequelize.getQueryInterface();
-
-  await queryInterface.createTable(USAGE_TABLE, {
-    id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    city_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-  });
-  await queryInterface.addConstraint(USAGE_TABLE, {
-    fields: ["city_id"],
-    type: "foreign key",
-    name: "city_usage_hu16_city_id_fkey",
-    references: { table: "cities", field: "id" },
-    onUpdate: "CASCADE",
-    onDelete: "RESTRICT",
-  });
+function createCityUsage(city) {
+  return createSupplier({ city_id: city.id, state_id: city.state_id });
 }
 
 describe("PUT /cities/:id with a real database", () => {
@@ -180,23 +157,19 @@ describe("DELETE /cities/:id with a real database", () => {
     },
   );
 
-  it("responds 409 and keeps the city when a referencing row exists", async () => {
+  it("responds 409 and keeps the city when a supplier references it", async () => {
     const city = await createCity();
     const token = await tokenFor("admin");
-    const queryInterface = sequelize.getQueryInterface();
-
-    await createUsageTable();
+    const supplier = await createCityUsage(city);
 
     try {
-      await queryInterface.bulkInsert(USAGE_TABLE, [{ city_id: city.id }]);
-
       const response = await as("delete", `/cities/${city.id}`, token);
 
       expect(response.status).toBe(409);
       expect(response.body).toEqual({ message: "City is in use" });
       await expect(City.findByPk(city.id)).resolves.not.toBeNull();
     } finally {
-      await queryInterface.dropTable(USAGE_TABLE);
+      await supplier.destroy();
     }
   });
 

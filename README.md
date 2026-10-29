@@ -1757,6 +1757,182 @@ ciudades sembradas y luego los estados sembrados, sin tocar registros creados
 por usuarios. Si un estado falta al sembrar ciudades, el seeder falla con un
 mensaje que indica el estado y la ciudad.
 
+## Proveedores
+
+Los proveedores viven en la tabla `suppliers` (modelo `Supplier`) y guardan los
+datos de contacto y la ubicación. `name` admite 2–150 caracteres;
+`identification` es obligatorio, se guarda como texto en mayúsculas y es único
+sin distinguir mayúsculas (índice funcional `LOWER(identification)`); `email` es
+obligatorio y válido pero **no** único; `phone` admite `+`, espacios, guiones y
+paréntesis; `observations` es opcional hasta 1000 caracteres; `address` admite
+5–255 caracteres. `city_id` y `state_id` son obligatorios, referencian
+`cities.id` y `states.id` con `ON DELETE RESTRICT`, y la ciudad debe pertenecer
+al estado indicado. Las respuestas no exponen `createdAt` ni `updatedAt`.
+
+Permisos por endpoint:
+
+| Endpoint                | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ----------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /suppliers`       | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /suppliers`        | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `GET /suppliers/:id`    | ✅      | ✅       | ✅           | ✅                  | ✅        | ✅         |
+| `PUT /suppliers/:id`    | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /suppliers/:id` | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+### `POST /suppliers`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos:
+`name`, `identification`, `email`, `phone`, `address`, `city_id` y `state_id`;
+`observations` es opcional. La identificación se normaliza a mayúsculas y el
+correo a minúsculas. Antes de insertar se verifica que la ciudad exista y
+pertenezca al estado. Con `?include=location` la respuesta anida `city` y
+`state`.
+
+```bash
+curl -X POST "http://localhost:3001/suppliers?include=location" \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Distribuidora La Salud C.A.","identification":"J-12345678-9","email":"ventas@lasalud.com","phone":"+58 212 555-1234","observations":"Entrega los martes","address":"Av. Principal, Galpón 4","city_id":10,"state_id":4}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "name": "Distribuidora La Salud C.A.",
+  "identification": "J-12345678-9",
+  "email": "ventas@lasalud.com",
+  "phone": "+58 212 555-1234",
+  "observations": "Entrega los martes",
+  "address": "Av. Principal, Galpón 4",
+  "city_id": 10,
+  "state_id": 4,
+  "city": { "id": 10, "name": "Maracay" },
+  "state": { "id": 4, "name": "Aragua", "code": "VE-D" }
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                                                                                      |
+| ------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "name, identification, email, phone, address, city_id and state_id are required" }`                           |
+| `401`  | `{ "message": "Unauthorized" }`                                                                                             |
+| `403`  | `{ "message": "Forbidden" }`                                                                                                |
+| `409`  | `{ "message": "Supplier already exists" }`                                                                                  |
+| `422`  | `{ "errors": { "city_id": "Invalid city id" } }`                                                                            |
+| `422`  | `{ "errors": { "state_id": "Invalid state" } }`                                                                             |
+| `422`  | `{ "errors": { "city_id": "City does not belong to state" } }`                                                              |
+
+### `GET /suppliers`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve los proveedores
+ordenados por `name` con `city` y `state` anidados. Filtros opcionales:
+`?state_id=<id>` y `?city_id=<id>` exactos, y `?q=<texto>` para búsqueda parcial
+`ILIKE` sobre `name` e `identification`.
+
+```bash
+curl "http://localhost:3001/suppliers?state_id=4&q=salud" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Distribuidora La Salud C.A.",
+    "identification": "J-12345678-9",
+    "email": "ventas@lasalud.com",
+    "phone": "+58 212 555-1234",
+    "observations": "Entrega los martes",
+    "address": "Av. Principal, Galpón 4",
+    "city_id": 10,
+    "state_id": 4,
+    "city": { "id": 10, "name": "Maracay" },
+    "state": { "id": 4, "name": "Aragua", "code": "VE-D" }
+  }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                                            |
+| ------ | ------------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                   |
+| `403`  | `{ "message": "User is blocked" }`                |
+| `422`  | `{ "errors": { "state_id": "Invalid state" } }`   |
+| `422`  | `{ "errors": { "city_id": "Invalid city id" } }`  |
+
+### `GET /suppliers/:id`
+
+Protegido: requiere un JWT válido, de cualquier rol. Devuelve un proveedor con
+`city` y `state` anidados.
+
+```bash
+curl http://localhost:3001/suppliers/1 -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                           |
+| ------ | ------------------------------------------------ |
+| `401`  | `{ "message": "Unauthorized" }`                  |
+| `403`  | `{ "message": "User is blocked" }`               |
+| `404`  | `{ "message": "Supplier not found" }`            |
+| `422`  | `{ "errors": { "id": "Invalid supplier id" } }`  |
+
+### `PUT /suppliers/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Actualiza cualquier
+subconjunto de los campos editables; al menos uno debe estar presente. Si cambia
+`city_id` y no se envía `state_id`, el estado se deriva de la ciudad; si vienen
+ambos, se valida la coherencia. Responde `202` con el proveedor actualizado.
+
+```bash
+curl -X PUT http://localhost:3001/suppliers/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Distribuidora Central","city_id":10}'
+```
+
+Errores:
+
+| Código | Cuerpo                                                                        |
+| ------ | ----------------------------------------------------------------------------- |
+| `400`  | `{ "message": "At least one field is required" }`                             |
+| `401`  | `{ "message": "Unauthorized" }`                                               |
+| `403`  | `{ "message": "Forbidden" }`                                                  |
+| `404`  | `{ "message": "Supplier not found" }`                                         |
+| `409`  | `{ "message": "Supplier already exists" }`                                    |
+| `422`  | `{ "errors": { "id": "Invalid supplier id" } }`                               |
+| `422`  | `{ "errors": { "city_id": "City does not belong to state" } }`                |
+
+### `DELETE /suppliers/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Elimina el proveedor y
+responde `204` sin cuerpo. Si tiene compras asociadas responde `409` con
+`{ "message": "Supplier is in use" }` y no lo elimina. La tabla `purchases`
+llega con HU-21; hasta entonces la comprobación del repositorio devuelve
+`false` y la FK restrictiva queda preparada para el mismo `409`.
+
+```bash
+curl -X DELETE http://localhost:3001/suppliers/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                           |
+| ------ | ------------------------------------------------ |
+| `401`  | `{ "message": "Unauthorized" }`                  |
+| `403`  | `{ "message": "Forbidden" }`                     |
+| `404`  | `{ "message": "Supplier not found" }`            |
+| `409`  | `{ "message": "Supplier is in use" }`            |
+| `422`  | `{ "errors": { "id": "Invalid supplier id" } }`  |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
