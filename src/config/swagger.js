@@ -47,6 +47,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Supplier registry with contact data and location: creation, listing, lookup, update and deletion.",
       },
+      {
+        name: "Item states",
+        description:
+          "Product item state catalog (sellable, damaged, expired, etc.): creation, listing, lookup, update and deletion.",
+      },
     ],
     components: {
       securitySchemes: {
@@ -269,6 +274,34 @@ const swaggerSpec = swaggerJsdoc({
             },
             state: {
               $ref: "#/components/schemas/State",
+            },
+          },
+        },
+        ItemState: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            name: {
+              type: "string",
+              description:
+                "Stable snake_case key, unique ignoring case, 2–50 characters",
+              example: "sellable",
+            },
+            label: {
+              type: "string",
+              description: "Visible text, 2–100 characters",
+              example: "Vendible",
+            },
+            description: {
+              type: "string",
+              nullable: true,
+              example: "Producto apto para la venta",
+            },
+            is_sellable: {
+              type: "boolean",
+              description:
+                "Whether a product in this state can, in principle, be sold",
+              example: true,
             },
           },
         },

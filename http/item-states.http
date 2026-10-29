@@ -1,0 +1,161 @@
+# Archivo: item-states.http
+# Módulo: item-states  ->  POST /item-states, GET /item-states, GET /item-states/:id,
+#                          PUT /item-states/:id, DELETE /item-states/:id
+# Protegido: lectura para cualquier usuario autenticado; escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /item-states — crea un estado de ítem (201)
+# name es la clave estable: snake_case, 2–50 caracteres, único sin distinguir mayúsculas.
+# label es el texto visible (2–100). description es opcional (máx. 255).
+# is_sellable es opcional y por defecto false.
+POST {{baseUrl}}/item-states
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "returned",
+  "label": "Devuelto",
+  "description": "Devuelto por el cliente",
+  "is_sellable": false
+}
+
+### POST /item-states — sin token (401 Unauthorized)
+POST {{baseUrl}}/item-states
+Content-Type: application/json
+
+{
+  "name": "returned",
+  "label": "Devuelto"
+}
+
+### POST /item-states — faltan name y label (400)
+POST {{baseUrl}}/item-states
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /item-states — name inválido (422)
+# name debe cumplir ^[a-z0-9_]+$; también se valida la longitud de label.
+POST {{baseUrl}}/item-states
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Devuelto",
+  "label": "V"
+}
+
+### POST /item-states — name duplicado (409)
+# La comparación es sin distinguir mayúsculas a nivel de base de datos.
+POST {{baseUrl}}/item-states
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "sellable",
+  "label": "Disponible"
+}
+
+### GET /item-states — lista los estados de ítem (200)
+# Devuelve id, name, label, description e is_sellable ordenados por name ascendente.
+GET {{baseUrl}}/item-states
+Authorization: Bearer {{token}}
+
+### GET /item-states?is_sellable=true — solo los vendibles (200)
+GET {{baseUrl}}/item-states?is_sellable=true
+Authorization: Bearer {{token}}
+
+### GET /item-states?is_sellable=false — solo los no vendibles (200)
+GET {{baseUrl}}/item-states?is_sellable=false
+Authorization: Bearer {{token}}
+
+### GET /item-states?is_sellable=maybe — filtro inválido (422)
+GET {{baseUrl}}/item-states?is_sellable=maybe
+Authorization: Bearer {{token}}
+
+### GET /item-states — sin token (401 Unauthorized)
+GET {{baseUrl}}/item-states
+
+### GET /item-states/:id — consulta un estado de ítem (200)
+# Sustituye 1 por el id del estado.
+GET {{baseUrl}}/item-states/1
+Authorization: Bearer {{token}}
+
+### GET /item-states/:id — id inexistente (404)
+GET {{baseUrl}}/item-states/99999
+Authorization: Bearer {{token}}
+
+### GET /item-states/:id — id inválido (422)
+GET {{baseUrl}}/item-states/abc
+Authorization: Bearer {{token}}
+
+### PUT /item-states/:id — actualiza un estado de ítem (202)
+# Se puede enviar cualquier combinación de name, label, description e is_sellable;
+# al menos uno es obligatorio. Usa null para borrar la descripción.
+PUT {{baseUrl}}/item-states/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "label": "Disponible",
+  "description": null,
+  "is_sellable": true
+}
+
+### PUT /item-states/:id — sin campos (400)
+PUT {{baseUrl}}/item-states/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /item-states/:id — name duplicado (409)
+PUT {{baseUrl}}/item-states/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "damaged"
+}
+
+### PUT /item-states/:id — name en uso, no se puede renombrar (409)
+# Un estado referenciado por costos, stocks o ítems de compra no se puede renombrar.
+PUT {{baseUrl}}/item-states/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "available"
+}
+
+### PUT /item-states/:id — id inexistente (404)
+PUT {{baseUrl}}/item-states/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "label": "Disponible"
+}
+
+### DELETE /item-states/:id — elimina un estado de ítem (204, sin cuerpo)
+# Solo si no está referenciado por costos, stocks ni ítems de compra.
+DELETE {{baseUrl}}/item-states/1
+Authorization: Bearer {{token}}
+
+### DELETE /item-states/:id — estado en uso (409)
+DELETE {{baseUrl}}/item-states/1
+Authorization: Bearer {{token}}
+
+### DELETE /item-states/:id — id inexistente (404)
+DELETE {{baseUrl}}/item-states/99999
+Authorization: Bearer {{token}}
+
+### DELETE /item-states/:id — id inválido (422)
+DELETE {{baseUrl}}/item-states/abc
+Authorization: Bearer {{token}}
+
+### DELETE /item-states/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/item-states/1
