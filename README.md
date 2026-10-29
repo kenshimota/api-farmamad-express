@@ -721,6 +721,187 @@ El email duplicado se detecta con la restricción única de Postgres
 (`UniqueConstraintError`), de modo que dos peticiones simultáneas nunca crean
 clientes repetidos.
 
+## Bodegas
+
+Las bodegas viven en la tabla `warehouses` (modelo `Warehouse`). `name` es
+obligatorio pero **no único**, `address` es obligatorio y `observations` es un
+`TEXT` opcional que se guarda como `NULL` cuando se omite o se envía `null`.
+Ninguna respuesta incluye `createdAt` ni `updatedAt`.
+
+Permisos por endpoint:
+
+| Endpoint                 | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ------------------------ | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /warehouses`       | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `GET /warehouses`        | ✅      | ❌ `403` | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `GET /warehouses/:id`    | ✅      | ❌ `403` | ✅           | ✅                  | ❌ `403`  | ❌ `403`   |
+| `PUT /warehouses/:id`    | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+| `DELETE /warehouses/:id` | ✅      | ❌ `403` | ❌ `403`     | ✅                  | ❌ `403`  | ❌ `403`   |
+
+Un usuario bloqueado recibe `403` con `{ "message": "User is blocked" }` en
+todos los endpoints, y sin token (o con token inválido/expirado) la respuesta es
+`401` con `{ "message": "Unauthorized" }`.
+
+### `POST /warehouses`
+
+Protegido: requiere un JWT con rol `admin` o `manager_warehouse`. Campos
+requeridos: `name` y `address`, ambos no vacíos (tampoco solo espacios). El campo
+opcional `observations` se recorta y se guarda como `NULL` si se omite o se
+envía `null`. Los campos desconocidos y de auditoría se descartan.
+
+```bash
+curl -X POST http://localhost:3001/warehouses \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Bodega Central","observations":"Horario de 8 a 18","address":"Av. Monseñor Rivero 123"}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "name": "Bodega Central",
+  "observations": "Horario de 8 a 18",
+  "address": "Av. Monseñor Rivero 123"
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                           |
+| ------ | ------------------------------------------------ |
+| `400`  | `{ "message": "name and address are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                  |
+| `403`  | `{ "message": "Forbidden" }`                     |
+| `422`  | `{ "errors": { "name": "Nombre inválido" } }`    |
+
+Los mensajes de validación son `"Nombre inválido"`, `"Dirección inválida"` y
+`"Observaciones inválidas"` según el campo.
+
+### `GET /warehouses`
+
+Protegido: requiere un JWT con rol `admin`, `dispatcher` o
+`manager_warehouse`. Devuelve la colección ordenada por `id` ascendente y con
+solo los campos públicos. Si no hay bodegas responde `200` con `[]`.
+
+Parámetro de query opcional:
+
+| Parámetro | Tipo   | Descripción                                                                                    |
+| --------- | ------ | ---------------------------------------------------------------------------------------------- |
+| `search`  | string | Filtro parcial e insensible a mayúsculas sobre `name`, `observations` y `address`. Se recorta. |
+
+`search` omitido, vacío o solo espacios devuelve el listado completo. Si una
+bodega coincide en varios campos aparece una sola vez; sin coincidencias
+responde `200` con `[]`.
+
+```bash
+curl "http://localhost:3001/warehouses?search=central" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Bodega Central",
+    "observations": "Horario de 8 a 18",
+    "address": "Av. Monseñor Rivero 123"
+  }
+]
+```
+
+Errores:
+
+| Código | Cuerpo                          |
+| ------ | ------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }` |
+| `403`  | `{ "message": "Forbidden" }`    |
+
+### `GET /warehouses/:id`
+
+Protegido: requiere un JWT con rol `admin`, `dispatcher` o
+`manager_warehouse`. Devuelve una única bodega.
+
+```bash
+curl http://localhost:3001/warehouses/1 -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 1,
+  "name": "Bodega Central",
+  "observations": "Horario de 8 a 18",
+  "address": "Av. Monseñor Rivero 123"
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                           |
+| ------ | ------------------------------------------------ |
+| `401`  | `{ "message": "Unauthorized" }`                  |
+| `403`  | `{ "message": "Forbidden" }`                     |
+| `404`  | `{ "message": "Warehouse not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid warehouse id" } }` |
+
+### `PUT /warehouses/:id`
+
+Protegido: requiere un JWT con rol `admin` o `manager_warehouse`. Reemplaza
+`name` y `address` (obligatorios) y actualiza `observations` solo si se envía;
+si se omite, conserva el valor anterior. Enviar `"observations": null` lo limpia.
+
+```bash
+curl -X PUT http://localhost:3001/warehouses/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Bodega Sur","address":"Calle 3 #10"}'
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 1,
+  "name": "Bodega Sur",
+  "observations": "Horario de 8 a 18",
+  "address": "Calle 3 #10"
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                           |
+| ------ | ------------------------------------------------ |
+| `400`  | `{ "message": "name and address are required" }` |
+| `401`  | `{ "message": "Unauthorized" }`                  |
+| `403`  | `{ "message": "Forbidden" }`                     |
+| `404`  | `{ "message": "Warehouse not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid warehouse id" } }` |
+
+### `DELETE /warehouses/:id`
+
+Protegido: requiere un JWT con rol `admin` o `manager_warehouse`. Elimina la
+bodega de forma permanente y responde `204` sin cuerpo.
+
+```bash
+curl -X DELETE http://localhost:3001/warehouses/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                           |
+| ------ | ------------------------------------------------ |
+| `401`  | `{ "message": "Unauthorized" }`                  |
+| `403`  | `{ "message": "Forbidden" }`                     |
+| `404`  | `{ "message": "Warehouse not found" }`           |
+| `422`  | `{ "errors": { "id": "Invalid warehouse id" } }` |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,

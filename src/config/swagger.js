@@ -10,6 +10,13 @@ const swaggerSpec = swaggerJsdoc({
       description: "REST API for Super King, documented with Swagger.",
     },
     servers: [{ url: "/" }],
+    tags: [
+      {
+        name: "Warehouses",
+        description:
+          "Warehouse registry: creation, listing, lookup, update and deletion.",
+      },
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -103,6 +110,22 @@ const swaggerSpec = swaggerJsdoc({
               type: "string",
               format: "email",
               example: "juan@example.com",
+            },
+          },
+        },
+        Warehouse: {
+          type: "object",
+          properties: {
+            id: { type: "integer", example: 1 },
+            name: { type: "string", example: "Bodega Central" },
+            observations: {
+              type: "string",
+              nullable: true,
+              example: "Horario de 8 a 18",
+            },
+            address: {
+              type: "string",
+              example: "Av. Monseñor Rivero 123",
             },
           },
         },
