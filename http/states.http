@@ -1,0 +1,133 @@
+# Archivo: states.http
+# Módulo: states  ->  POST /states, GET /states, GET /states/:id,
+#                     PUT /states/:id, DELETE /states/:id
+# Protegido: lectura para cualquier usuario autenticado; escritura requiere admin o seller.
+# Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
+
+### POST /states — crea un estado (201)
+# name es único sin distinguir mayúsculas (2–100 caracteres);
+# code es único (2–10 caracteres) y se guarda en mayúsculas.
+POST {{baseUrl}}/states
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Aragua",
+  "code": "VE-D"
+}
+
+### POST /states — sin token (401 Unauthorized)
+POST {{baseUrl}}/states
+Content-Type: application/json
+
+{
+  "name": "Aragua",
+  "code": "VE-D"
+}
+
+### POST /states — faltan campos (400)
+POST {{baseUrl}}/states
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### POST /states — campos inválidos (422)
+POST {{baseUrl}}/states
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "A",
+  "code": "V"
+}
+
+### POST /states — nombre o código duplicado (409)
+# El nombre se compara sin distinguir mayúsculas; también aplica al código.
+POST {{baseUrl}}/states
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "ARAGUA",
+  "code": "VE-E"
+}
+
+### GET /states — lista los estados (200)
+# Devuelve id, name y code ordenados por name ascendente; [] si no hay.
+GET {{baseUrl}}/states
+Authorization: Bearer {{token}}
+
+### GET /states — sin token (401 Unauthorized)
+GET {{baseUrl}}/states
+
+### GET /states/:id — consulta un estado (200)
+# Sustituye 1 por el id del estado.
+GET {{baseUrl}}/states/1
+Authorization: Bearer {{token}}
+
+### GET /states/:id — id inexistente (404)
+GET {{baseUrl}}/states/99999
+Authorization: Bearer {{token}}
+
+### GET /states/:id — id inválido (422)
+GET {{baseUrl}}/states/abc
+Authorization: Bearer {{token}}
+
+### PUT /states/:id — actualiza name y/o code (202)
+# Se puede enviar solo name, solo code o ambos; al menos uno es obligatorio.
+PUT {{baseUrl}}/states/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Aragua",
+  "code": "VE-D"
+}
+
+### PUT /states/:id — sin campos (400)
+PUT {{baseUrl}}/states/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+}
+
+### PUT /states/:id — nombre duplicado (409)
+PUT {{baseUrl}}/states/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Amazonas"
+}
+
+### PUT /states/:id — id inexistente (404)
+PUT {{baseUrl}}/states/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Aragua"
+}
+
+### DELETE /states/:id — elimina un estado (204, sin cuerpo)
+# Solo si no tiene ciudades asociadas.
+DELETE {{baseUrl}}/states/1
+Authorization: Bearer {{token}}
+
+### DELETE /states/:id — estado con ciudades (409)
+DELETE {{baseUrl}}/states/1
+Authorization: Bearer {{token}}
+
+### DELETE /states/:id — id inexistente (404)
+DELETE {{baseUrl}}/states/99999
+Authorization: Bearer {{token}}
+
+### DELETE /states/:id — id inválido (422)
+DELETE {{baseUrl}}/states/abc
+Authorization: Bearer {{token}}
+
+### DELETE /states/:id — sin token (401 Unauthorized)
+DELETE {{baseUrl}}/states/1
