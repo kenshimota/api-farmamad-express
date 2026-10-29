@@ -6,11 +6,13 @@ const {
   IS_ACTIVE_FILTER_MESSAGE,
   IS_ACTIVE_MESSAGE,
   NAME_MESSAGE,
-  REQUIRED_METHOD_PAYMENT_TYPE_FIELDS,
-  UPDATE_METHOD_PAYMENT_TYPE_FIELDS,
   createMethodPaymentTypeSchema,
   updateMethodPaymentTypeSchema,
 } = require("./validators");
+const {
+  REQUIRED_METHOD_PAYMENT_TYPE_FIELDS,
+  UPDATE_METHOD_PAYMENT_TYPE_FIELDS,
+} = require("./fields");
 
 const VALID_FIELD = Object.freeze({
   key: "email",

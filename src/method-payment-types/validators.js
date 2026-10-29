@@ -8,11 +8,6 @@ const {
   fieldDefinitionSchema,
   isValidFieldsDefinition,
 } = require("./field-definition");
-const {
-  REQUIRED_METHOD_PAYMENT_TYPE_FIELDS,
-  UPDATE_METHOD_PAYMENT_TYPE_FIELDS,
-} = require("./fields");
-
 const CODE_PATTERN = /^[A-Z0-9_]{2,30}$/;
 const MIN_NAME_LENGTH = 1;
 const MAX_NAME_LENGTH = 100;
@@ -214,8 +209,6 @@ module.exports = {
   MAX_NAME_LENGTH,
   MIN_NAME_LENGTH,
   NAME_MESSAGE,
-  REQUIRED_METHOD_PAYMENT_TYPE_FIELDS,
-  UPDATE_METHOD_PAYMENT_TYPE_FIELDS,
   createMethodPaymentTypeSchema,
   currencyIdField,
   fieldDefinitionSchema,

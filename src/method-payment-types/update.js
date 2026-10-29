@@ -2,10 +2,8 @@ const { Router } = require("express");
 const { toPublicMethodPaymentType } = require("./serializer");
 const { loadMethodPaymentType } = require("./shared");
 const { requireAnyField, validatedBody, writeAccess } = require("./guards");
-const {
-  UPDATE_METHOD_PAYMENT_TYPE_FIELDS,
-  updateMethodPaymentTypeSchema,
-} = require("./validators");
+const { UPDATE_METHOD_PAYMENT_TYPE_FIELDS } = require("./fields");
+const { updateMethodPaymentTypeSchema } = require("./validators");
 const { methodPaymentTypeService } = require("./service");
 const { handleMethodPaymentTypeError } = require("./errors");
 

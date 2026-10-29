@@ -8,8 +8,24 @@ const {
   CURRENCY_FILTER_MESSAGE,
   IS_ACTIVE_FILTER_MESSAGE,
 } = require("./validators");
+const { resolveQueryFilters } = require("../shared/query-filters");
 
 const router = Router();
+
+const LIST_FILTERS = Object.freeze([
+  {
+    query: "is_active",
+    field: "isActive",
+    parse: parseBooleanFlag,
+    message: IS_ACTIVE_FILTER_MESSAGE,
+  },
+  {
+    query: "currency_id",
+    field: "currencyId",
+    parse: parsePositiveInteger,
+    message: CURRENCY_FILTER_MESSAGE,
+  },
+]);
 
 /**
  * Resolves the optional `currency_id` and `is_active` query filters.
@@ -17,38 +33,8 @@ const router = Router();
  * @returns {{ filters: object }|{ errors: Record<string, string> }} The
  *   service filters or the validation errors.
  */
-function resolveListQuery({
-  currency_id: rawCurrencyId,
-  is_active: rawIsActive,
-}) {
-  const filters = {};
-  const errors = {};
-
-  if (rawIsActive !== undefined) {
-    const isActive = parseBooleanFlag(rawIsActive);
-
-    if (isActive === undefined) {
-      errors.is_active = IS_ACTIVE_FILTER_MESSAGE;
-    } else {
-      filters.isActive = isActive;
-    }
-  }
-
-  if (rawCurrencyId !== undefined) {
-    const currencyId = parsePositiveInteger(rawCurrencyId);
-
-    if (currencyId === null) {
-      errors.currency_id = CURRENCY_FILTER_MESSAGE;
-    } else {
-      filters.currencyId = currencyId;
-    }
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { errors };
-  }
-
-  return { filters };
+function resolveListQuery(query) {
+  return resolveQueryFilters(query, LIST_FILTERS);
 }
 
 /**

@@ -29,6 +29,7 @@ const lotsRouter = require("./lots");
 const customerSellersRouter = require("./customer-sellers");
 const taxesRouter = require("./taxes");
 const methodPaymentTypesRouter = require("./method-payment-types");
+const methodPaymentsRouter = require("./method-payments");
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use("/lots", lotsRouter);
 app.use("/customer-sellers", customerSellersRouter);
 app.use("/taxes", taxesRouter);
 app.use("/method-payment-types", methodPaymentTypesRouter);
+app.use("/method-payments", methodPaymentsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

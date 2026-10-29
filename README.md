@@ -3781,20 +3781,241 @@ curl -X DELETE http://localhost:3001/method-payment-types/3 \
 
 ### Errores del módulo
 
-| Código | Cuerpo                                                        |
-| ------ | ------------------------------------------------------------- |
-| `400`  | `{ "message": "code, name and currency_id are required" }`     |
-| `400`  | `{ "message": "At least one field is required" }`              |
-| `401`  | `{ "message": "Unauthorized" }`                               |
-| `403`  | `{ "message": "Forbidden" }`                                  |
-| `404`  | `{ "message": "Payment type not found" }`                     |
-| `409`  | `{ "message": "Payment type already exists" }`                |
-| `409`  | `{ "message": "Payment type has methods" }`                   |
-| `422`  | `{ "errors": { "currency_id": "Invalid currency" } }`         |
-| `422`  | `{ "errors": { "fields": "Invalid fields definition" } }`     |
-| `422`  | `{ "errors": { "id": "Invalid payment type id" } }`           |
-| `422`  | `{ "errors": { "is_active": "Invalid is_active" } }`          |
-| `422`  | `{ "errors": { "currency_id": "Invalid currency_id" } }`      |
+| Código | Cuerpo                                                     |
+| ------ | ---------------------------------------------------------- |
+| `400`  | `{ "message": "code, name and currency_id are required" }` |
+| `400`  | `{ "message": "At least one field is required" }`          |
+| `401`  | `{ "message": "Unauthorized" }`                            |
+| `403`  | `{ "message": "Forbidden" }`                               |
+| `404`  | `{ "message": "Payment type not found" }`                  |
+| `409`  | `{ "message": "Payment type already exists" }`             |
+| `409`  | `{ "message": "Payment type has methods" }`                |
+| `422`  | `{ "errors": { "currency_id": "Invalid currency" } }`      |
+| `422`  | `{ "errors": { "fields": "Invalid fields definition" } }`  |
+| `422`  | `{ "errors": { "id": "Invalid payment type id" } }`        |
+| `422`  | `{ "errors": { "is_active": "Invalid is_active" } }`       |
+| `422`  | `{ "errors": { "currency_id": "Invalid currency_id" } }`   |
+
+## Métodos de pago registrados (method_payments)
+
+Registro de los datos reales de cobro (HU-29). Cada fila de `method_payments`
+(modelo `MethodPayment`) pertenece a un tipo de método de pago (HU-28) y guarda
+una etiqueta, los datos variables del método en `details` (JSONB) y un estado
+activo. La moneda **no** se guarda en el método: se hereda del tipo y se
+devuelve anidada en la respuesta.
+
+Ejemplos de `details` por tipo:
+
+- PayPal: `{ "email": "pagos@farmamad.com" }`
+- Binance: `{ "wallet_address": "T...", "network": "TRC20" }`
+- Banco Nacional: `{ "bank_name": "Banesco", "account_number": "0134...", "account_type": "corriente", "holder_name": "Farmamad C.A.", "holder_id": "J-12345678-9" }`
+- Pago Móvil: `{ "bank_name": "Banesco", "phone": "04141234567", "holder_id": "V-12345678" }`
+
+Reglas de negocio:
+
+- `method_payment_type_id` es obligatorio y debe existir, estar activo y tener
+  una moneda activa al crear un método. Es inmutable: un `PUT` que envíe otro
+  valor responde `422`.
+- `label` es obligatoria, de 1 a 100 caracteres y única dentro del tipo
+  ignorando mayúsculas mediante un índice funcional sobre `LOWER(label)`.
+- `details` es un objeto plano obligatorio (ni arreglo ni `null`) y se valida
+  en el servidor contra `method_payment_types.fields` en cada creación y
+  actualización, dentro de una transacción.
+- `is_active` vale `true` por defecto. Desactivar un método con `PUT` no lo
+  borra. Reactivarlo exige que el tipo y su moneda vuelvan a estar activos.
+- `currency_id` y `currency` enviados en el cuerpo se ignoran; la moneda de la
+  respuesta siempre se obtiene del tipo.
+- `DELETE` es físico y responde `204`. Si otra tabla lo referencia, la FK
+  `RESTRICT` impide el borrado y la API responde `409 Payment method is in use`.
+- Los timestamps `createdAt` y `updatedAt` nunca se exponen.
+- Los `details` nunca se escriben en logs ni en mensajes de error. No guarde
+  credenciales, tokens, claves privadas, CVV ni datos completos de tarjetas.
+
+Las respuestas serializan `id`, `method_payment_type_id`, `label`, `details`,
+`is_active`, `currency_id`, `currency` (`id`, `code`, `name`, `symbol`) y
+`method_payment_type` (`id`, `code`, `name`). La lista resuelve tipo y moneda
+con un `include` de Sequelize, sin consultas N+1.
+
+### Validación dinámica de `details`
+
+| Tipo      | Regla                                                                         |
+| --------- | ----------------------------------------------------------------------------- |
+| `text`    | String, se recorta, no vacío si es requerido, `max_length` (255 por defecto). |
+| `email`   | String con formato de correo, máximo 254 caracteres.                          |
+| `phone`   | String de 6–20 caracteres con dígitos, `+`, espacios o guiones.               |
+| `integer` | Entero (número o string numérico entero); no admite decimales.                |
+| `boolean` | Booleano estricto (`true`/`false`); no admite strings.                        |
+
+- Las claves requeridas ausentes, `null` o vacías responden `422` con
+  `{ "errors": { "details.<clave>": "<clave> is required" } }`.
+- Las claves no definidas en el tipo responden
+  `{ "errors": { "details.<clave>": "Unknown field" } }`.
+- Los textos se devuelven recortados. Un campo opcional ausente, `null` o vacío
+  se omite de `details`.
+- No se permiten objetos anidados ni arreglos como valores.
+
+### Roles
+
+- Lectura (`GET`): `admin`, `seller` y `dispatcher`.
+- Escritura (`POST`, `PUT`, `DELETE`): solo `admin`.
+- `manager_warehouse`, `support` y `customer` reciben `403`.
+
+| Endpoint                      | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ----------------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `GET /method-payments`        | ✅      | ✅       | ✅           | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /method-payments/:id`    | ✅      | ✅       | ✅           | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `POST /method-payments`       | ✅      | ❌ `403` | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `PUT /method-payments/:id`    | ✅      | ❌ `403` | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /method-payments/:id` | ✅      | ❌ `403` | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+### `POST /method-payments` (PayPal)
+
+Crea un método (solo `admin`). Requiere `method_payment_type_id`, `label` y
+`details`; `is_active` es opcional.
+
+```bash
+curl -X POST http://localhost:3001/method-payments \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"method_payment_type_id":1,"label":"PayPal Farmamad","details":{"email":"pagos@farmamad.com"}}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "method_payment_type_id": 1,
+  "label": "PayPal Farmamad",
+  "details": { "email": "pagos@farmamad.com" },
+  "is_active": true,
+  "currency_id": 3,
+  "currency": {
+    "id": 3,
+    "code": "USD_BCV",
+    "name": "Dólar BCV",
+    "symbol": "$"
+  },
+  "method_payment_type": { "id": 1, "code": "PAYPAL", "name": "PayPal" }
+}
+```
+
+### `POST /method-payments` (Binance)
+
+```bash
+curl -X POST http://localhost:3001/method-payments \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"method_payment_type_id":2,"label":"Binance Farmamad","details":{"wallet_address":"T-1234567890","network":"TRC20"}}'
+```
+
+La respuesta hereda la moneda de `BINANCE` (por ejemplo `USDT`) y valida que
+`wallet_address` y `network` existan en los `fields` del tipo.
+
+### `POST /method-payments` (Banco Nacional)
+
+```bash
+curl -X POST http://localhost:3001/method-payments \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"method_payment_type_id":3,"label":"Banesco cuenta principal","details":{"bank_name":"Banesco","account_number":"01340000000000000000","account_type":"corriente","holder_name":"Farmamad C.A.","holder_id":"J-12345678-9"}}'
+```
+
+La respuesta hereda `currency_id` de `BANK` (por ejemplo `VES`).
+
+### `POST /method-payments` (Pago Móvil)
+
+```bash
+curl -X POST http://localhost:3001/method-payments \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"method_payment_type_id":4,"label":"Pago Móvil Banesco","details":{"bank_name":"Banesco","phone":"04141234567","holder_id":"V-12345678"}}'
+```
+
+### `GET /method-payments`
+
+Lista todos los métodos ordenados por `method_payment_type_id` y `label`
+ascendente, incluidos los inactivos, con su tipo y moneda anidados. Filtros
+exactos opcionales: `?method_payment_type_id=`, `?currency_id=` y
+`?is_active=true|false`.
+
+```bash
+curl "http://localhost:3001/method-payments?method_payment_type_id=3" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 2,
+    "method_payment_type_id": 3,
+    "label": "Banesco cuenta principal",
+    "details": {
+      "bank_name": "Banesco",
+      "account_number": "01340000000000000000",
+      "account_type": "corriente",
+      "holder_name": "Farmamad C.A.",
+      "holder_id": "J-12345678-9"
+    },
+    "is_active": true,
+    "currency_id": 1,
+    "currency": { "id": 1, "code": "VES", "name": "Bolívar", "symbol": "Bs" },
+    "method_payment_type": { "id": 3, "code": "BANK", "name": "Banco Nacional" }
+  }
+]
+```
+
+### `GET /method-payments/:id`
+
+Devuelve el detalle del método, esté activo o inactivo, o `404` si no existe.
+
+```bash
+curl http://localhost:3001/method-payments/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /method-payments/:id`
+
+Actualiza `label`, `details` e `is_active`; requiere al menos uno y responde
+`202`. `method_payment_type_id` es inmutable: si se envía con otro valor
+responde `422`. `currency_id` y `currency` se ignoran. Reactivar
+(`"is_active": true`) exige que el tipo y su moneda estén activos.
+
+```bash
+curl -X PUT http://localhost:3001/method-payments/1 \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"label":"PayPal principal","details":{"email":"tesoreria@farmamad.com"}}'
+```
+
+### `DELETE /method-payments/:id`
+
+Borra físicamente el método y responde `204` sin cuerpo. Para dejar de usarlo
+sin borrarlo, actualícelo con `"is_active": false`. Si otra tabla lo referencia,
+responde `409 Payment method is in use`.
+
+```bash
+curl -X DELETE http://localhost:3001/method-payments/1 \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Errores del módulo
+
+| Código | Cuerpo                                                                                   |
+| ------ | ---------------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "method_payment_type_id, label and details are required" }`                |
+| `400`  | `{ "message": "At least one field is required" }`                                        |
+| `401`  | `{ "message": "Unauthorized" }`                                                          |
+| `403`  | `{ "message": "Forbidden" }`                                                             |
+| `404`  | `{ "message": "Payment method not found" }`                                              |
+| `409`  | `{ "message": "Payment method already exists" }`                                         |
+| `409`  | `{ "message": "Payment method is in use" }`                                              |
+| `422`  | `{ "errors": { "details.email": "email is required" } }`                                 |
+| `422`  | `{ "errors": { "details.cvv": "Unknown field" } }`                                       |
+| `422`  | `{ "errors": { "method_payment_type_id": "Invalid payment type" } }`                     |
+| `422`  | `{ "errors": { "method_payment_type_id": "method_payment_type_id cannot be changed" } }` |
+| `422`  | `{ "errors": { "id": "Invalid payment method id" } }`                                    |
+| `422`  | `{ "errors": { "is_active": "Invalid is_active" } }`                                     |
 
 ## Logs y manejo de errores
 

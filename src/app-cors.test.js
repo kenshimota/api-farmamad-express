@@ -142,6 +142,13 @@ jest.mock("./models/method-payment-type", () => ({
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
+jest.mock("./models/method-payment", () => ({
+  create: jest.fn(),
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  count: jest.fn(),
+  getAttributes: jest.fn(() => ({ method_payment_type_id: {} })),
+}));
 
 const request = require("supertest");
 const app = require("./app");
