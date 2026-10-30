@@ -1,5 +1,5 @@
-const DEFAULT_APP_NAME = "Super King";
-const DEFAULT_APP_URL = "https://dashboard.asic-guanipa.online/";
+const DEFAULT_APP_NAME = "Farmamed";
+const DEFAULT_APP_URL = "https://farmamed.strixcryptoapp.site/app";
 
 /**
  * Reads `APP_NAME` and resolves the product name shown in the emails.

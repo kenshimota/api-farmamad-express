@@ -13,7 +13,7 @@ const {
 const CODE = "00427193";
 const USERNAME = "sender@gmail.com";
 const TOKEN = "app-password";
-const DEFAULT_URL = "https://dashboard.asic-guanipa.online/";
+const DEFAULT_URL = "https://farmamed.strixcryptoapp.site/app";
 
 beforeEach(() => {
   process.env.GMAIL_USERNAME = USERNAME;
@@ -93,18 +93,18 @@ describe("sendRecoveryCode", () => {
     const message = sendMail.mock.calls[0][0];
     expect(message.from).toBe(USERNAME);
     expect(message.to).toBe("juan@example.com");
-    expect(message.subject).toBe("Recuperación de contraseña - Super King");
+    expect(message.subject).toBe("Recuperación de contraseña - Farmamed");
     expect(message.text).toBe(
       [
         "Hola,",
         "",
-        "Recibimos una solicitud para restablecer tu contraseña en Super King.",
+        "Recibimos una solicitud para restablecer tu contraseña en Farmamed.",
         `Tu código de recuperación es: ${CODE}`,
         "",
         "El código es válido durante 5 minutos. Si no solicitaste este cambio, " +
           "ignora este correo.",
         "",
-        "Equipo Super King",
+        "Equipo Farmamed",
       ].join("\n"),
     );
   });
@@ -144,19 +144,19 @@ describe("sendWelcomeEmail", () => {
     const message = sendMail.mock.calls[0][0];
     expect(message.from).toBe(USERNAME);
     expect(message.to).toBe("maria@superking.com");
-    expect(message.subject).toBe("¡Bienvenido a Super King!");
+    expect(message.subject).toBe("¡Bienvenido a Farmamed!");
     expect(message.text).toBe(
       [
         "Hola María,",
         "",
-        "¡Te damos la bienvenida a Super King!",
+        "¡Te damos la bienvenida a Farmamed!",
         "",
         "Ya puedes ingresar a la web desde:",
         DEFAULT_URL,
         "",
         "Si no creaste esta cuenta, ignora este correo.",
         "",
-        "Equipo Super King",
+        "Equipo Farmamed",
       ].join("\n"),
     );
   });

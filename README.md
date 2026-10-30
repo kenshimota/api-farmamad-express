@@ -22,8 +22,8 @@ Variables de entorno relevantes: `PORT`, `NODE_ENV`, `LOG_LEVEL`, `NO_COLOR`,
 y `APP_URL` (ver `.env.example`).
 
 `APP_NAME` es el nombre del producto que aparece en los correos (por defecto
-`Super King`) y `APP_URL` es el link de ingreso incluido en el correo de
-bienvenida (por defecto `https://dashboard.asic-guanipa.online/`). Si cualquiera
+`Farmamed`) y `APP_URL` es el link de ingreso incluido en el correo de
+bienvenida (por defecto `https://farmamed.strixcryptoapp.site/app`). Si cualquiera
 de las dos no está definida o está vacía se usa su valor por defecto.
 
 ## Autenticación

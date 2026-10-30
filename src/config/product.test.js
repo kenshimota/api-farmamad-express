@@ -23,17 +23,17 @@ afterEach(() => {
 });
 
 describe("getProductName", () => {
-  it("defaults to Super King when APP_NAME is undefined", () => {
+  it("defaults to Farmamed when APP_NAME is undefined", () => {
     delete process.env.APP_NAME;
 
-    expect(DEFAULT_APP_NAME).toBe("Super King");
-    expect(getProductName()).toBe("Super King");
+    expect(DEFAULT_APP_NAME).toBe("Farmamed");
+    expect(getProductName()).toBe("Farmamed");
   });
 
-  it("defaults to Super King when APP_NAME is empty", () => {
+  it("defaults to Farmamed when APP_NAME is empty", () => {
     process.env.APP_NAME = "";
 
-    expect(getProductName()).toBe("Super King");
+    expect(getProductName()).toBe("Farmamed");
   });
 
   it("reads the product name from APP_NAME", () => {
@@ -44,17 +44,17 @@ describe("getProductName", () => {
 });
 
 describe("getProductUrl", () => {
-  it("defaults to the dashboard URL when APP_URL is undefined", () => {
+  it("defaults to the app URL when APP_URL is undefined", () => {
     delete process.env.APP_URL;
 
-    expect(DEFAULT_APP_URL).toBe("https://dashboard.asic-guanipa.online/");
-    expect(getProductUrl()).toBe("https://dashboard.asic-guanipa.online/");
+    expect(DEFAULT_APP_URL).toBe("https://farmamed.strixcryptoapp.site/app");
+    expect(getProductUrl()).toBe("https://farmamed.strixcryptoapp.site/app");
   });
 
-  it("defaults to the dashboard URL when APP_URL is empty", () => {
+  it("defaults to the app URL when APP_URL is empty", () => {
     process.env.APP_URL = "";
 
-    expect(getProductUrl()).toBe("https://dashboard.asic-guanipa.online/");
+    expect(getProductUrl()).toBe("https://farmamed.strixcryptoapp.site/app");
   });
 
   it("keeps the configured URL exactly, including the trailing slash", () => {
