@@ -1,0 +1,1932 @@
+{
+  "source": "https://www.farmatodo.com.ve",
+  "generated_at": "2026-11-02T18:00:31.477Z",
+  "license_note": "Datos públicos de Farmatodo usados exclusivamente para la demo de Farmamad. No es una fuente oficial de precios.",
+  "currency_conversion": {
+    "from": "VES",
+    "to": "USD_BCV",
+    "ves_per_usd": 889.89
+  },
+  "products": [
+    {
+      "external_id": "111934531",
+      "name": "Cereal Infantil Cerelac Bolsa 400Gr",
+      "description": "Alimento vitaminado compuesto de trigo, sólidos totales de leche entera y azúcar",
+      "reference": "FARMATODO-111934531",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 8.07,
+      "image": {
+        "original": "111934531.webp",
+        "thumbnail": "111934531-thumb.webp",
+        "reference": "demo-farmatodo-111934531"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111934531-cereal-infantil-cerelac-bolsa-400gr",
+      "fetched_at": "2026-11-02T18:00:26.881Z"
+    },
+    {
+      "external_id": "114868406",
+      "name": "Crema Facial BACC Noche Concha De Nácar Aclarante Disminuye Manchas x 60 gr",
+      "description": "Contiene nutrientes que penetran en la piel reduciendo las líneas de expresión, cicatrices y atenuando las manchas e imperfecciones de la piel. También tiene propiedades exfoliantes, nutritivas y regeneradoras. Su textura fina, no grasosa, humecta de manera profunda.",
+      "reference": "FARMATODO-114868406",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 5.05,
+      "image": {
+        "original": "114868406.webp",
+        "thumbnail": "114868406-thumb.webp",
+        "reference": "demo-farmatodo-114868406"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114868406-crema-facial-bacc-noche-aclarante-x-60-gr",
+      "fetched_at": "2026-11-02T18:00:26.924Z"
+    },
+    {
+      "external_id": "111919456",
+      "name": "Champu Para Perros Kantal Antipulgas 180Ml",
+      "description": "Champú para el control de las pulgas",
+      "reference": "FARMATODO-111919456",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 6.07,
+      "image": {
+        "original": "111919456.webp",
+        "thumbnail": "111919456-thumb.webp",
+        "reference": "demo-farmatodo-111919456"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111919456-champu-para-perros-kantal-antipulgas-180ml",
+      "fetched_at": "2026-11-02T18:00:26.957Z"
+    },
+    {
+      "external_id": "116711998",
+      "name": "Tren Musical De Navidad Miro",
+      "description": "Tren Musical De Navidad Miro",
+      "reference": "FARMATODO-116711998",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 11.06,
+      "image": {
+        "original": "116711998.webp",
+        "thumbnail": "116711998-thumb.webp",
+        "reference": "demo-farmatodo-116711998"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116711998-tren-musical-de-navidad-miro",
+      "fetched_at": "2026-11-02T18:00:26.993Z"
+    },
+    {
+      "external_id": "111969719",
+      "name": "Snack Merey Naru Salado 80Gr",
+      "description": "El Merey tostado con sal es un aliado perfecto para tu bienestar: repleto de grasas saludables para tu corazón, magnesio para fortalecer tus músculos, fibra para mejorar tu digestión y proteínas para nutrir tus días. Sin gluten y apto para veganos.",
+      "reference": "FARMATODO-111969719",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 2.99,
+      "image": {
+        "original": "111969719.webp",
+        "thumbnail": "111969719-thumb.webp",
+        "reference": "demo-farmatodo-111969719"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111969719-snack-merey-naru-salado-80gr",
+      "fetched_at": "2026-11-02T18:00:27.047Z"
+    },
+    {
+      "external_id": "115482521",
+      "name": "Toalla Sanitaria Always Dia Seda - Sec x 8 und",
+      "description": "Toalla Sanitaria Always Dia Seda - Sec x 8 und",
+      "reference": "FARMATODO-115482521",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 3.03,
+      "image": {
+        "original": "115482521.webp",
+        "thumbnail": "115482521-thumb.webp",
+        "reference": "demo-farmatodo-115482521"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115482521-toalla-sanitaria-always",
+      "fetched_at": "2026-11-02T18:00:27.082Z"
+    },
+    {
+      "external_id": "116405721",
+      "name": "Enanbolic 250Mg 10Ampollas Enantato De Testosterona Cooper Pharma",
+      "description": "Enanbolic 250Mg 10Ampollas Enantato De Testosterona Cooper Pharma",
+      "reference": "FARMATODO-116405721",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 68.75,
+      "image": {
+        "original": "116405721.webp",
+        "thumbnail": "116405721-thumb.webp",
+        "reference": "demo-farmatodo-116405721"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116405721-enanbolic-250mg-10ampollas-enantato-de-testosterona-cooper-pharma",
+      "fetched_at": "2026-11-02T18:00:27.124Z"
+    },
+    {
+      "external_id": "112977351",
+      "name": "Valsartán + Clortalidona 80mg/12,5mg Brasartan CTDN Laboratorios Farma x 30 Tabletas",
+      "description": "Tratamiento de segunda línea en pacientes que no respondan a la monoterapia. Producto de Laboratorios Farma.",
+      "reference": "FARMATODO-112977351",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 20.11,
+      "image": {
+        "original": "112977351.webp",
+        "thumbnail": "112977351-thumb.webp",
+        "reference": "demo-farmatodo-112977351"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112977351-valsartan--clortalidona-brasartan-ctdn-80mg-125mg",
+      "fetched_at": "2026-11-02T18:00:27.157Z"
+    },
+    {
+      "external_id": "111921961",
+      "name": "Centella + Alcachofa 120mg/180mg Natural Premium Frasco x 60 Cápsulas",
+      "description": "Centella + Alcachofa - Adelgazante",
+      "reference": "FARMATODO-111921961",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 11.43,
+      "image": {
+        "original": "111921961.webp",
+        "thumbnail": "111921961-thumb.webp",
+        "reference": "demo-farmatodo-111921961"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111921961-centella--alcachofa-60-capsulas-natural-premium",
+      "fetched_at": "2026-11-02T18:00:27.186Z"
+    },
+    {
+      "external_id": "115671525",
+      "name": "Cable Gama Alta Usb Tipo C x 1 und",
+      "description": "Cable Gama Alta Usb Tipo C x 1 und",
+      "reference": "FARMATODO-115671525",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 4.89,
+      "image": {
+        "original": "115671525.webp",
+        "thumbnail": "115671525-thumb.webp",
+        "reference": "demo-farmatodo-115671525"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115671525-cable-gama-alta-usb-tipo-c-x-1-und",
+      "fetched_at": "2026-11-02T18:00:27.235Z"
+    },
+    {
+      "external_id": "114128408",
+      "name": "Triamcinolona de Acetonida 50mg/5ml Nuvicort-A Nuville 5 ml x 1 Vial I.M / I.D",
+      "description": "Solución inyectable de triamcinolona 10 mg que alivia la inflamación, la alergia intensa y las crisis de asma.",
+      "reference": "FARMATODO-114128408",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 26.13,
+      "image": {
+        "original": "114128408.webp",
+        "thumbnail": "114128408-thumb.webp",
+        "reference": "demo-farmatodo-114128408"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114128408-triamcinolona-de-acetonida-nuvicort-a-intraarticular-10mgml-1-vial-5ml-hallewo-laboratories",
+      "fetched_at": "2026-11-02T18:00:27.281Z"
+    },
+    {
+      "external_id": "114735515",
+      "name": "Carboximetilcisteina 100mg/5ml Gulaper Megalabs Jarabe Pediátrico x 60 ml",
+      "description": "Jarabe de carbocisteína 100 mg que ayuda a aflojar la flema y despejar el pecho en la tos con flema.",
+      "reference": "FARMATODO-114735515",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 4.04,
+      "image": {
+        "original": "114735515.webp",
+        "thumbnail": "114735515-thumb.webp",
+        "reference": "demo-farmatodo-114735515"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114735515-carboximetilcisteina-gulaper-100mg-jarabe-pediatrico-megalabs-60ml",
+      "fetched_at": "2026-11-02T18:00:27.328Z"
+    },
+    {
+      "external_id": "116157552",
+      "name": "Labial Mon Reve Humectante 731 Edición II x 4 gr",
+      "description": "Barra cremosa de maquillaje provista de color.",
+      "reference": "FARMATODO-116157552",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 2.61,
+      "image": {
+        "original": "116157552.webp",
+        "thumbnail": "116157552-thumb.webp",
+        "reference": "demo-farmatodo-116157552"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116157552-labial-mon-reve-humectante-731-pres-bandeja",
+      "fetched_at": "2026-11-02T18:00:27.396Z"
+    },
+    {
+      "external_id": "115990585",
+      "name": "Curitas CureBand Redonda Premium x 100 und",
+      "description": "No se adhiere a la herida, se adapta a tu tono de piel. Curitas redondas para heridas menores, ofrecen protección cómoda y discreta. .",
+      "reference": "FARMATODO-115990585",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 3.63,
+      "image": {
+        "original": "115990585.webp",
+        "thumbnail": "115990585-thumb.webp",
+        "reference": "demo-farmatodo-115990585"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115990585-curitas-cureband-redonda-premium-x-100-und",
+      "fetched_at": "2026-11-02T18:00:27.436Z"
+    },
+    {
+      "external_id": "113464389",
+      "name": "Lima Okoi Para Pulir Uñas",
+      "description": "Lima de pulir 7 pasos para manicure Okoi",
+      "reference": "FARMATODO-113464389",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 2.07,
+      "image": {
+        "original": "113464389.webp",
+        "thumbnail": "113464389-thumb.webp",
+        "reference": "demo-farmatodo-113464389"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113464389-lima-okoi-para-unas",
+      "fetched_at": "2026-11-02T18:00:27.470Z"
+    },
+    {
+      "external_id": "111970694",
+      "name": "Desodorante Rollon Lady Speed Stick Derma Omega3 50Ml",
+      "description": "Desodorante Rollon Lady Speed Stick Derma Omega3 50Ml",
+      "reference": "FARMATODO-111970694",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 4.35,
+      "image": {
+        "original": "111970694.webp",
+        "thumbnail": "111970694-thumb.webp",
+        "reference": "demo-farmatodo-111970694"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111970694-desodorante-rollon-lady-speed-stick-derma-omega3-50ml",
+      "fetched_at": "2026-11-02T18:00:27.501Z"
+    },
+    {
+      "external_id": "116118086",
+      "name": "Delineador De Labios Salome Matte Tono 07 x 3 gr",
+      "description": "Delineador De Labios Salome Matte Tono 07 x 3 gr",
+      "reference": "FARMATODO-116118086",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 2.75,
+      "image": {
+        "original": "116118086.webp",
+        "thumbnail": "116118086-thumb.webp",
+        "reference": "demo-farmatodo-116118086"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116118086-delineador-de-labios-salome-matte-07",
+      "fetched_at": "2026-11-02T18:00:27.543Z"
+    },
+    {
+      "external_id": "115662493",
+      "name": "Crema Facial Farmatodo AquaGel Hidratante Con Acido Hialurónico B5 x 40 gr",
+      "description": "Crema Facial Farmatodo AquaGel Hidratante Con Acido Hialurónico B5 x 40 gr",
+      "reference": "FARMATODO-115662493",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 8.62,
+      "image": {
+        "original": "115662493.webp",
+        "thumbnail": "115662493-thumb.webp",
+        "reference": "demo-farmatodo-115662493"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115662493-crema-facial-farmatodo-aquagel-acido-hialuronico-b5-40gr",
+      "fetched_at": "2026-11-02T18:00:27.583Z"
+    },
+    {
+      "external_id": "114518406",
+      "name": "Drospirenona + Etinilestradiol Veroniq 3Mg-0,03Mg 21 Tabletas Vivax",
+      "description": "Tabletas de drospirenona y etinilestradiol 3Mg-0,03Mg que ayudan a prevenir el embarazo y regular el ciclo menstrual.",
+      "reference": "FARMATODO-114518406",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 21.02,
+      "image": {
+        "original": "114518406.webp",
+        "thumbnail": "114518406-thumb.webp",
+        "reference": "demo-farmatodo-114518406"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114518406-drospirenona--etinilestradiol-veroniq-3mg-003mg-21-tabletas-vivax",
+      "fetched_at": "2026-11-02T18:00:27.613Z"
+    },
+    {
+      "external_id": "112840371",
+      "name": "Claress Agua de Rosas Micelar Solucion Limpiadora 180Cm3",
+      "description": "Claress Agua de Rosas Micelar Solucion Limpiadora 180Cm3",
+      "reference": "FARMATODO-112840371",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 9.21,
+      "image": {
+        "original": "112840371.webp",
+        "thumbnail": "112840371-thumb.webp",
+        "reference": "demo-farmatodo-112840371"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112840371-claress-agua-de-rosas-micelar-solucion-limpiadora-180cm3",
+      "fetched_at": "2026-11-02T18:00:27.646Z"
+    },
+    {
+      "external_id": "114886495",
+      "name": "Gel Anti imperfecciones Biretix Triactive x 50 ml",
+      "description": "Gel Anti imperfecciones Biretix Triactive x 50 ml",
+      "reference": "FARMATODO-114886495",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 38.47,
+      "image": {
+        "original": "114886495.webp",
+        "thumbnail": "114886495-thumb.webp",
+        "reference": "demo-farmatodo-114886495"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114886495-gel-anti-imperfecciones-biretix-triactive-x-50-ml",
+      "fetched_at": "2026-11-02T18:00:27.688Z"
+    },
+    {
+      "external_id": "116163602",
+      "name": "Mortadela Ferrarini A La Trufa 100Gr",
+      "description": "Mortadela Ferrarini A La Trufa 100Gr",
+      "reference": "FARMATODO-116163602",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 13.56,
+      "image": {
+        "original": "116163602.webp",
+        "thumbnail": "116163602-thumb.webp",
+        "reference": "demo-farmatodo-116163602"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116163602-mortadela-ferrarini-a-la-trufa-100gr",
+      "fetched_at": "2026-11-02T18:00:27.716Z"
+    },
+    {
+      "external_id": "115296462",
+      "name": "Cefixima 400 mg Genven Caja x 5 Cápsulas",
+      "description": "Antibiótico oral.",
+      "reference": "FARMATODO-115296462",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 29.05,
+      "image": {
+        "original": "115296462.webp",
+        "thumbnail": "115296462-thumb.webp",
+        "reference": "demo-farmatodo-115296462"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115296462-cefixima-400-mg-x-5-capsulas-genven",
+      "fetched_at": "2026-11-02T18:00:27.752Z"
+    },
+    {
+      "external_id": "111929983",
+      "name": "Labial La Colors Mate 473",
+      "description": "Labial La Colors Mate 473",
+      "reference": "FARMATODO-111929983",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 1.35,
+      "image": {
+        "original": "111929983.webp",
+        "thumbnail": "111929983-thumb.webp",
+        "reference": "demo-farmatodo-111929983"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111929983-labial-la-colors-mate-473",
+      "fetched_at": "2026-11-02T18:00:27.797Z"
+    },
+    {
+      "external_id": "111931574",
+      "name": "Crema Facial Living Leche Limpiadora Ácido Láctico 120Ml",
+      "description": "Crema Facial Living Leche Limpiadora Ácido Láctico 120Ml",
+      "reference": "FARMATODO-111931574",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 6.33,
+      "image": {
+        "original": "111931574.webp",
+        "thumbnail": "111931574-thumb.webp",
+        "reference": "demo-farmatodo-111931574"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111931574-crema-facial-living-leche-limpiadora-acido-lactico-120ml",
+      "fetched_at": "2026-11-02T18:00:27.824Z"
+    },
+    {
+      "external_id": "112803596",
+      "name": "Vitamina C 1 g Cebión Caja x 10 Tabletas Efervescentes Sabor Naranja",
+      "description": "Vitamina C 1 g Cebión Caja x 10 Tabletas Efervescentes Sabor Naranja",
+      "reference": "FARMATODO-112803596",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 13.68,
+      "image": {
+        "original": "112803596.webp",
+        "thumbnail": "112803596-thumb.webp",
+        "reference": "demo-farmatodo-112803596"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112803596-vitamina-c-cebion-1g-efervecente-sabor-naranja",
+      "fetched_at": "2026-11-02T18:00:27.855Z"
+    },
+    {
+      "external_id": "115524517",
+      "name": "Endulzante En Polvo Equal Stevia Caja x 50 Sobres de 40 gr",
+      "description": "Endulzante En Polvo Equal Stevia Caja x 50 Sobres de 40 gr",
+      "reference": "FARMATODO-115524517",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 6.35,
+      "image": {
+        "original": "115524517.webp",
+        "thumbnail": "115524517-thumb.webp",
+        "reference": "demo-farmatodo-115524517"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115524517-endulzante-en-polvo-equal-stevia-50-sobres-x-40-gr",
+      "fetched_at": "2026-11-02T18:00:27.892Z"
+    },
+    {
+      "external_id": "112400359",
+      "name": "Ponquecitos Once Once 25Gr",
+      "description": "Delicioso ponquecito de vainilla",
+      "reference": "FARMATODO-112400359",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 0.68,
+      "image": {
+        "original": "112400359.webp",
+        "thumbnail": "112400359-thumb.webp",
+        "reference": "demo-farmatodo-112400359"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112400359-ponquecitos-once-once-25gr",
+      "fetched_at": "2026-11-02T18:00:27.927Z"
+    },
+    {
+      "external_id": "111928934",
+      "name": "Gasa Esteril Kx 3x3 x 2 und",
+      "description": "Gasa Esteril KX 3x3 2unds que ayuda a limpiar y proteger heridas en el botiquín de primeros auxilios.",
+      "reference": "FARMATODO-111928934",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 0.17,
+      "image": {
+        "original": "111928934.webp",
+        "thumbnail": "111928934-thumb.webp",
+        "reference": "demo-farmatodo-111928934"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111928934-gasa-esteril-kx-3x3",
+      "fetched_at": "2026-11-02T18:00:27.977Z"
+    },
+    {
+      "external_id": "114855390",
+      "name": "Corrector Nasal Talla U 1 Par Pura+",
+      "description": "Corrector nasal",
+      "reference": "FARMATODO-114855390",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 21.76,
+      "image": {
+        "original": "114855390.webp",
+        "thumbnail": "114855390-thumb.webp",
+        "reference": "demo-farmatodo-114855390"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114855390-corrector-nasal-talla-u-1-par-pura",
+      "fetched_at": "2026-11-02T18:00:28.012Z"
+    },
+    {
+      "external_id": "111973751",
+      "name": "Chocolate Baci Bolsa 125Gr",
+      "description": "Chocolate Baci Bolsa 125Gr",
+      "reference": "FARMATODO-111973751",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 13.3,
+      "image": {
+        "original": "111973751.webp",
+        "thumbnail": "111973751-thumb.webp",
+        "reference": "demo-farmatodo-111973751"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111973751-chocolate-baci-bolsa-125gr",
+      "fetched_at": "2026-11-02T18:00:28.051Z"
+    },
+    {
+      "external_id": "115817504",
+      "name": "Butilbromuro De Hioscina + Paracetamol 10mg/325mg H&M x 10 Tabletas",
+      "description": "Tratamiento del dolor abdominal tipo cólico de moderada a fuerte intensidad.",
+      "reference": "FARMATODO-115817504",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 2.19,
+      "image": {
+        "original": "115817504.webp",
+        "thumbnail": "115817504-thumb.webp",
+        "reference": "demo-farmatodo-115817504"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115817504-butilbromuro-de-hioscina--paracetamol-10mg325mg-hm-x-10-tabletas",
+      "fetched_at": "2026-11-02T18:00:28.085Z"
+    },
+    {
+      "external_id": "111974035",
+      "name": "Cepillo Dental Farmatodo Adulto Massage X2Und",
+      "description": "Cepillo Dental Farmatodo Adulto Massage X2Und",
+      "reference": "FARMATODO-111974035",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 2.44,
+      "image": {
+        "original": "111974035.webp",
+        "thumbnail": "111974035-thumb.webp",
+        "reference": "demo-farmatodo-111974035"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111974035-cepillo-dental-farmatodo-adulto-massage-x2und",
+      "fetched_at": "2026-11-02T18:00:28.113Z"
+    },
+    {
+      "external_id": "116545635",
+      "name": "Cable Toxiik Usb A Lightning 25w 1m",
+      "description": "Cable Toxiik Usb A Lightning 25w 1m, protección contra sobretensiones evita que picos de voltaje. Compatible con la mayoría de los dispositivos actuales.",
+      "reference": "FARMATODO-116545635",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 3.96,
+      "image": {
+        "original": "116545635.webp",
+        "thumbnail": "116545635-thumb.webp",
+        "reference": "demo-farmatodo-116545635"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116545635-cable-toxiik--usb-a-lightning-25w-1m",
+      "fetched_at": "2026-11-02T18:00:28.155Z"
+    },
+    {
+      "external_id": "113812401",
+      "name": "Servilletas De Mesa 100Und",
+      "description": "Servilletas De Mesa 100Und",
+      "reference": "FARMATODO-113812401",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 2.36,
+      "image": {
+        "original": "113812401.webp",
+        "thumbnail": "113812401-thumb.webp",
+        "reference": "demo-farmatodo-113812401"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113812401-servilletas-de-mesa-100und",
+      "fetched_at": "2026-11-02T18:00:28.187Z"
+    },
+    {
+      "external_id": "113516396",
+      "name": "Galletas Charmy Moka 192Gr Galletas Charmy",
+      "description": "Galletas Charmy Moka 192Gr Galletas Charmy",
+      "reference": "FARMATODO-113516396",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 1.85,
+      "image": {
+        "original": "113516396.webp",
+        "thumbnail": "113516396-thumb.webp",
+        "reference": "demo-farmatodo-113516396"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113516396-galletas-charmy-moka-192gr",
+      "fetched_at": "2026-11-02T18:00:28.242Z"
+    },
+    {
+      "external_id": "116409625",
+      "name": "Delineador De Ojos Satin Blend Gel 04 - 0.22Gr",
+      "description": "Delineador De Ojos Satin Blend Gel 04 - 0.22Gr",
+      "reference": "FARMATODO-116409625",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 5.49,
+      "image": {
+        "original": "116409625.webp",
+        "thumbnail": "116409625-thumb.webp",
+        "reference": "demo-farmatodo-116409625"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116409625-delineador-de-ojos-satin-blend-gel-04--022gr",
+      "fetched_at": "2026-11-02T18:00:28.274Z"
+    },
+    {
+      "external_id": "116524594",
+      "name": "Atroveran Compositum 10mg-250mg 10Comprimidos N Butil Bromuro De Hioscina Dipirona Vargas",
+      "description": "Atroveran Compositum 10mg-250mg 10Comprimidos N Butil Bromuro De Hioscina Dipirona Vargas, contraindicaciones alergia a los componentes de la fórmula.",
+      "reference": "FARMATODO-116524594",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 6.81,
+      "image": {
+        "original": "116524594.webp",
+        "thumbnail": "116524594-thumb.webp",
+        "reference": "demo-farmatodo-116524594"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116524594-atroveran-compositum-10mg-250mg-10comprimidos-n-butil-bromuro-de-hioscina-dipirona-vargas",
+      "fetched_at": "2026-11-02T18:00:28.297Z"
+    },
+    {
+      "external_id": "111928178",
+      "name": "Panque Tia Lulu Choco 100Gr",
+      "description": "Panque Tia Lulu Choco 100Gr",
+      "reference": "FARMATODO-111928178",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 1.7,
+      "image": {
+        "original": "111928178.webp",
+        "thumbnail": "111928178-thumb.webp",
+        "reference": "demo-farmatodo-111928178"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111928178-panque-tia-lulu-choco-100gr",
+      "fetched_at": "2026-11-02T18:00:28.342Z"
+    },
+    {
+      "external_id": "111940331",
+      "name": "Crema Dental Galactic Kids Tutifruti Niño x 100 gr",
+      "description": "Crema Dental Galactic Kids Tutifruti Niño x 100 gr",
+      "reference": "FARMATODO-111940331",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 1.73,
+      "image": {
+        "original": "111940331.webp",
+        "thumbnail": "111940331-thumb.webp",
+        "reference": "demo-farmatodo-111940331"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111940331-gel-bucal-galactic-kids-tutifruti-nino",
+      "fetched_at": "2026-11-02T18:00:28.370Z"
+    },
+    {
+      "external_id": "111255677",
+      "name": "Candesartán + Hidroclorotiazida 8mg/12,5mg Coropres H Megalabs Caja x 30 Comprimidos",
+      "description": "Comprimidos de candesartán y hidroclorotiazida que ayudan a controlar la presión arterial alta cuando un solo medicamento no es suficiente.",
+      "reference": "FARMATODO-111255677",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 10.71,
+      "image": {
+        "original": "111255677.webp",
+        "thumbnail": "111255677-thumb.webp",
+        "reference": "demo-farmatodo-111255677"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111255677-candesartanhidroclorotiazida-coropres-h-8125-mg-30comp",
+      "fetched_at": "2026-11-02T18:00:28.398Z"
+    },
+    {
+      "external_id": "115386513",
+      "name": "Dedal De Silicon Para Coser Bonet",
+      "description": "Dedal De Silicon Para Coser Bonet",
+      "reference": "FARMATODO-115386513",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 3.16,
+      "image": {
+        "original": "115386513.webp",
+        "thumbnail": "115386513-thumb.webp",
+        "reference": "demo-farmatodo-115386513"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115386513-dedal-de-silicon-para-coser-bonet",
+      "fetched_at": "2026-11-02T18:00:28.447Z"
+    },
+    {
+      "external_id": "116410693",
+      "name": "Tonico Capilar Pantene AnticaIda Biotinamina B3 52Ml",
+      "description": "Tonico Capilar Pantene AnticaIda Biotinamina B3 52Ml",
+      "reference": "FARMATODO-116410693",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 14.2,
+      "image": {
+        "original": "116410693.webp",
+        "thumbnail": "116410693-thumb.webp",
+        "reference": "demo-farmatodo-116410693"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116410693-tonico-capilar-pantene-anticaida-biotinamina-b3-52ml",
+      "fetched_at": "2026-11-02T18:00:28.481Z"
+    },
+    {
+      "external_id": "111035164",
+      "name": "Flores Alstromerias Alstromerias",
+      "description": "Flores Alstromerias Alstromerias",
+      "reference": "FARMATODO-111035164",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 12.78,
+      "image": {
+        "original": "111035164.webp",
+        "thumbnail": "111035164-thumb.webp",
+        "reference": "demo-farmatodo-111035164"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111035164-flores-alstromerias",
+      "fetched_at": "2026-11-02T18:00:28.526Z"
+    },
+    {
+      "external_id": "115480593",
+      "name": "Fragancia United Colors Of Benetton Sisterland Golden Vanilla EDP x 80 ml",
+      "description": "Fragancia femenina contenida en frasco con vaporizador.",
+      "reference": "FARMATODO-115480593",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 62.03,
+      "image": {
+        "original": "115480593.webp",
+        "thumbnail": "115480593-thumb.webp",
+        "reference": "demo-farmatodo-115480593"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115480593-fragancia-united-colors",
+      "fetched_at": "2026-11-02T18:00:28.603Z"
+    },
+    {
+      "external_id": "115624577",
+      "name": "Ampolla Alfaparf Semi Di Lino Loción Energizante x 10 ml",
+      "description": "Tratamiento intensivo energizante con efecto fresco para cabellos debilitados, con tendencia a la caída.",
+      "reference": "FARMATODO-115624577",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 4.24,
+      "image": {
+        "original": "115624577.webp",
+        "thumbnail": "115624577-thumb.webp",
+        "reference": "demo-farmatodo-115624577"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115624577-ampolla-semi-di-lino-locion-energizante-x-10-ml",
+      "fetched_at": "2026-11-02T18:00:28.632Z"
+    },
+    {
+      "external_id": "115666507",
+      "name": "Mesames Drospirenona + Etinilestradiol 3mg/0,03mg Siegfried x 28 Comprimidos",
+      "description": "Mesames Drospirenona + Etinilestradiol 3mg/0,03mg Siegfried x 28 Comprimidos",
+      "reference": "FARMATODO-115666507",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 13.41,
+      "image": {
+        "original": "115666507.webp",
+        "thumbnail": "115666507-thumb.webp",
+        "reference": "demo-farmatodo-115666507"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115666507-mesames-drospirenona--etinilestradiol-3mg003mg-siegfried-x-28-comprimidos",
+      "fetched_at": "2026-11-02T18:00:28.670Z"
+    },
+    {
+      "external_id": "115183695",
+      "name": "Crema Hidratante Contorno De Ojos y Labios Vegana Geoderm x 10 ml",
+      "description": "Crema Hidratante Contorno De Ojos y Labios Vegana Geoderm x 10 ml",
+      "reference": "FARMATODO-115183695",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 18.45,
+      "image": {
+        "original": "115183695.webp",
+        "thumbnail": "115183695-thumb.webp",
+        "reference": "demo-farmatodo-115183695"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115183695-crema-hidratante-contorno-de-ojos-y-labios-vegana-geoderm-x-10-ml",
+      "fetched_at": "2026-11-02T18:00:28.698Z"
+    },
+    {
+      "external_id": "115192604",
+      "name": "Delineador Liquido Colorstay Micro Facil Precisión What The Fudge 302",
+      "description": "Delineador Liquido Colorstay Micro Facil Precisión What The Fudge 302",
+      "reference": "FARMATODO-115192604",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 19.72,
+      "image": {
+        "original": "115192604.webp",
+        "thumbnail": "115192604-thumb.webp",
+        "reference": "demo-farmatodo-115192604"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115192604-delineador-liquido-colorstay-micro-facil-precision-what-the-fudge-302",
+      "fetched_at": "2026-11-02T18:00:28.731Z"
+    },
+    {
+      "external_id": "113705390",
+      "name": "Ortoban Yeso 6\" X 3YDS 1Rollo 15 cm x 2,7 M",
+      "description": "Ortoban Yeso 6\" X 3YDS 1Rollo 15 cm x 2,7 M que permite inmovilizar fracturas y lesiones bajo indicación médica.",
+      "reference": "FARMATODO-113705390",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 7.88,
+      "image": {
+        "original": "113705390.webp",
+        "thumbnail": "113705390-thumb.webp",
+        "reference": "demo-farmatodo-113705390"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113705390-ortoban-yeso-6-x-3yds--1rollo-15-cm-x-27-m",
+      "fetched_at": "2026-11-02T18:00:28.757Z"
+    },
+    {
+      "external_id": "114827401",
+      "name": "Brocha Mon Reve Base 112",
+      "description": "Brocha Mon Reve Base 112",
+      "reference": "FARMATODO-114827401",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 8.39,
+      "image": {
+        "original": "114827401.webp",
+        "thumbnail": "114827401-thumb.webp",
+        "reference": "demo-farmatodo-114827401"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114827401-brocha-mon-reve-base-112",
+      "fetched_at": "2026-11-02T18:00:28.799Z"
+    },
+    {
+      "external_id": "114725392",
+      "name": "Humectante Con Color BB Cream - Tono Medio Ana Maria x 30Gr",
+      "description": "Humectante Con Color BB Cream - Tono Medio Ana Maria x 30Gr",
+      "reference": "FARMATODO-114725392",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 37.31,
+      "image": {
+        "original": "114725392.webp",
+        "thumbnail": "114725392-thumb.webp",
+        "reference": "demo-farmatodo-114725392"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114725392-humectante-con-color-bb-cream--tono-medio-ana-maria-50gr",
+      "fetched_at": "2026-11-02T18:00:28.840Z"
+    },
+    {
+      "external_id": "115083475",
+      "name": "Helado Rizo Tinita Stracciatella x 120 ml",
+      "description": "Helado Rizo Tinita Stracciatella x 120 ml",
+      "reference": "FARMATODO-115083475",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 1.16,
+      "image": {
+        "original": "115083475.webp",
+        "thumbnail": "115083475-thumb.webp",
+        "reference": "demo-farmatodo-115083475"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115083475-helado-rizo-tinita-stracciatella-x-120-ml",
+      "fetched_at": "2026-11-02T18:00:28.870Z"
+    },
+    {
+      "external_id": "114405401",
+      "name": "Talco Rexona Para Pies Efficient Original x 85 gr",
+      "description": "Talco Rexona Para Pies Efficient Original x 85 gr",
+      "reference": "FARMATODO-114405401",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 5.2,
+      "image": {
+        "original": "114405401.webp",
+        "thumbnail": "114405401-thumb.webp",
+        "reference": "demo-farmatodo-114405401"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114405401-talco-rexona-efficient-antibacterial-85g",
+      "fetched_at": "2026-11-02T18:00:28.902Z"
+    },
+    {
+      "external_id": "115605528",
+      "name": "Base Valmy Perfect Finish Alta Cobertura Dore x 35 ml",
+      "description": "Base Valmy Perfect Finish Alta Cobertura Dore x 35 ml",
+      "reference": "FARMATODO-115605528",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 7.64,
+      "image": {
+        "original": "115605528.webp",
+        "thumbnail": "115605528-thumb.webp",
+        "reference": "demo-farmatodo-115605528"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115605528-base-valmy-perfect-finish-alta-cobertura-dore-x-35-ml",
+      "fetched_at": "2026-11-02T18:00:28.931Z"
+    },
+    {
+      "external_id": "111959194",
+      "name": "Olmesartán Medoxomil + Hidroclorotiazida 40mg/12.5mg Biocor Hct MCK Pharmaceutical x 30 Tableta",
+      "description": "Biocor 40 mg/12.5 mg, tabletas de hidroclorotiazida y olmesartán que ayuda a controlar la presión arterial alta.",
+      "reference": "FARMATODO-111959194",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 23.45,
+      "image": {
+        "original": "111959194.webp",
+        "thumbnail": "111959194-thumb.webp",
+        "reference": "demo-farmatodo-111959194"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111959194-olmesartan-medoxomil--hidroclorotiazida-biocor-hct-40125mg",
+      "fetched_at": "2026-11-02T18:00:28.971Z"
+    },
+    {
+      "external_id": "114626474",
+      "name": "Oxcarbazepina 300mg Cleopharma Caja x 30 Tabletas",
+      "description": "Tabletas de oxcarbazepina 300 mg que ayudan a controlar las convulsiones, la epilepsia y estabilizar el ánimo.",
+      "reference": "FARMATODO-114626474",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 10.61,
+      "image": {
+        "original": "114626474.webp",
+        "thumbnail": "114626474-thumb.webp",
+        "reference": "demo-farmatodo-114626474"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114626474-oxcarbazepina-300mg-30-tabletas-cleopharma",
+      "fetched_at": "2026-11-02T18:00:29.014Z"
+    },
+    {
+      "external_id": "115848503",
+      "name": "Mascara De Pestañas Sheglam Volumen Negra",
+      "description": "Mascara de pestañas todo en uno para volumen y longitud lavable.",
+      "reference": "FARMATODO-115848503",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 16.33,
+      "image": {
+        "original": "115848503.webp",
+        "thumbnail": "115848503-thumb.webp",
+        "reference": "demo-farmatodo-115848503"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115848503-mascara-de-pestanas",
+      "fetched_at": "2026-11-02T18:00:29.043Z"
+    },
+    {
+      "external_id": "112734720",
+      "name": "Topiramato 50 mg Topitolep FC Pharma Caja x 30 Tabletas",
+      "description": "Tabletas de topiramato 50 mg que ayudan a controlar las convulsiones, la epilepsia y estabilizar el ánimo.",
+      "reference": "FARMATODO-112734720",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 7.29,
+      "image": {
+        "original": "112734720.webp",
+        "thumbnail": "112734720-thumb.webp",
+        "reference": "demo-farmatodo-112734720"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112734720-topiramato-topitolep-50mg-30-tabletas",
+      "fetched_at": "2026-11-02T18:00:29.087Z"
+    },
+    {
+      "external_id": "112775388",
+      "name": "Compota Heinz Melocoton 186Gr",
+      "description": "Compota Heinz Melocoton 186Gr",
+      "reference": "FARMATODO-112775388",
+      "category": "Bebé",
+      "tax_code": "IVA",
+      "cost": 1.07,
+      "image": {
+        "original": "112775388.webp",
+        "thumbnail": "112775388-thumb.webp",
+        "reference": "demo-farmatodo-112775388"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112775388-compota-heinz-melocoton-186gr",
+      "fetched_at": "2026-11-02T18:00:29.141Z"
+    },
+    {
+      "external_id": "111958353",
+      "name": "Bebida energética Monster Clásico Lata 473 ml",
+      "description": "Bebida energética Monster Clásico Lata 473 ml",
+      "reference": "FARMATODO-111958353",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 3.39,
+      "image": {
+        "original": "111958353.webp",
+        "thumbnail": "111958353-thumb.webp",
+        "reference": "demo-farmatodo-111958353"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111958353-bebida-monster-energy-473ml",
+      "fetched_at": "2026-11-02T18:00:29.196Z"
+    },
+    {
+      "external_id": "113695398",
+      "name": "Crema Facial Dernier Hidratante x 120 gr",
+      "description": "Crema Facial Dernier Hidratante x 120 gr",
+      "reference": "FARMATODO-113695398",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 5.75,
+      "image": {
+        "original": "113695398.webp",
+        "thumbnail": "113695398-thumb.webp",
+        "reference": "demo-farmatodo-113695398"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113695398-crema-facial-dernier-hidratante-120gr",
+      "fetched_at": "2026-11-02T18:00:29.225Z"
+    },
+    {
+      "external_id": "116624616",
+      "name": "Diltiazem 60 mg Genfar Caja x 20 Comprimidos",
+      "description": "Diltiazem 60 mg Genfar Caja x 20 Comprimidos",
+      "reference": "FARMATODO-116624616",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 10.36,
+      "image": {
+        "original": "116624616.webp",
+        "thumbnail": "116624616-thumb.webp",
+        "reference": "demo-farmatodo-116624616"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116624616-diltiazem-60-mg-genfar-caja-x-20-comprimidos",
+      "fetched_at": "2026-11-02T18:00:29.254Z"
+    },
+    {
+      "external_id": "111387892",
+      "name": "Crema Corporal Body Fresh Vitamina E 500Ml.",
+      "description": "Crema Corporal Body Fresh Vitamina E 500Ml.",
+      "reference": "FARMATODO-111387892",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 3.46,
+      "image": {
+        "original": "111387892.webp",
+        "thumbnail": "111387892-thumb.webp",
+        "reference": "demo-farmatodo-111387892"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111387892-crema-corporal-body-fresh-vitamina-e-500ml",
+      "fetched_at": "2026-11-02T18:00:29.292Z"
+    },
+    {
+      "external_id": "112174443",
+      "name": "Medias De Compresion Benefic Uomo Talla 5 Color Negro",
+      "description": "Indicada en casos de insuficiencia crónica leve, venas varicosas e hinchazón.",
+      "reference": "FARMATODO-112174443",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 33.63,
+      "image": {
+        "original": "112174443.webp",
+        "thumbnail": "112174443-thumb.webp",
+        "reference": "demo-farmatodo-112174443"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112174443-medias-de-compresion-benefic-uomo-talla-5-color-negro",
+      "fetched_at": "2026-11-02T18:00:29.319Z"
+    },
+    {
+      "external_id": "113465453",
+      "name": "Corta Uñas Okoi Grande",
+      "description": "Corta uñas grande para manicure y pedicure Okoi",
+      "reference": "FARMATODO-113465453",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 1.87,
+      "image": {
+        "original": "113465453.webp",
+        "thumbnail": "113465453-thumb.webp",
+        "reference": "demo-farmatodo-113465453"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113465453-corta-unas-grande-okoi",
+      "fetched_at": "2026-11-02T18:00:29.350Z"
+    },
+    {
+      "external_id": "116096569",
+      "name": "Parche Para Dolor Rodillas Medipatch x 12 und",
+      "description": "Parche Medipatch para aliviar el dolor de rodilla, proporciona un alivio rápido y duradero de sobrecargas musculares, traumatismos, artritis, tensión muscular, gonalgia, gonartrosis, sinovitis, condromalacia rotuliana, dolor de articulación y más.",
+      "reference": "FARMATODO-116096569",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 10.95,
+      "image": {
+        "original": "116096569.webp",
+        "thumbnail": "116096569-thumb.webp",
+        "reference": "demo-farmatodo-116096569"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116096569-parche-para-dolor-rodillas-medipatch-12und",
+      "fetched_at": "2026-11-02T18:00:29.378Z"
+    },
+    {
+      "external_id": "116616608",
+      "name": "Adrenalina 1mg/1ml Biosano Solución Inyectable x 1 Ampolla I.V",
+      "description": "Solución inyectable de adrenalina 1 mg que se usa en emergencias por anafilaxia, broncoespasmo grave y paro cardíaco.",
+      "reference": "FARMATODO-116616608",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 1,
+      "image": {
+        "original": "116616608.webp",
+        "thumbnail": "116616608-thumb.webp",
+        "reference": "demo-farmatodo-116616608"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116616608-adrenalina-1mg1ml-biosano-solucion-inyectable-x-1-ampolla-iv",
+      "fetched_at": "2026-11-02T18:00:29.415Z"
+    },
+    {
+      "external_id": "111934632",
+      "name": "Portacosméticos Vanessa Boulton Grande Estampado",
+      "description": "Portacosméticos Vanessa Boulton Grande Estampado",
+      "reference": "FARMATODO-111934632",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 18.18,
+      "image": {
+        "original": "111934632.webp",
+        "thumbnail": "111934632-thumb.webp",
+        "reference": "demo-farmatodo-111934632"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111934632-portacosmeticos-vanessa-boulton-grande",
+      "fetched_at": "2026-11-02T18:00:29.461Z"
+    },
+    {
+      "external_id": "116117593",
+      "name": "VPD Novex 100mg/10ml 2Viales I.V. Rituximab Leti",
+      "description": "VPD Novex 100mg/10ml 2Viales I.V. Rituximab Leti",
+      "reference": "FARMATODO-116117593",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 373.86,
+      "image": {
+        "original": "116117593.webp",
+        "thumbnail": "116117593-thumb.webp",
+        "reference": "demo-farmatodo-116117593"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116117593-vpd-novex-100mg10ml-2viales-iv-rituximab-leti",
+      "fetched_at": "2026-11-02T18:00:29.506Z"
+    },
+    {
+      "external_id": "111972639",
+      "name": "Tinte Revlon Colorsilk Kit 55 Castaño Rojizo Claro",
+      "description": "Tinte Revlon Colorsilk Kit 55 Castaño Rojizo Claro",
+      "reference": "FARMATODO-111972639",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 8.73,
+      "image": {
+        "original": "111972639.webp",
+        "thumbnail": "111972639-thumb.webp",
+        "reference": "demo-farmatodo-111972639"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111972639-tinte-revlon-colorsilk-kit-55-castano-rojizo-claro",
+      "fetched_at": "2026-11-02T18:00:29.549Z"
+    },
+    {
+      "external_id": "115187469",
+      "name": "Crema Hidratante Facial Dia y Noche Geoderm x 50 ml",
+      "description": "Crema Hidratante Facial Dia y Noche Geoderm x 50 ml",
+      "reference": "FARMATODO-115187469",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 35.74,
+      "image": {
+        "original": "115187469.webp",
+        "thumbnail": "115187469-thumb.webp",
+        "reference": "demo-farmatodo-115187469"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115187469-crema-hidratante-facial-dia-y-noche-geoderm-x-50-ml",
+      "fetched_at": "2026-11-02T18:00:29.584Z"
+    },
+    {
+      "external_id": "115991502",
+      "name": "Base Revlon Illuminance Liquida Café Claro",
+      "description": "Base Revlon Illuminance Liquida Café Claro",
+      "reference": "FARMATODO-115991502",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 31.14,
+      "image": {
+        "original": "115991502.webp",
+        "thumbnail": "115991502-thumb.webp",
+        "reference": "demo-farmatodo-115991502"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115991502-base-revlon-illuminance",
+      "fetched_at": "2026-11-02T18:00:29.613Z"
+    },
+    {
+      "external_id": "113364425",
+      "name": "Champu Every Night Cereales Multiactivos 365Ml Champú Cereales multiactivos",
+      "description": "Every Night Bionutrientes te va a ayudar a estar hermosa, suave y cuidada. Sus ingredientes proporcionan al cabello la hidratacion y cuidado que requiere, ademas de acariciarlo con una delicada fragancia.",
+      "reference": "FARMATODO-113364425",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 6.85,
+      "image": {
+        "original": "113364425.webp",
+        "thumbnail": "113364425-thumb.webp",
+        "reference": "demo-farmatodo-113364425"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113364425-champu-every-night-cereales-multiactivos-365ml",
+      "fetched_at": "2026-11-02T18:00:29.640Z"
+    },
+    {
+      "external_id": "111963457",
+      "name": "Accesorio Colas The Scrunchie Boo Surtidas 2Und",
+      "description": "Accesorio Colas The Scrunchie Boo Surtidas 2Und",
+      "reference": "FARMATODO-111963457",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 4.98,
+      "image": {
+        "original": "111963457.webp",
+        "thumbnail": "111963457-thumb.webp",
+        "reference": "demo-farmatodo-111963457"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111963457-accesorio-cola-scrunchie-2-und-colores-varios",
+      "fetched_at": "2026-11-02T18:00:29.668Z"
+    },
+    {
+      "external_id": "114938451",
+      "name": "Mascara De Pestañas Flormar Hero Volume & Curl",
+      "description": "Mascara De Pestañas Flormar Hero Volume & Curl",
+      "reference": "FARMATODO-114938451",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 18.63,
+      "image": {
+        "original": "114938451.webp",
+        "thumbnail": "114938451-thumb.webp",
+        "reference": "demo-farmatodo-114938451"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114938451-mascara-de-pestanas-flormar-hero-volume-y-curl",
+      "fetched_at": "2026-11-02T18:00:29.708Z"
+    },
+    {
+      "external_id": "112810366",
+      "name": "Almohadilla Bonet Exfoliante Loofah",
+      "description": "Almohadilla Bonet Exfoliante Loofah",
+      "reference": "FARMATODO-112810366",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 6.32,
+      "image": {
+        "original": "112810366.webp",
+        "thumbnail": "112810366-thumb.webp",
+        "reference": "demo-farmatodo-112810366"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112810366-almohadilla-bonet-exfoliante-loofah",
+      "fetched_at": "2026-11-02T18:00:29.746Z"
+    },
+    {
+      "external_id": "111001434",
+      "name": "Betametasona + Gentamicina 0,1%/0,1% Betaderm Biotech Crema x 15 gr",
+      "description": "Crema de betametasona con gentamicina que calma la picazón, el enrojecimiento y la inflamación de la piel con infección.",
+      "reference": "FARMATODO-111001434",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 7.45,
+      "image": {
+        "original": "111001434.webp",
+        "thumbnail": "111001434-thumb.webp",
+        "reference": "demo-farmatodo-111001434"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111001434-betametasona--gentamicina-betaderm-cgentamic",
+      "fetched_at": "2026-11-02T18:00:29.783Z"
+    },
+    {
+      "external_id": "111486897",
+      "name": "Pinchos Royal Plasticos 60Und",
+      "description": "Pinchos Royal Plasticos 60Und",
+      "reference": "FARMATODO-111486897",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 3.77,
+      "image": {
+        "original": "111486897.webp",
+        "thumbnail": "111486897-thumb.webp",
+        "reference": "demo-farmatodo-111486897"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111486897-pinchos-royal-plasticos-60und",
+      "fetched_at": "2026-11-02T18:00:29.811Z"
+    },
+    {
+      "external_id": "111012535",
+      "name": "Desodorante Dioxogen Hipoalergénico Roll-On Bicarbonato x 90 gr",
+      "description": "Desodorante Antitraspirante Hipoalergénico con Bicarbonato Neutralizador de Olores. Dermatológicamente Probado. Libre de Alcohol. 48 Horas de Protección.",
+      "reference": "FARMATODO-111012535",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 3.53,
+      "image": {
+        "original": "111012535.webp",
+        "thumbnail": "111012535-thumb.webp",
+        "reference": "demo-farmatodo-111012535"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111012535-desodorante-rollon-dioxogen-bicarbonato-90gr",
+      "fetched_at": "2026-11-02T18:00:29.929Z"
+    },
+    {
+      "external_id": "111965853",
+      "name": "Lactovac Lactobacillus Acidophilus Suspensión Pediátrica x 12 ml",
+      "description": "Lactovac, suspensión oral de probiótico que apoya el equilibrio de la flora intestinal y la buena digestión.",
+      "reference": "FARMATODO-111965853",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 7.48,
+      "image": {
+        "original": "111965853.webp",
+        "thumbnail": "111965853-thumb.webp",
+        "reference": "demo-farmatodo-111965853"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111965853-lactobacillus-acidophilus-lactovac-suspension-pediatrica-12-ml",
+      "fetched_at": "2026-11-02T18:00:29.959Z"
+    },
+    {
+      "external_id": "111919460",
+      "name": "Mascotas Kantal Garrapaticida Para Perros 50Ml",
+      "description": "Control de parasitos externos.",
+      "reference": "FARMATODO-111919460",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 8.25,
+      "image": {
+        "original": "111919460.webp",
+        "thumbnail": "111919460-thumb.webp",
+        "reference": "demo-farmatodo-111919460"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111919460-mascotas-kantal-garrapaticida-para-perros-50ml",
+      "fetched_at": "2026-11-02T18:00:30.005Z"
+    },
+    {
+      "external_id": "116156648",
+      "name": "Bloqueador Umbrella Intelligent SPF 100 Emulsion 50Gr",
+      "description": "Bloqueador Umbrella Intelligent SPF 100 Emulsion 50Gr",
+      "reference": "FARMATODO-116156648",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 36.14,
+      "image": {
+        "original": "116156648.webp",
+        "thumbnail": "116156648-thumb.webp",
+        "reference": "demo-farmatodo-116156648"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116156648-bloqueador-umbrella-intelligent-spf-100-emulsion-50gr",
+      "fetched_at": "2026-11-02T18:00:30.041Z"
+    },
+    {
+      "external_id": "112062513",
+      "name": "Drospirenona + Etinilestradiol 3mg/0,02mg Drospera Exeltis Caja x 28 Comprimidos",
+      "description": "Drospirenona + Etinilestradiol 3mg/0,02mg Drospera Exeltis Caja x 28 Comprimidos",
+      "reference": "FARMATODO-112062513",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 20.96,
+      "image": {
+        "original": "112062513.webp",
+        "thumbnail": "112062513-thumb.webp",
+        "reference": "demo-farmatodo-112062513"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112062513-drospirenona--etinilestradiol-drospera-3mg002mg-28-comprimidos-exeltis",
+      "fetched_at": "2026-11-02T18:00:30.069Z"
+    },
+    {
+      "external_id": "113768391",
+      "name": "Clindamicina + Ketoconazol 100mg/400mg Tiares x 5 Óvulos Vaginales",
+      "description": "Una solución de amplio espectro diseñada para restaurar el equilibrio y la salud de la zona íntima femenina. Tiares combina la acción de un potente antibiótico y un antifúngico de alta eficacia en formato de óvulos vaginales, ofreciendo un tratamiento dual e integral para combatir infecciones vaginales mixtas de manera rápida y efectiva.",
+      "reference": "FARMATODO-113768391",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 10.03,
+      "image": {
+        "original": "113768391.webp",
+        "thumbnail": "113768391-thumb.webp",
+        "reference": "demo-farmatodo-113768391"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113768391-clindamicina--ketoconazol-100mg400mg-x5-ovulos-tiares",
+      "fetched_at": "2026-11-02T18:00:30.097Z"
+    },
+    {
+      "external_id": "116370636",
+      "name": "Lentes De Natacion Bestway Infantiles Variados",
+      "description": "Lentes De Natacion Bestway Infantiles Variados",
+      "reference": "FARMATODO-116370636",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 2.55,
+      "image": {
+        "original": "116370636.webp",
+        "thumbnail": "116370636-thumb.webp",
+        "reference": "demo-farmatodo-116370636"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116370636-lentes-de-natacion-bestway-infantiles-variados",
+      "fetched_at": "2026-11-02T18:00:30.199Z"
+    },
+    {
+      "external_id": "113070355",
+      "name": "Leche De Magnesia Sabor Menta Biofarco Frasco x 120ml",
+      "description": "Suspensión oral de hidróxido de magnesio que calma la acidez, el ardor estomacal y la indigestión.",
+      "reference": "FARMATODO-113070355",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 8.03,
+      "image": {
+        "original": "113070355.webp",
+        "thumbnail": "113070355-thumb.webp",
+        "reference": "demo-farmatodo-113070355"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113070355-leche-de-magnesia-sabor-menta-120ml-biofarco",
+      "fetched_at": "2026-11-02T18:00:30.229Z"
+    },
+    {
+      "external_id": "112140438",
+      "name": "Labial Flormar Brillo Dewy Lip Booster 02 Dewy Lip Booster 02",
+      "description": "Labial Flormar Brillo Dewy Lip Booster 02 Dewy Lip Booster 02",
+      "reference": "FARMATODO-112140438",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 10.2,
+      "image": {
+        "original": "112140438.webp",
+        "thumbnail": "112140438-thumb.webp",
+        "reference": "demo-farmatodo-112140438"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112140438-labial-flormar-brillo-dewy-lip-booster-02",
+      "fetched_at": "2026-11-02T18:00:30.257Z"
+    },
+    {
+      "external_id": "112041405",
+      "name": "Helado Efe Mantecado x 435 ml",
+      "description": "Helado Efe Mantecado x 435 ml",
+      "reference": "FARMATODO-112041405",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 5.56,
+      "image": {
+        "original": "112041405.webp",
+        "thumbnail": "112041405-thumb.webp",
+        "reference": "demo-farmatodo-112041405"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/112041405-helado-efe-mantecado-435ml",
+      "fetched_at": "2026-11-02T18:00:30.286Z"
+    },
+    {
+      "external_id": "111006956",
+      "name": "Buspirona 10 mg Dalpas Biotech Caja x 30 Tabletas",
+      "description": "Tabletas de buspirona 10 mg que ayudan a controlar la ansiedad generalizada sin causar dependencia.",
+      "reference": "FARMATODO-111006956",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 8.04,
+      "image": {
+        "original": "111006956.webp",
+        "thumbnail": "111006956-thumb.webp",
+        "reference": "demo-farmatodo-111006956"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111006956-buspirona-dalpas-10mg-30-tabletas",
+      "fetched_at": "2026-11-02T18:00:30.315Z"
+    },
+    {
+      "external_id": "111960529",
+      "name": "Chocolate Savoy Postres Oscuro 40% x 200 gr",
+      "description": "Chocolate Oscuro con 40% de Cacao.",
+      "reference": "FARMATODO-111960529",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 6.68,
+      "image": {
+        "original": "111960529.webp",
+        "thumbnail": "111960529-thumb.webp",
+        "reference": "demo-farmatodo-111960529"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111960529-chocolate-savoy-postres-oscuro-40-200gr",
+      "fetched_at": "2026-11-02T18:00:30.345Z"
+    },
+    {
+      "external_id": "113618421",
+      "name": "Ceftriaxona 1g Cytriax Aless Pharmaceuticals Caja x 1 Vial I.V./I.M.",
+      "description": "Solución inyectable de ceftriaxona que combate infecciones de garganta, piel, vías urinarias y respiratorias.",
+      "reference": "FARMATODO-113618421",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 2.17,
+      "image": {
+        "original": "113618421.webp",
+        "thumbnail": "113618421-thumb.webp",
+        "reference": "demo-farmatodo-113618421"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113618421-ceftriaxona-cytriax-1g-ivim1-vial-aless-pharmaceuticals",
+      "fetched_at": "2026-11-02T18:00:30.441Z"
+    },
+    {
+      "external_id": "111961969",
+      "name": "Snack Munchy Toston Ajo Munchyps 110Gr",
+      "description": "Snack Munchy Toston Ajo Munchyps 110Gr",
+      "reference": "FARMATODO-111961969",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 2.21,
+      "image": {
+        "original": "111961969.webp",
+        "thumbnail": "111961969-thumb.webp",
+        "reference": "demo-farmatodo-111961969"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111961969-snack-munchy-toston-ajo-munchyps-110gr",
+      "fetched_at": "2026-11-02T18:00:30.491Z"
+    },
+    {
+      "external_id": "116113525",
+      "name": "Pretzel Kids Crustissimo 6 Und X 25gr",
+      "description": "Pretzel Kids Crustissimo 6 Und X 25gr",
+      "reference": "FARMATODO-116113525",
+      "category": "Bebé",
+      "tax_code": "IVA",
+      "cost": 1.07,
+      "image": {
+        "original": "116113525.webp",
+        "thumbnail": "116113525-thumb.webp",
+        "reference": "demo-farmatodo-116113525"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116113525-pretzel-kids-crustissimo-6-und-x-25gr",
+      "fetched_at": "2026-11-02T18:00:30.537Z"
+    },
+    {
+      "external_id": "111929164",
+      "name": "Laminas Alfabeticas 3 + 28 Piezas Laminas Alfabeticas",
+      "description": "Laminas Alfabeticas 3 + 28 Piezas Laminas Alfabeticas",
+      "reference": "FARMATODO-111929164",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 8.11,
+      "image": {
+        "original": "111929164.webp",
+        "thumbnail": "111929164-thumb.webp",
+        "reference": "demo-farmatodo-111929164"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111929164-laminas-alfabeticas-3--28-piezas",
+      "fetched_at": "2026-11-02T18:00:30.575Z"
+    },
+    {
+      "external_id": "115765548",
+      "name": "Desodorante Speed Stick Carbón Absorb 72h Spray x 150 ml",
+      "description": "Este desodorante en aerosol te ofrece hasta 72 horas de protección gracias a su Tecnología Termo Activada que regula el sudor, el mal olor y se activa al elevar la temperatura de tu piel. 72 horas de protección contra el sudor y el mal olor.",
+      "reference": "FARMATODO-115765548",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 9.44,
+      "image": {
+        "original": "115765548.webp",
+        "thumbnail": "115765548-thumb.webp",
+        "reference": "demo-farmatodo-115765548"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115765548-desodorante-spray-speed",
+      "fetched_at": "2026-11-02T18:00:30.612Z"
+    },
+    {
+      "external_id": "111920991",
+      "name": "Tinte Alfaparf Kit 5 Castano Claro",
+      "description": "Tinte Alfaparf Kit 5 Castano Claro",
+      "reference": "FARMATODO-111920991",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 9.75,
+      "image": {
+        "original": "111920991.webp",
+        "thumbnail": "111920991-thumb.webp",
+        "reference": "demo-farmatodo-111920991"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111920991-tinte-alfaparf-kit-5-castano-claro",
+      "fetched_at": "2026-11-02T18:00:30.653Z"
+    },
+    {
+      "external_id": "116476721",
+      "name": "Esmalte L.A Colors Gel Daydreaming",
+      "description": "Esmalte L.A Colors Gel Daydreaming",
+      "reference": "FARMATODO-116476721",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 4.66,
+      "image": {
+        "original": "116476721.webp",
+        "thumbnail": "116476721-thumb.webp",
+        "reference": "demo-farmatodo-116476721"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116476721-esmalte-la-colors-gel-daydreaming",
+      "fetched_at": "2026-11-02T18:00:30.687Z"
+    },
+    {
+      "external_id": "116332541",
+      "name": "Te Negro Yolo Fresh Peach Granada 473Ml",
+      "description": "Te Negro Yolo Fresh Peach Granada 473Ml",
+      "reference": "FARMATODO-116332541",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 2.13,
+      "image": {
+        "original": "116332541.webp",
+        "thumbnail": "116332541-thumb.webp",
+        "reference": "demo-farmatodo-116332541"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116332541-te-negro-yolo-fresh-peach-granada-473ml",
+      "fetched_at": "2026-11-02T18:00:30.730Z"
+    },
+    {
+      "external_id": "111026428",
+      "name": "Insulina Glargina 100Ui/ml Lantus Sanofi 1 Vial Nevera x 10 ml",
+      "description": "Insulina Glargina 100Ui/ml Lantus Sanofi 1 Vial Nevera x 10 ml",
+      "reference": "FARMATODO-111026428",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 60.02,
+      "image": {
+        "original": "111026428.webp",
+        "thumbnail": "111026428-thumb.webp",
+        "reference": "demo-farmatodo-111026428"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111026428-insulina-lantus-100-uiml-x-1-vial-10-ml",
+      "fetched_at": "2026-11-02T18:00:30.760Z"
+    },
+    {
+      "external_id": "113057388",
+      "name": "Tinte Alfaparf Tubo 5 Castano Claro Hiper Color Intenso 60Ml",
+      "description": "5 Castaño Claro Hiper Color Intenso.",
+      "reference": "FARMATODO-113057388",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 19.88,
+      "image": {
+        "original": "113057388.webp",
+        "thumbnail": "113057388-thumb.webp",
+        "reference": "demo-farmatodo-113057388"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113057388-tinte-alfaparf-tubo-5-castano-claro-hiper-color-intenso--60ml",
+      "fetched_at": "2026-11-02T18:00:30.803Z"
+    },
+    {
+      "external_id": "111003315",
+      "name": "Pancreatina Festal Calox Caja x 20 Grageas",
+      "description": "Alivio temporal y sintomático de los trastornos de la digestión.",
+      "reference": "FARMATODO-111003315",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 11.25,
+      "image": {
+        "original": "111003315.webp",
+        "thumbnail": "111003315-thumb.webp",
+        "reference": "demo-farmatodo-111003315"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111003315-pancreatina-festal-x-20-grageas",
+      "fetched_at": "2026-11-02T18:00:30.831Z"
+    },
+    {
+      "external_id": "116244576",
+      "name": "After Shave Rolda Colonia R2 430Ml",
+      "description": "After Shave Rolda Colonia R2 430Ml",
+      "reference": "FARMATODO-116244576",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 13.25,
+      "image": {
+        "original": "116244576.webp",
+        "thumbnail": "116244576-thumb.webp",
+        "reference": "demo-farmatodo-116244576"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116244576-after-shave-rolda-colonia-r2-430ml",
+      "fetched_at": "2026-11-02T18:00:30.861Z"
+    },
+    {
+      "external_id": "113534383",
+      "name": "Serum Babaria Vitamina C 30Ml",
+      "description": "El Serúm Vitamina C antioxidante para una mayor luminosidad de la piel.",
+      "reference": "FARMATODO-113534383",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 23.23,
+      "image": {
+        "original": "113534383.webp",
+        "thumbnail": "113534383-thumb.webp",
+        "reference": "demo-farmatodo-113534383"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/113534383-serum-babaria-vitamina-c-30ml",
+      "fetched_at": "2026-11-02T18:00:30.891Z"
+    },
+    {
+      "external_id": "115480526",
+      "name": "Omega-3 Fish Oil 2000 mg Pharmacorp Frasco x 60 Cápsulas",
+      "description": "Omega-3 Fish Oil 2000 mg Pharmacorp Frasco x 60 Cápsulas",
+      "reference": "FARMATODO-115480526",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 17.29,
+      "image": {
+        "original": "115480526.webp",
+        "thumbnail": "115480526-thumb.webp",
+        "reference": "demo-farmatodo-115480526"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115480526-omega-3-fish-oil-2000mg",
+      "fetched_at": "2026-11-02T18:00:30.919Z"
+    },
+    {
+      "external_id": "111362892",
+      "name": "Snack Natuchips Platanitos Fritos Natural x 42 gr",
+      "description": "Hojuelas de plátano frito con sal",
+      "reference": "FARMATODO-111362892",
+      "category": "Alimentos y Bebidas",
+      "tax_code": "IVA",
+      "cost": 0.98,
+      "image": {
+        "original": "111362892.webp",
+        "thumbnail": "111362892-thumb.webp",
+        "reference": "demo-farmatodo-111362892"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111362892-snack-natuchips-platanitos-nat-42gr",
+      "fetched_at": "2026-11-02T18:00:30.994Z"
+    },
+    {
+      "external_id": "116186548",
+      "name": "Marcadores Crayola Lavables Punta Gruesa 8 Und",
+      "description": "Marcadores Crayola Lavables Punta Gruesa 8 Und",
+      "reference": "FARMATODO-116186548",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 6.33,
+      "image": {
+        "original": "116186548.webp",
+        "thumbnail": "116186548-thumb.webp",
+        "reference": "demo-farmatodo-116186548"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116186548-marcadores-crayola-lavables-punta-gruesa-8-und",
+      "fetched_at": "2026-11-02T18:00:31.030Z"
+    },
+    {
+      "external_id": "114996467",
+      "name": "Protector Solar Antirojeces Bioderma Photoderm AR SPF50+ x 30 ml",
+      "description": "Máxima protección solar para pieles sensibles con rojeces.",
+      "reference": "FARMATODO-114996467",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 47.43,
+      "image": {
+        "original": "114996467.webp",
+        "thumbnail": "114996467-thumb.webp",
+        "reference": "demo-farmatodo-114996467"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114996467-photoderm-ar-spf50-bioderma-30-ml",
+      "fetched_at": "2026-11-02T18:00:31.072Z"
+    },
+    {
+      "external_id": "116010657",
+      "name": "Secador Gama Diva 3d Keration 110V",
+      "description": "Secador Gama Diva 3d Keration 110V",
+      "reference": "FARMATODO-116010657",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 57.77,
+      "image": {
+        "original": "116010657.webp",
+        "thumbnail": "116010657-thumb.webp",
+        "reference": "demo-farmatodo-116010657"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116010657-secador-gama-diva-3d-keration-110v",
+      "fetched_at": "2026-11-02T18:00:31.104Z"
+    },
+    {
+      "external_id": "111973211",
+      "name": "Labial Flormar Liquido Silk Matte N°011",
+      "description": "Labial liquido que proporciona un acabado mate con un uso cómodo y una aplicación suave combinada con un color intenso. Libre de Crueldad Animal.",
+      "reference": "FARMATODO-111973211",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 11.99,
+      "image": {
+        "original": "111973211.webp",
+        "thumbnail": "111973211-thumb.webp",
+        "reference": "demo-farmatodo-111973211"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111973211-labial-flormar-liquido-silk-matte-n011",
+      "fetched_at": "2026-11-02T18:00:31.146Z"
+    },
+    {
+      "external_id": "114357411",
+      "name": "Cable Fifo Para Iphone Tipo C",
+      "description": "Compatible con dispositivos con entrada Lighning como iPhone, Ipod, iMac, MacBook y más",
+      "reference": "FARMATODO-114357411",
+      "category": "Hogar Mascota y Otros",
+      "tax_code": "IVA",
+      "cost": 7.45,
+      "image": {
+        "original": "114357411.webp",
+        "thumbnail": "114357411-thumb.webp",
+        "reference": "demo-farmatodo-114357411"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114357411-cable-fifo-para-iphone-tipo-c",
+      "fetched_at": "2026-11-02T18:00:31.173Z"
+    },
+    {
+      "external_id": "116044662",
+      "name": "Esmalte Masglo Evolution Gel Innovadora x 13,5 ml",
+      "description": "Esmalte Masglo Evolution Gel Innovadora x 13,5 ml",
+      "reference": "FARMATODO-116044662",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 6.35,
+      "image": {
+        "original": "116044662.webp",
+        "thumbnail": "116044662-thumb.webp",
+        "reference": "demo-farmatodo-116044662"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116044662-esmalte-masglo-evolution-gel-innovadora-x-135-ml",
+      "fetched_at": "2026-11-02T18:00:31.202Z"
+    },
+    {
+      "external_id": "115090464",
+      "name": "Repelente Off Extra Duración Aerosol x 170 gr",
+      "description": "Repelente aerosol. 8 horas protección, Deet 25%",
+      "reference": "FARMATODO-115090464",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 15.12,
+      "image": {
+        "original": "115090464.webp",
+        "thumbnail": "115090464-thumb.webp",
+        "reference": "demo-farmatodo-115090464"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115090464-repelente-off-extra-duracion-aerosol-x-170-gr",
+      "fetched_at": "2026-11-02T18:00:31.227Z"
+    },
+    {
+      "external_id": "111017574",
+      "name": "Fórmula Magistral Farmatodo Pomada Azufrada 10% x 30 gr",
+      "description": "Fórmula Magistral Farmatodo Pomada Azufrada 10% x 30 gr",
+      "reference": "FARMATODO-111017574",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 2.18,
+      "image": {
+        "original": "111017574.webp",
+        "thumbnail": "111017574-thumb.webp",
+        "reference": "demo-farmatodo-111017574"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111017574-formula-farmatodo-pomada-azufre-30gr",
+      "fetched_at": "2026-11-02T18:00:31.255Z"
+    },
+    {
+      "external_id": "116613642",
+      "name": "Ashwagandha 5% Witanolidos 300mg KSM-66 Farmatodo Frasco x 60 Cápsulas",
+      "description": "Domina el estrés, duerme mejor y recupera tu equilibrio con el poder de la Ashwagandha",
+      "reference": "FARMATODO-116613642",
+      "category": "Salud y Medicamentos",
+      "tax_code": "IVA",
+      "cost": 10.52,
+      "image": {
+        "original": "116613642.webp",
+        "thumbnail": "116613642-thumb.webp",
+        "reference": "demo-farmatodo-116613642"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116613642-ashwagandha-ksm-66-farmatodo-60capsulas",
+      "fetched_at": "2026-11-02T18:00:31.284Z"
+    },
+    {
+      "external_id": "115538652",
+      "name": "Pega Ardell Para Pestañas Postizas Clear Adhesive 0.12 Oz Transparente para pestañas individuales",
+      "description": "Pega Ardell Para Pestañas Postizas Clear Adhesive 0.12 Oz Transparente para pestañas individuales",
+      "reference": "FARMATODO-115538652",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 8.37,
+      "image": {
+        "original": "115538652.webp",
+        "thumbnail": "115538652-thumb.webp",
+        "reference": "demo-farmatodo-115538652"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115538652-pega-ardell-para-pestanas-postizas-clear-adhesive-012-oz",
+      "fetched_at": "2026-11-02T18:00:31.316Z"
+    },
+    {
+      "external_id": "115737555",
+      "name": "Tinte Spray Salerm Azalea Hair Color Marrón x 100 ml",
+      "description": "Cubre canas desde la raíz.",
+      "reference": "FARMATODO-115737555",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 10.44,
+      "image": {
+        "original": "115737555.webp",
+        "thumbnail": "115737555-thumb.webp",
+        "reference": "demo-farmatodo-115737555"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/115737555-tinte-spray-salerm-azalea-hair-color-marron-x-100-ml",
+      "fetched_at": "2026-11-02T18:00:31.351Z"
+    },
+    {
+      "external_id": "114815494",
+      "name": "Leche Parmalat Max 400Gr",
+      "description": "Leche Parmalat Max 400Gr",
+      "reference": "FARMATODO-114815494",
+      "category": "Bebé",
+      "tax_code": "IVA",
+      "cost": 5.96,
+      "image": {
+        "original": "114815494.webp",
+        "thumbnail": "114815494-thumb.webp",
+        "reference": "demo-farmatodo-114815494"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/114815494-leche-parmalat-max-400gr",
+      "fetched_at": "2026-11-02T18:00:31.383Z"
+    },
+    {
+      "external_id": "116200557",
+      "name": "Labial Salome Lipstick Matte 05",
+      "description": "Labial Salome Lipstick Matte 05",
+      "reference": "FARMATODO-116200557",
+      "category": "Belleza",
+      "tax_code": "IVA",
+      "cost": 4.15,
+      "image": {
+        "original": "116200557.webp",
+        "thumbnail": "116200557-thumb.webp",
+        "reference": "demo-farmatodo-116200557"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/116200557-labial-salome-lipstick-matte-05",
+      "fetched_at": "2026-11-02T18:00:31.419Z"
+    },
+    {
+      "external_id": "111179512",
+      "name": "Ampolla Slik Placenta De Ovejo 10 ml x 1 und",
+      "description": "Ampolla Slik Placenta De Ovejo 10 ml x 1 und",
+      "reference": "FARMATODO-111179512",
+      "category": "Cuidado Personal",
+      "tax_code": "IVA",
+      "cost": 2.01,
+      "image": {
+        "original": "111179512.webp",
+        "thumbnail": "111179512-thumb.webp",
+        "reference": "demo-farmatodo-111179512"
+      },
+      "source_url": "https://www.farmatodo.com.ve/producto/111179512-ampolla-slik-placenta-de-ovejo-10-cc",
+      "fetched_at": "2026-11-02T18:00:31.458Z"
+    }
+  ]
+}

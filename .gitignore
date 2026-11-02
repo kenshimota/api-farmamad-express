@@ -9,3 +9,6 @@
 /http/http-client.private.env.json
 
 /uploads
+
+# Local HTTP cache used by scripts/scrape-farmatodo.js
+/scripts/.cache/

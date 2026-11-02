@@ -15,7 +15,10 @@
     "db:create": "sequelize-cli db:create",
     "db:migrate": "sequelize-cli db:migrate",
     "db:rollback": "sequelize-cli db:migrate:undo",
-    "db:seed": "sequelize-cli db:seed:all"
+    "db:seed": "sequelize-cli db:seed:all",
+    "seed:scrape": "node scripts/scrape-farmatodo.js",
+    "seed:demo": "sequelize-cli db:seed --seed seeders/20260910000008-demo-catalog.js",
+    "seed:demo:undo": "node scripts/remove-demo-catalog.js"
   },
   "repository": {
     "type": "git",
