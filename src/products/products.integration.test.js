@@ -187,8 +187,7 @@ describe("POST /products with a real database", () => {
     const missing = await as("post", "/products", token).send({});
     expect(missing.status).toBe(400);
     expect(missing.body).toEqual({
-      message:
-        "name, description, reference, category_id and image_id are required",
+      message: "image or image_id is required",
     });
 
     const invalid = await as("post", "/products", token).send({

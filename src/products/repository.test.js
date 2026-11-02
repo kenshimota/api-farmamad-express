@@ -88,6 +88,57 @@ describe("productRepository", () => {
     expect(Image.findByPk).toHaveBeenCalledWith(999);
   });
 
+  it("creates the image and the product inside one transaction", async () => {
+    const product = { id: 1, ...VALUES, image_id: 7 };
+    const model = { create: jest.fn().mockResolvedValue(product) };
+    const imageModel = { create: jest.fn().mockResolvedValue({ id: 7 }) };
+    const transactionRunner = jest.fn((work) => work("transaction"));
+    const repositoryWithTransaction = createProductRepository(
+      model,
+      {},
+      imageModel,
+      transactionRunner,
+    );
+    const imageValues = { reference: "product-uuid" };
+
+    await expect(
+      repositoryWithTransaction.createWithImage(imageValues, VALUES),
+    ).resolves.toBe(product);
+    expect(transactionRunner).toHaveBeenCalledTimes(1);
+    expect(imageModel.create).toHaveBeenCalledWith(imageValues, {
+      transaction: "transaction",
+    });
+    expect(model.create).toHaveBeenCalledWith(
+      { ...VALUES, image_id: 7 },
+      { transaction: "transaction" },
+    );
+  });
+
+  it("creates a new image and updates the product in one transaction", async () => {
+    const updated = { id: 1, ...VALUES, image_id: 9 };
+    const product = { update: jest.fn().mockResolvedValue(updated) };
+    const imageModel = { create: jest.fn().mockResolvedValue({ id: 9 }) };
+    const transactionRunner = jest.fn((work) => work("transaction"));
+    const repositoryWithTransaction = createProductRepository(
+      {},
+      {},
+      imageModel,
+      transactionRunner,
+    );
+    const imageValues = { reference: "product-uuid" };
+
+    await expect(
+      repositoryWithTransaction.updateWithImage(product, imageValues, VALUES),
+    ).resolves.toBe(updated);
+    expect(imageModel.create).toHaveBeenCalledWith(imageValues, {
+      transaction: "transaction",
+    });
+    expect(product.update).toHaveBeenCalledWith(
+      { ...VALUES, image_id: 9 },
+      { transaction: "transaction" },
+    );
+  });
+
   it("uses injected models instead of the defaults", async () => {
     const model = {
       create: jest.fn().mockResolvedValue({ id: 1 }),

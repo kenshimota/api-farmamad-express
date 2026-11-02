@@ -69,4 +69,60 @@ describe("toPublicUser", () => {
     expect(result).not.toHaveProperty("password");
     expect(result).not.toHaveProperty("roleId");
   });
+
+  it("keeps the customer fields out by default", () => {
+    const result = toPublicUser({ ...user, customer_id: 8 }, "customer");
+
+    expect(result).not.toHaveProperty("customer_id");
+    expect(result).not.toHaveProperty("customer");
+  });
+
+  it("adds null customer fields when includeCustomer is requested", () => {
+    const result = toPublicUser(user, "customer", { includeCustomer: true });
+
+    expect(result.customer_id).toBeNull();
+    expect(result.customer).toBeNull();
+  });
+
+  it("serializes the linked customer with the public customer fields", () => {
+    const linked = {
+      ...user,
+      customer_id: 8,
+      customer: {
+        id: 8,
+        fullName: "Cliente Demo",
+        latitude: "-17.7833000",
+        longitude: "-63.1821000",
+        direction: "Av. Monseñor Rivero 123",
+        email: "cliente@example.com",
+        isRegistered: true,
+        createdAt: "2026-09-01T00:00:00.000Z",
+      },
+    };
+
+    const result = toPublicUser(linked, "customer", { includeCustomer: true });
+
+    expect(result.customer_id).toBe(8);
+    expect(result.customer).toEqual({
+      id: 8,
+      fullName: "Cliente Demo",
+      latitude: -17.7833,
+      longitude: -63.1821,
+      direction: "Av. Monseñor Rivero 123",
+      email: "cliente@example.com",
+    });
+    expect(result.customer).not.toHaveProperty("isRegistered");
+    expect(result.customer).not.toHaveProperty("createdAt");
+  });
+
+  it("derives customer_id from the linked customer when it is missing", () => {
+    const linked = {
+      ...user,
+      customer: { id: 8, fullName: "Cliente Demo" },
+    };
+
+    const result = toPublicUser(linked, "customer", { includeCustomer: true });
+
+    expect(result.customer_id).toBe(8);
+  });
 });

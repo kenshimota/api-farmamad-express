@@ -133,6 +133,8 @@ describe("POST /auth/login with a real database", () => {
       name: "Juan",
       role: "customer",
       isBlocked: false,
+      customer_id: null,
+      customer: null,
     });
     expect(response.body.user).not.toHaveProperty("password");
 
@@ -194,6 +196,8 @@ describe("GET /auth/me with a real database", () => {
       name: "Juan",
       role: "customer",
       isBlocked: false,
+      customer_id: null,
+      customer: null,
     });
     expect(response.body).not.toHaveProperty("password");
   });

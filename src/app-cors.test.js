@@ -156,6 +156,14 @@ jest.mock("./models/method-payment", () => ({
   count: jest.fn(),
   getAttributes: jest.fn(() => ({ method_payment_type_id: {} })),
 }));
+jest.mock("./models/invoice", () => ({
+  belongsTo: jest.fn(),
+  hasMany: jest.fn(),
+}));
+jest.mock("./models/invoice-item", () => ({
+  belongsTo: jest.fn(),
+  hasMany: jest.fn(),
+}));
 
 const request = require("supertest");
 const app = require("./app");

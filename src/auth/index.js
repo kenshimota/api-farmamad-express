@@ -2,6 +2,7 @@ const { Router } = require("express");
 const { Op } = require("sequelize");
 const User = require("../models/user");
 const Role = require("../models/role");
+const Customer = require("../models/customer");
 const { verifyPassword } = require("./password");
 const { loginSchema, formatLoginErrors } = require("./validators");
 const { authenticate } = require("./middleware");
@@ -113,7 +114,10 @@ router.post("/login", async (req, res) => {
         { username: credentials.identifier },
       ],
     },
-    include: { model: Role, as: "role" },
+    include: [
+      { model: Role, as: "role" },
+      { model: Customer, as: "customer" },
+    ],
   });
 
   if (!user || !(await verifyPassword(credentials.password, user.password))) {
@@ -124,7 +128,10 @@ router.post("/login", async (req, res) => {
     return res.status(403).json({ message: "User is blocked" });
   }
 
-  return res.json({ token: signToken(user), user: toPublicUser(user) });
+  return res.json({
+    token: signToken(user),
+    user: toPublicUser(user, undefined, { includeCustomer: true }),
+  });
 });
 
 /**
@@ -158,14 +165,17 @@ router.post("/login", async (req, res) => {
  */
 router.get("/me", authenticate, async (req, res) => {
   const user = await User.findByPk(req.user.sub, {
-    include: { model: Role, as: "role" },
+    include: [
+      { model: Role, as: "role" },
+      { model: Customer, as: "customer" },
+    ],
   });
 
   if (!user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  return res.json(toPublicUser(user));
+  return res.json(toPublicUser(user, undefined, { includeCustomer: true }));
 });
 
 router.use(passwordResetRouter);

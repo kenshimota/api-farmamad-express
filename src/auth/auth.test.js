@@ -6,6 +6,7 @@ jest.mock("../models/user", () => ({
 }));
 
 jest.mock("../models/role", () => ({ findOne: jest.fn() }));
+jest.mock("../models/customer", () => ({}));
 
 jest.mock("../models/password-reset-code", () => ({
   findOne: jest.fn(),
@@ -22,6 +23,7 @@ const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
 const User = require("../models/user");
 const Role = require("../models/role");
+const Customer = require("../models/customer");
 const authRouter = require("./index");
 
 const app = express();
@@ -47,7 +49,13 @@ const publicUser = {
   name: "Juan",
   role: "customer",
   isBlocked: false,
+  customer_id: null,
+  customer: null,
 };
+const authInclude = [
+  { model: Role, as: "role" },
+  { model: Customer, as: "customer" },
+];
 
 const login = (body) => request(app).post("/auth/login").send(body);
 const signToken = (payload, options) => jwt.sign(payload, SECRET, options);
@@ -76,7 +84,7 @@ describe("POST /auth/login", () => {
           { username: "juan@example.com" },
         ],
       },
-      include: { model: Role, as: "role" },
+      include: authInclude,
     });
 
     const decoded = jwt.verify(response.body.token, SECRET, {
@@ -99,7 +107,7 @@ describe("POST /auth/login", () => {
     expect(response.status).toBe(200);
     expect(User.findOne).toHaveBeenCalledWith({
       where: { [Op.or]: [{ email: "juan" }, { username: "juan" }] },
-      include: { model: Role, as: "role" },
+      include: authInclude,
     });
     const decoded = jwt.verify(response.body.token, SECRET, {
       algorithms: ["HS256"],
@@ -218,7 +226,7 @@ describe("GET /auth/me", () => {
     expect(response.body).not.toHaveProperty("password");
     expect(response.body).not.toHaveProperty("roleId");
     expect(User.findByPk).toHaveBeenCalledWith(1, {
-      include: { model: Role, as: "role" },
+      include: authInclude,
     });
   });
 

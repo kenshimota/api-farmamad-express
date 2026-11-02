@@ -1,6 +1,9 @@
 const {
+  IMAGE_ID_EXCLUSIVE_MESSAGE,
+  IMAGE_REQUIRED_MESSAGE,
   MAX_NAME_LENGTH,
   MAX_REFERENCE_LENGTH,
+  normalizeProductBody,
   parseProductId,
   productSchema,
   REQUIRED_PRODUCT_FIELDS,
@@ -53,6 +56,12 @@ describe("productSchema", () => {
         reference: "  IBU-400  ",
       }),
     ).resolves.toEqual(VALID);
+  });
+
+  it("accepts a body without image_id because the image is optional", async () => {
+    const { image_id, ...withoutImage } = VALID;
+
+    await expect(validate(withoutImage)).resolves.toEqual(withoutImage);
   });
 
   it("accepts values with exactly the maximum length", async () => {
@@ -127,14 +136,54 @@ describe("productSchema", () => {
 });
 
 describe("REQUIRED_PRODUCT_FIELDS", () => {
-  it("lists the five required fields in contract order", () => {
+  it("lists the four required text and category fields in contract order", () => {
     expect(REQUIRED_PRODUCT_FIELDS).toEqual([
       "name",
       "description",
       "reference",
       "category_id",
-      "image_id",
     ]);
+  });
+});
+
+describe("image messages", () => {
+  it("exposes the contract wording", () => {
+    expect(IMAGE_REQUIRED_MESSAGE).toBe("image or image_id is required");
+    expect(IMAGE_ID_EXCLUSIVE_MESSAGE).toBe(
+      "image_id cannot be combined with image",
+    );
+  });
+});
+
+describe("normalizeProductBody", () => {
+  it("converts numeric multipart strings into numbers", () => {
+    expect(
+      normalizeProductBody({
+        name: "Ibuprofeno",
+        category_id: "12",
+        image_id: "7",
+      }),
+    ).toEqual({ name: "Ibuprofeno", category_id: 12, image_id: 7 });
+  });
+
+  it("leaves invalid, decimal, negative and empty values for yup to reject", () => {
+    expect(
+      normalizeProductBody({ category_id: "abc", image_id: "1.5" }),
+    ).toEqual({ category_id: "abc", image_id: "1.5" });
+    expect(normalizeProductBody({ category_id: "-1", image_id: "" })).toEqual({
+      category_id: "-1",
+      image_id: "",
+    });
+  });
+
+  it("does not change already numeric values or unknown fields", () => {
+    expect(
+      normalizeProductBody({ category_id: 1, image_id: 2, extra: "keep" }),
+    ).toEqual({ category_id: 1, image_id: 2, extra: "keep" });
+  });
+
+  it("returns an empty object for a missing body", () => {
+    expect(normalizeProductBody()).toEqual({});
   });
 });
 

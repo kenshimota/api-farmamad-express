@@ -18,8 +18,12 @@ La documentación interactiva (Swagger UI) está disponible en
 
 Variables de entorno relevantes: `PORT`, `NODE_ENV`, `LOG_LEVEL`, `NO_COLOR`,
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`,
-`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME`
-y `APP_URL` (ver `.env.example`).
+`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME`,
+`APP_URL`, `UPLOAD_DIR` y `PUBLIC_BASE_URL` (ver `.env.example`).
+
+`UPLOAD_DIR` es la carpeta raíz de los archivos subidos (por defecto
+`<repo>/uploads`) y `PUBLIC_BASE_URL` es la base usada para construir las URLs
+públicas de las imágenes (por defecto `http://localhost:${PORT || 3001}`).
 
 `APP_NAME` es el nombre del producto que aparece en los correos (por defecto
 `Farmamed`) y `APP_URL` es el link de ingreso incluido en el correo de
@@ -214,7 +218,26 @@ Respuesta `200`:
     "email": "admin@superking.com",
     "name": "Administrador",
     "role": "admin",
-    "isBlocked": false
+    "isBlocked": false,
+    "customer_id": null,
+    "customer": null
+  }
+}
+```
+
+Cuando la cuenta está vinculada a un cliente, `customer_id` lleva el id y
+`customer` el resumen público del cliente:
+
+```json
+{
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "cliente@example.com"
   }
 }
 ```
@@ -235,11 +258,38 @@ suspendida. El mensaje nunca se emite para credenciales inválidas.
 ### `GET /auth/me`
 
 Protegido. Devuelve los datos públicos del usuario autenticado, incluido su
-`role`.
+`role` y, cuando existe, el vínculo con su cliente. La asociación `customer` se
+carga en la misma consulta que el usuario, sin consultas N+1.
 
 ```bash
 curl http://localhost:3001/auth/me -H "Authorization: Bearer <jwt>"
 ```
+
+Respuesta `200` con un cliente vinculado:
+
+```json
+{
+  "id": 12,
+  "username": "cliente",
+  "email": "cliente@example.com",
+  "name": "Cliente Demo",
+  "role": "customer",
+  "isBlocked": false,
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "cliente@example.com"
+  }
+}
+```
+
+Sin vínculo, `customer_id` y `customer` son `null`. El resumen solo incluye
+`id`, `fullName`, `email`, `direction`, `latitude` y `longitude`: nunca
+`isRegistered`, `createdAt` ni `updatedAt`.
 
 ### `POST /auth/forgot-password`
 
@@ -361,10 +411,15 @@ seis roles del catálogo: `admin`, `customer`, `seller`, `dispatcher`,
 `manager_warehouse` o `support`.
 
 Campos: `username`, `email`, `password` (mínimo 8 caracteres) y `role`
-(requeridos); `name` (opcional). Si `username` o `email` ya existen responde
-`409`; si el rol no existe en el catálogo (por ejemplo `delivery`,
-`freelance_delivery` o cualquier otro valor) responde `422` con
+(requeridos); `name` y `customer_id` (opcionales). Si `username` o `email` ya
+existen responde `409`; si el rol no existe en el catálogo (por ejemplo
+`delivery`, `freelance_delivery` o cualquier otro valor) responde `422` con
 `{ "errors": { "role": "Invalid role" } }`.
+
+`customer_id` solo se acepta cuando `role` es `customer`: el cliente debe
+existir y no puede estar vinculado a otra cuenta. La cuenta y el vínculo se
+crean en una sola operación, de modo que si el vínculo falla no queda un usuario
+a medias.
 
 Tras crearlo, la API envía el **correo de bienvenida** al `email` del usuario
 (ver _Correo de bienvenida_); un fallo de envío no cambia la respuesta `201`.
@@ -389,6 +444,37 @@ Respuesta `201`:
 }
 ```
 
+Con vínculo a un cliente:
+
+```bash
+curl -X POST http://localhost:3001/users \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"cliente","email":"cliente@example.com","password":"secreto123","name":"Cliente Demo","role":"customer","customer_id":8}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 12,
+  "username": "cliente",
+  "email": "cliente@example.com",
+  "name": "Cliente Demo",
+  "role": "customer",
+  "isBlocked": false,
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "cliente@example.com"
+  }
+}
+```
+
 Errores:
 
 | Código | Cuerpo                                                             |
@@ -397,7 +483,11 @@ Errores:
 | `401`  | `{ "message": "Unauthorized" }`                                    |
 | `403`  | `{ "message": "Forbidden" }`                                       |
 | `409`  | `{ "message": "User already exists" }`                             |
+| `409`  | `{ "message": "Customer is already linked to a user" }`            |
 | `422`  | `{ "errors": { "role": "Invalid role" } }`                         |
+| `422`  | `{ "errors": { "customer_id": "User is not a customer" } }`        |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer" } }`              |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer id" } }`           |
 
 Los usuarios siempre se crean desbloqueados (`isBlocked: false`): el campo no se
 acepta en el cuerpo y un usuario no puede crearse bloqueado.
@@ -482,6 +572,69 @@ Errores:
 | ------ | ------------------------------- |
 | `401`  | `{ "message": "Unauthorized" }` |
 | `403`  | `{ "message": "Forbidden" }`    |
+
+### `PUT /users/:id/customer`
+
+Protegido: requiere un JWT con rol `admin`. Vincula la cuenta indicada con un
+cliente (`{ "customer_id": 8 }`) o elimina el vínculo (`{ "customer_id": null }`).
+El usuario debe tener rol `customer`, el cliente debe existir y solo una cuenta
+puede estar vinculada a cada cliente. Reenviar el mismo `customer_id` es
+idempotente. Responde `202` con los datos públicos del usuario actualizado.
+
+```bash
+curl -X PUT http://localhost:3001/users/12/customer \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id":8}'
+```
+
+Respuesta `202`:
+
+```json
+{
+  "id": 12,
+  "username": "cliente",
+  "email": "cliente@example.com",
+  "name": "Cliente Demo",
+  "role": "customer",
+  "isBlocked": false,
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "cliente@example.com"
+  }
+}
+```
+
+Para desvincular:
+
+```bash
+curl -X PUT http://localhost:3001/users/12/customer \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id":null}'
+```
+
+La respuesta `202` conserva los datos del usuario con `customer_id: null` y
+`customer: null`. El endpoint no cambia el rol de la cuenta ni crea clientes.
+
+Errores:
+
+| Código | Cuerpo                                                       |
+| ------ | ------------------------------------------------------------ |
+| `400`  | `{ "message": "customer_id is required" }`                   |
+| `401`  | `{ "message": "Unauthorized" }`                              |
+| `403`  | `{ "message": "Forbidden" }`                                 |
+| `404`  | `{ "message": "User not found" }`                            |
+| `409`  | `{ "message": "Customer is already linked to a user" }`      |
+| `422`  | `{ "errors": { "id": "Invalid user id" } }`                  |
+| `422`  | `{ "errors": { "customer_id": "User is not a customer" } }`  |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer" } }`        |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer id" } }`     |
 
 ### `PATCH /users/:id/status`
 
@@ -1446,12 +1599,14 @@ Errores:
 
 Los productos viven en la tabla `products` (modelo `Product`). `name` admite
 hasta 150 caracteres, `description` es texto libre obligatorio y `reference` es
-obligatoria, única y de hasta 100 caracteres. `category_id` e `image_id` son
-obligatorios y referencian `categories.id` e `images.id`; ambas FKs usan
+obligatoria, única y de hasta 100 caracteres. `category_id` referencia
+`categories.id` e `image_id` referencia `images.id`; ambas FKs usan
 `ON DELETE RESTRICT`, así que no se puede borrar una categoría o una imagen que
-tenga productos asociados. Los textos se recortan antes de guardarse. Ninguna
-respuesta incluye `createdAt` ni `updatedAt`: solo se exponen `id`, `name`,
-`description`, `reference`, `category_id` e `image_id`.
+tenga productos asociados. Al crear o editar se debe enviar un archivo `image`
+(`multipart/form-data`) o un `image_id` ya registrado, nunca ambos. Con archivo,
+la API crea la fila de `images` automáticamente. Los textos se recortan antes de
+guardarse. Ninguna respuesta incluye `createdAt` ni `updatedAt`: solo se exponen
+`id`, `name`, `description`, `reference`, `category_id` e `image_id`.
 
 Permisos por endpoint:
 
@@ -1469,12 +1624,39 @@ todos los endpoints, y sin token (o con token inválido/expirado) la respuesta e
 
 ### `POST /products`
 
-Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos:
-`name`, `description`, `reference`, `category_id` e `image_id`. Los campos
-desconocidos y de auditoría se descartan. Antes de insertar se verifica que la
-categoría y la imagen existan; si alguna no existe responde `422` con el error
-de su campo. La restricción única de `reference` y las FKs de Postgres actúan
-como salvaguarda ante peticiones concurrentes.
+Protegido: requiere un JWT con rol `admin` o `seller`. Acepta JSON o
+`multipart/form-data`; los campos requeridos son `name`, `description`,
+`reference` y `category_id`, y además debe enviarse `image` (archivo) o
+`image_id` (imagen ya registrada), nunca ambos. Los campos desconocidos y de
+auditoría se descartan. Antes de insertar se verifica que la categoría exista y,
+cuando no hay archivo, que la imagen exista. La restricción única de `reference`
+y las FKs de Postgres actúan como salvaguarda ante peticiones concurrentes.
+
+Con `multipart/form-data` el campo de archivo se llama `image`. Se aceptan
+JPEG, PNG y WebP reales de hasta 5 MB, 6000 × 6000 px y 25 megapíxeles; el tipo
+se detecta con el contenido, no con el `Content-Type` ni con el nombre enviado.
+El original y la miniatura WebP (máximo 320 × 320 px, sin ampliar) se guardan en
+`${UPLOAD_DIR}/products/` con nombres UUID. La fila de `images` se crea dentro de
+una transacción junto con el producto; si la inserción falla se revierte la
+transacción y se eliminan los archivos escritos.
+
+```bash
+curl -X POST http://localhost:3001/products \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -F "name=Ibuprofeno 400 mg" \
+  -F "description=Analgésico y antiinflamatorio" \
+  -F "reference=IBU-400" \
+  -F "category_id=1" \
+  -F "image=@./ibuprofeno.png"
+```
+
+La fila de `images` generada contiene `reference` `product-<uuid>`, `pathname`
+`/uploads/products/<uuid>.<ext>`, `url`
+`${PUBLIC_BASE_URL}/uploads/products/<uuid>.<ext>` y `thumbnail`
+`${PUBLIC_BASE_URL}/uploads/products/<uuid>-thumb.webp`. Los archivos públicos se
+sirven en `/uploads` sin listado de directorios.
+
+El flujo JSON con `image_id` sigue disponible:
 
 ```bash
 curl -X POST http://localhost:3001/products \
@@ -1492,20 +1674,26 @@ Respuesta `201`:
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 7
 }
 ```
 
 Errores:
 
-| Código | Cuerpo                                                                                 |
-| ------ | -------------------------------------------------------------------------------------- |
-| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }` |
-| `401`  | `{ "message": "Unauthorized" }`                                                        |
-| `403`  | `{ "message": "Forbidden" }`                                                           |
-| `409`  | `{ "message": "Product already exists" }`                                              |
-| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                               |
-| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                     |
+| Código | Cuerpo                                                                 |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | `{ "message": "image or image_id is required" }`                       |
+| `400`  | `{ "message": "Unexpected field" }`                                    |
+| `401`  | `{ "message": "Unauthorized" }`                                        |
+| `403`  | `{ "message": "Forbidden" }`                                           |
+| `409`  | `{ "message": "Product already exists" }`                              |
+| `413`  | `{ "message": "Image too large" }`                                     |
+| `422`  | `{ "errors": { "image_id": "image_id cannot be combined with image" } }` |
+| `422`  | `{ "errors": { "image": "Invalid image" } }`                           |
+| `422`  | `{ "errors": { "image": "Invalid image dimensions" } }`                |
+| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`               |
+| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                     |
+| `500`  | `{ "message": "Internal server error" }`                               |
 
 ### `GET /products`
 
@@ -1571,9 +1759,25 @@ Errores:
 
 ### `PUT /products/:id`
 
-Protegido: requiere un JWT con rol `admin` o `seller`. Reemplaza el recurso y
-exige los cinco campos, con las mismas validaciones, el `409` por `reference`
-duplicada y la verificación de `category_id`/`image_id` que la creación.
+Protegido: requiere un JWT con rol `admin` o `seller`. Reemplaza el recurso,
+acepta JSON o `multipart/form-data` y exige `name`, `description`, `reference` y
+`category_id`, más `image` o `image_id`. Con archivo se crea una nueva fila de
+`images` y se reemplaza `products.image_id`; la imagen anterior y sus archivos no
+se eliminan porque pueden estar compartidos. Con `image_id` se conserva el flujo
+JSON. Los campos numéricos enviados como texto en multipart se convierten antes
+de validar.
+
+```bash
+curl -X PUT http://localhost:3001/products/1 \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -F "name=Ibuprofeno 800 mg" \
+  -F "description=Analgésico y antiinflamatorio" \
+  -F "reference=IBU-800" \
+  -F "category_id=1" \
+  -F "image=@./ibuprofeno-800.png"
+```
+
+También sigue funcionando con `image_id`:
 
 ```bash
 curl -X PUT http://localhost:3001/products/1 \
@@ -1591,22 +1795,28 @@ Respuesta `202`:
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-800",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 7
 }
 ```
 
 Errores:
 
-| Código | Cuerpo                                                                                 |
-| ------ | -------------------------------------------------------------------------------------- |
-| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }` |
-| `401`  | `{ "message": "Unauthorized" }`                                                        |
-| `403`  | `{ "message": "Forbidden" }`                                                           |
-| `404`  | `{ "message": "Product not found" }`                                                   |
-| `409`  | `{ "message": "Product already exists" }`                                              |
-| `422`  | `{ "errors": { "id": "Invalid product id" } }`                                         |
-| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                               |
-| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                     |
+| Código | Cuerpo                                                                 |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | `{ "message": "image or image_id is required" }`                       |
+| `400`  | `{ "message": "Unexpected field" }`                                    |
+| `401`  | `{ "message": "Unauthorized" }`                                        |
+| `403`  | `{ "message": "Forbidden" }`                                           |
+| `404`  | `{ "message": "Product not found" }`                                   |
+| `409`  | `{ "message": "Product already exists" }`                              |
+| `413`  | `{ "message": "Image too large" }`                                     |
+| `422`  | `{ "errors": { "id": "Invalid product id" } }`                         |
+| `422`  | `{ "errors": { "image_id": "image_id cannot be combined with image" } }` |
+| `422`  | `{ "errors": { "image": "Invalid image" } }`                           |
+| `422`  | `{ "errors": { "image": "Invalid image dimensions" } }`                |
+| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`               |
+| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                     |
+| `500`  | `{ "message": "Internal server error" }`                               |
 
 ### `DELETE /products/:id`
 
@@ -4247,6 +4457,214 @@ curl -X DELETE http://localhost:3001/method-payments/1 \
 | `422`  | `{ "errors": { "method_payment_type_id": "method_payment_type_id cannot be changed" } }` |
 | `422`  | `{ "errors": { "id": "Invalid payment method id" } }`                                    |
 | `422`  | `{ "errors": { "is_active": "Invalid is_active" } }`                                     |
+
+## Facturas (`invoices`, `invoice_items`) — HU-40
+
+Las facturas son un comprobante **inmutable** de una venta. Esta entrega incluye
+las migraciones reversibles, los modelos, la secuencia de numeración, el
+servicio de emisión transaccional y la consulta de facturas. No existen
+endpoints de escritura: una factura no se puede crear, editar ni eliminar por
+API. La creación ocurre dentro de la transición `generate → invoiced` de
+pedidos (HU-39).
+
+> **Dependencias pendientes en esta rama (#58, #63 y #65).** Las tablas
+> `orders`, `order_items`, `order_statuses`, `order_item_lot_allocations`,
+> `order_history`, `payment_terms` y la columna `users.customer_id` todavía no
+> existen aquí. Por eso `invoices.order_id`, `invoices.payment_term_id` e
+> `invoice_items.order_item_id` quedan **nullable y sin FK** por ahora, y la
+> emisión desde un pedido, la transición de estado, el consumo de reservas y
+> `GET /orders/:id/invoice` quedan bloqueados hasta integrar esas HUs. El
+> servicio `invoiceService.createInvoice` ya implementa la creación atómica de
+> la cabecera y sus líneas para que la transición de pedidos lo invoque.
+
+### Tablas y numeración
+
+- `invoices`: cabecera con `number` único asignado por
+  `invoices_number_seq`, snapshot de `customer_id`, `invoiced_by_user_id`,
+  `currency_id`, `payment_term_id`, importes, `payment_status`
+  (`pending`, `partial`, `paid`), `issued_at`, `due_date` y `notes`.
+- `invoice_items`: líneas inmutables con snapshots de nombre de producto,
+  referencia y nombre del estado, además de `quantity`, `unit_price` y
+  `subtotal`.
+- `invoices_number_seq`: empieza en 1 y avanza de uno en uno. Los huecos por
+  transacciones fallidas son aceptables.
+- `order_id` es único, por lo que un pedido puede tener como máximo una
+  factura. La restricción `(invoice_id, order_item_id)` evita duplicar una
+  línea del pedido.
+- `tax_amount` es siempre `0` en esta HU; `paid_amount` nace en `0` y
+  `payment_status` en `pending`. El historial de pagos se agrega en HU-43.
+- `due_date = issued_at + payment_terms.days`; para contado (`days = 0`) es la
+  fecha de emisión. Mientras no exista `payment_terms`, el servicio usa
+  `payment_term_days` del snapshot o la fecha de emisión.
+
+### Roles
+
+| Acción                                 | `customer`  | `admin` | `seller` | Otros roles |
+| -------------------------------------- | ----------- | ------- | -------- | ----------- |
+| `GET /invoices`                        | No (`403`)  | Sí      | Sí       | `403`       |
+| `GET /invoices/:id`                    | Solo propia | Todas   | Todas    | `403`       |
+| Emitir factura (`generate → invoiced`) | No (`403`)  | Sí      | Sí       | `403`       |
+
+Sin token, o con token inválido/expirado, responde `401 Unauthorized`. Un
+usuario bloqueado responde `403 User is blocked`. Un `customer` sin
+`users.customer_id` responde `403 Customer profile is not linked`; por eso, en
+esta rama, la consulta de un cliente queda bloqueada hasta integrar HU-39.
+
+### `GET /invoices`
+
+Solo `admin` y `seller`. Devuelve resúmenes sin líneas, ordenados por
+`issued_at` descendente y luego `id` descendente. Filtros exactos opcionales:
+
+- `?order_id=<id>`
+- `?customer_id=<id>`
+- `?number=<número>`
+- `?payment_status=pending|partial|paid`
+
+Un filtro inválido responde `422` con `{ "errors": { "<filtro>": "..." } }`.
+
+```bash
+curl "http://localhost:3001/invoices?payment_status=pending&customer_id=8" \
+  -H "Authorization: Bearer <jwt-admin>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "number": 1,
+    "order_id": 10,
+    "order_number": null,
+    "customer_id": 8,
+    "customer": {
+      "id": 8,
+      "fullName": "Cliente Demo",
+      "email": "cliente@example.com",
+      "direction": "Av. Monseñor Rivero 123"
+    },
+    "currency_id": 3,
+    "currency": {
+      "id": 3,
+      "code": "USD_BCV",
+      "name": "Dólar BCV",
+      "symbol": "$"
+    },
+    "payment_term_id": 3,
+    "subtotal": 25,
+    "tax_amount": 0,
+    "total": 25,
+    "paid_amount": 0,
+    "balance_due": 25,
+    "payment_status": "pending",
+    "issued_at": "2026-11-01T12:00:00.000Z",
+    "due_date": "2026-11-16",
+    "notes": "Factura generada desde el pedido 10"
+  }
+]
+```
+
+### `GET /invoices/:id`
+
+`admin`, `seller` o el `customer` dueño. Un id inválido responde `422` con
+`{ "errors": { "id": "Invalid invoice id" } }`. Una factura inexistente o de
+otro cliente responde `404` con `{ "message": "Invoice not found" }` para no
+revelar su existencia. El cliente no recibe `invoiced_by`; `admin` y `seller`
+sí lo reciben.
+
+```bash
+curl http://localhost:3001/invoices/1 \
+  -H "Authorization: Bearer <jwt-admin>"
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 1,
+  "number": 1,
+  "order_id": 10,
+  "order_number": null,
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "email": "cliente@example.com",
+    "direction": "Av. Monseñor Rivero 123"
+  },
+  "invoiced_by": { "id": 1, "username": "admin", "email": "admin@example.com" },
+  "currency_id": 3,
+  "currency": {
+    "id": 3,
+    "code": "USD_BCV",
+    "name": "Dólar BCV",
+    "symbol": "$"
+  },
+  "payment_term_id": 3,
+  "payment_term": {
+    "id": 3,
+    "code": "credit_15",
+    "name": "Crédito 15 días",
+    "days": 15
+  },
+  "subtotal": 25,
+  "tax_amount": 0,
+  "total": 25,
+  "paid_amount": 0,
+  "balance_due": 25,
+  "payment_status": "pending",
+  "issued_at": "2026-11-01T12:00:00.000Z",
+  "due_date": "2026-11-16",
+  "notes": "Factura generada desde el pedido 10",
+  "items": [
+    {
+      "order_item_id": 20,
+      "product_id": 15,
+      "product_name": "Ibuprofeno 400 mg",
+      "product_reference": "IBU-400",
+      "item_state_id": 1,
+      "item_state_name": "sellable",
+      "quantity": 2,
+      "unit_price": 12.5,
+      "subtotal": 25
+    }
+  ]
+}
+```
+
+No se exponen costos, márgenes, lotes, ubicaciones, datos de otros clientes ni
+columnas de auditoría.
+
+### Pendiente por dependencias
+
+- `POST /orders` y la transición `generate → invoiced` (HU-34/#58 y HU-39/#63):
+  bloquean la emisión real desde un pedido, el bloqueo `FOR UPDATE`, la
+  validación de estado, el consumo de reservas, el descuento de `lots.stock` y
+  `stocks.quantity`, y los eventos `status_changed`/`invoice_issued`.
+- `GET /orders/:id/invoice` (HU-39/#63): el servicio
+  `invoiceService.getInvoiceByOrder` ya aplica la regla de propiedad; falta
+  montar la ruta en el módulo de pedidos.
+- `invoices.payment_term_id`, `payment_term` y el cálculo con
+  `payment_terms.days` (HU-41/#65). Mientras tanto el campo es nullable y el
+  servicio acepta `payment_term_days` o `due_date` explícito.
+- Propiedad de facturas para `customer` (HU-39/#63): requiere
+  `users.customer_id`; hoy todos los clientes reciben
+  `403 Customer profile is not linked`.
+- Las FK `invoices.order_id → orders.id` e
+  `invoice_items.order_item_id → order_items.id` deben agregarse en una
+  migración posterior cuando existan esas tablas.
+
+### Errores del módulo
+
+| Código | Situación                           | Cuerpo                                            |
+| ------ | ----------------------------------- | ------------------------------------------------- |
+| `401`  | Token ausente, inválido o expirado  | `{ "message": "Unauthorized" }`                   |
+| `403`  | Rol sin permiso o usuario bloqueado | `{ "message": "Forbidden" }`                      |
+| `403`  | Cliente sin vínculo                 | `{ "message": "Customer profile is not linked" }` |
+| `404`  | Factura inexistente o ajena         | `{ "message": "Invoice not found" }`              |
+| `409`  | El pedido ya tiene factura          | `{ "message": "Order already has an invoice" }`   |
+| `422`  | Id o filtro inválido                | `{ "errors": { ... } }`                           |
+| `500`  | Error interno                       | Manejador global existente                        |
 
 ## Logs y manejo de errores
 

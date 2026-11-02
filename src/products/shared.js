@@ -2,6 +2,10 @@ const {
   ForeignKeyConstraintError,
   UniqueConstraintError,
 } = require("sequelize");
+const {
+  InvalidImageDimensionsError,
+  InvalidImageError,
+} = require("./image-errors");
 const { productRepository } = require("./repository");
 const {
   CATEGORY_ID_MESSAGE,
@@ -40,10 +44,11 @@ async function loadProduct(req, res, next) {
 }
 
 /**
- * Express middleware that verifies the referenced category and image before a
- * create or update reaches the database. It answers 422 with the error of the
- * first missing field; the foreign keys of the migration remain the final
- * safeguard for concurrent deletions.
+ * Express middleware that verifies the referenced category and, when no file
+ * was uploaded, the referenced image before a create or update reaches the
+ * database. It answers 422 with the error of the first missing field; the
+ * foreign keys of the migration remain the final safeguard for concurrent
+ * deletions.
  * @param {import("express").Request} req - Express request.
  * @param {import("express").Response} res - Express response.
  * @param {import("express").NextFunction} next - Next middleware.
@@ -56,6 +61,10 @@ async function ensureReferences(req, res, next) {
     return res
       .status(422)
       .json({ errors: { category_id: CATEGORY_ID_MESSAGE } });
+  }
+
+  if (req.file) {
+    return next();
   }
 
   if (!(await productRepository.imageExists(image_id))) {
@@ -89,16 +98,27 @@ function foreignKeyField(error) {
 }
 
 /**
- * Translates the persistence errors of the create and update handlers into
- * HTTP responses: a duplicated reference answers 409, a foreign key violation
- * answers 422 for the affected field, and any other error is rethrown so the
- * global error handler keeps working.
+ * Translates the image and persistence errors of the create and update
+ * handlers into HTTP responses: invalid image content answers 422, a duplicated
+ * reference answers 409, a foreign key violation answers 422 for the affected
+ * field, and any other error is rethrown so the global error handler keeps
+ * working.
  * @param {unknown} error - Error thrown by Sequelize.
  * @param {import("express").Response} res - Express response.
  * @returns {import("express").Response} The error response.
  * @throws {unknown} The original error when it cannot be classified.
  */
 function handleWriteError(error, res) {
+  if (error instanceof InvalidImageError) {
+    return res.status(422).json({ errors: { image: "Invalid image" } });
+  }
+
+  if (error instanceof InvalidImageDimensionsError) {
+    return res
+      .status(422)
+      .json({ errors: { image: "Invalid image dimensions" } });
+  }
+
   if (error instanceof UniqueConstraintError) {
     return res.status(409).json({ message: "Product already exists" });
   }

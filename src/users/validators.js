@@ -4,6 +4,14 @@ const { PASSWORD_MIN_LENGTH } = require("../auth/validators");
 const REQUIRED_USER_FIELDS = ["username", "email", "password", "role"];
 const POSITIVE_INTEGER_PATTERN = /^\d+$/;
 
+const customerIdField = yup
+  .number()
+  .strict()
+  .typeError("Invalid customer id")
+  .integer("Invalid customer id")
+  .positive("Invalid customer id")
+  .nullable();
+
 const createUserSchema = yup.object({
   username: yup.string().trim().typeError("Invalid username"),
   email: yup.string().trim().typeError("Invalid email").email("Invalid email"),
@@ -13,6 +21,11 @@ const createUserSchema = yup.object({
     .min(PASSWORD_MIN_LENGTH, "Password must be at least 8 characters long"),
   name: yup.string().trim().nullable(),
   role: yup.string().trim().typeError("Invalid role"),
+  customer_id: customerIdField,
+});
+
+const linkCustomerSchema = yup.object({
+  customer_id: customerIdField,
 });
 
 const updateUserStatusSchema = yup.object({
@@ -48,6 +61,7 @@ function parseUserId(value) {
 
 module.exports = {
   createUserSchema,
+  linkCustomerSchema,
   updateUserStatusSchema,
   parseUserId,
   REQUIRED_USER_FIELDS,
