@@ -32,7 +32,9 @@ function buildRepository(overrides = {}) {
       .fn()
       .mockResolvedValue({ id: 5, balance: "100.00", currency: CURRENCY }),
     create: jest.fn().mockResolvedValue({ id: 1 }),
+    createImage: jest.fn().mockResolvedValue({ id: 20 }),
     createWalletTransaction: jest.fn(),
+    createStatusHistory: jest.fn(),
     countAllocations: jest.fn().mockResolvedValue(0),
     update: jest.fn(),
     ...overrides,
@@ -70,127 +72,6 @@ describe("payment service helpers", () => {
   });
 });
 
-describe("payment service create", () => {
-  it("credits the wallet and appends the deposit in one transaction", async () => {
-    const repository = buildRepository();
-    const service = createPaymentService({ repository });
-
-    await expect(
-      service.createPayment(
-        {
-          customer_id: 8,
-          method_payment_id: 3,
-          amount: 100,
-          reference: "TRX",
-          notes: null,
-        },
-        1,
-      ),
-    ).resolves.toEqual({
-      payment: { id: 1 },
-      wallet: { id: 5, balance: "100.00", currency: CURRENCY },
-    });
-
-    expect(repository.incrementBalance).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 5 }),
-      100,
-      { transaction: TRANSACTION },
-    );
-    expect(repository.create).toHaveBeenCalledWith(
-      {
-        customer_id: 8,
-        method_payment_id: 3,
-        currency_id: 2,
-        amount: 100,
-        paid_at: expect.any(Date),
-        reference: "TRX",
-        notes: null,
-        created_by_user_id: 1,
-      },
-      { transaction: TRANSACTION },
-    );
-    expect(repository.createWalletTransaction).toHaveBeenCalledWith(
-      {
-        wallet_id: 5,
-        transaction_type: "deposit",
-        amount: 100,
-        balance_after: 100,
-        payment_id: 1,
-        invoice_id: null,
-        payment_allocation_id: null,
-        description: "TRX",
-        created_by_user_id: 1,
-      },
-      { transaction: TRANSACTION },
-    );
-  });
-
-  it("uses the resulting wallet balance for balance_after", async () => {
-    const repository = buildRepository();
-    repository.findOrCreateWallet.mockResolvedValue({
-      id: 5,
-      balance: "50.00",
-    });
-    repository.incrementBalance.mockResolvedValue({ id: 5, balance: "57.50" });
-    const service = createPaymentService({ repository });
-
-    await service.createPayment(
-      { customer_id: 8, method_payment_id: 3, amount: 7.5 },
-      1,
-    );
-
-    expect(repository.createWalletTransaction).toHaveBeenCalledWith(
-      expect.objectContaining({ balance_after: 57.5 }),
-      { transaction: TRANSACTION },
-    );
-  });
-
-  it("responds 404 for a missing customer or method", async () => {
-    const missingCustomer = buildRepository({
-      findCustomer: jest.fn().mockResolvedValue(null),
-    });
-    await expect(
-      createPaymentService({ repository: missingCustomer }).createPayment(
-        { customer_id: 99, method_payment_id: 3, amount: 1 },
-        1,
-      ),
-    ).rejects.toMatchObject({
-      status: 404,
-      body: { message: "Customer not found" },
-    });
-
-    const missingMethod = buildRepository({
-      findMethod: jest.fn().mockResolvedValue(null),
-    });
-    await expect(
-      createPaymentService({ repository: missingMethod }).createPayment(
-        { customer_id: 8, method_payment_id: 99, amount: 1 },
-        1,
-      ),
-    ).rejects.toMatchObject({
-      status: 404,
-      body: { message: "Payment method not found" },
-    });
-  });
-
-  it("rejects an inactive method with 422", async () => {
-    const repository = buildRepository({
-      findMethod: jest.fn().mockResolvedValue({ ...METHOD, is_active: false }),
-    });
-
-    await expect(
-      createPaymentService({ repository }).createPayment(
-        { customer_id: 8, method_payment_id: 3, amount: 1 },
-        1,
-      ),
-    ).rejects.toMatchObject({
-      status: 422,
-      body: { errors: { method_payment_id: "Invalid payment method" } },
-    });
-    expect(repository.incrementBalance).not.toHaveBeenCalled();
-  });
-});
-
 describe("payment service update", () => {
   const payment = {
     id: 1,
@@ -214,6 +95,38 @@ describe("payment service update", () => {
     expect(repository.findById).toHaveBeenCalledWith(1, {
       transaction: TRANSACTION,
     });
+  });
+
+  it("replaces the reference image keeping the previous row", async () => {
+    const repository = buildRepository();
+    const imageProcessor = jest.fn().mockResolvedValue({
+      image: {
+        reference: "payment-reference-2",
+        pathname: "/uploads/payments/b.png",
+        url: "http://example.test/b.png",
+        thumbnail: "http://example.test/b-thumb.webp",
+      },
+      files: ["/tmp/b.png", "/tmp/b-thumb.webp"],
+    });
+    const service = createPaymentService({
+      repository,
+      imageProcessor,
+    });
+
+    await service.updatePayment(
+      payment,
+      { notes: "nuevo" },
+      {
+        file: { buffer: Buffer.from("image") },
+      },
+    );
+
+    expect(repository.createImage).toHaveBeenCalled();
+    expect(repository.update).toHaveBeenCalledWith(
+      payment,
+      { notes: "nuevo", reference_image_id: 20 },
+      { transaction: TRANSACTION },
+    );
   });
 
   it("accepts identical immutable values and skips the update", async () => {

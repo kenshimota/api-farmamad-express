@@ -137,6 +137,11 @@ jest.mock("./models/method-payment", () => ({
 }));
 jest.mock("./models/customer-wallet", () => ({}));
 jest.mock("./models/payment", () => ({}));
+jest.mock("./models/payment-status", () => ({}));
+jest.mock("./models/payment-status-history", () => ({
+  belongsTo: jest.fn(),
+  hasMany: jest.fn(),
+}));
 jest.mock("./models/wallet-transaction", () => ({}));
 jest.mock("./models/invoice", () => ({
   belongsTo: jest.fn(),

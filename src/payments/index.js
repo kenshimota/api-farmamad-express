@@ -7,10 +7,12 @@ const { createPaymentSchema } = require("./validators");
 const { toPublicPaymentWithWallet } = require("./serializer");
 const { paymentService } = require("./service");
 const { handlePaymentError } = require("./errors");
+const { uploadSingleImage } = require("../products/upload");
 const listRouter = require("./list");
 const detailRouter = require("./detail");
 const updateRouter = require("./update");
 const removeRouter = require("./remove");
+const statusRouter = require("./status");
 
 const router = Router();
 
@@ -18,15 +20,16 @@ const router = Router();
  * @openapi
  * /payments:
  *   post:
- *     summary: Registers a received payment and credits the wallet; admin and seller
+ *     summary: Registers a received payment in pending; admin and seller
  *     description: >
  *       Requires `customer_id`, `method_payment_id` and `amount`. The currency
  *       is copied from `method_payment_types.currency_id`; `currency_id` in the
  *       body is ignored. The customer and the method must exist, and the method,
- *       its type and its currency must be active. Inside one transaction the API
- *       locks or creates the `(customer_id, currency_id)` wallet, increments its
- *       balance, creates the payment and appends the `deposit` movement with
- *       `balance_after`.
+ *       its type and its currency must be active. A new payment is `pending`
+ *       and does not touch the wallet: the balance is credited only when
+ *       `PUT /payments/{id}/status` conciliates it. Accepts JSON or
+ *       multipart/form-data with an optional `image` file (JPEG, PNG or WebP,
+ *       maximum 5 MB) stored under `uploads/payments` with a WebP thumbnail.
  *     tags:
  *       - Payments
  *     security:
@@ -45,9 +48,21 @@ const router = Router();
  *               paid_at: { type: string, format: date-time, example: '2026-11-01T12:00:00.000Z' }
  *               reference: { type: string, maxLength: 100, example: TRX-123 }
  *               notes: { type: string, maxLength: 1000, example: Depósito Binance }
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [customer_id, method_payment_id, amount]
+ *             properties:
+ *               customer_id: { type: integer, minimum: 1, example: 8 }
+ *               method_payment_id: { type: integer, minimum: 1, example: 3 }
+ *               amount: { type: number, example: 100 }
+ *               paid_at: { type: string, format: date-time }
+ *               reference: { type: string, maxLength: 100 }
+ *               notes: { type: string, maxLength: 1000 }
+ *               image: { type: string, format: binary }
  *     responses:
  *       201:
- *         description: Payment created and wallet credited
+ *         description: Pending payment created; the wallet is null
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/PaymentWithWallet' }
@@ -72,8 +87,13 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorMessage' }
+ *       413:
+ *         description: The image exceeds 5 MB
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorMessage' }
  *       422:
- *         description: Invalid amount or unusable payment method
+ *         description: Invalid amount, unusable payment method or invalid image
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ValidationErrors' }
@@ -84,16 +104,18 @@ router.post(
   "/",
   authenticate,
   authorize("admin", "seller"),
+  uploadSingleImage,
   validateRequest({
     schema: createPaymentSchema,
     fields: REQUIRED_PAYMENT_FIELDS,
   }),
   async (req, res) => {
     try {
-      const { payment, wallet } = await paymentService.createPayment(
-        req.validated,
-        req.user.sub,
-      );
+      const { payment, wallet } = req.file
+        ? await paymentService.createPayment(req.validated, req.user.sub, {
+            file: req.file,
+          })
+        : await paymentService.createPayment(req.validated, req.user.sub);
 
       return res.status(201).json(toPublicPaymentWithWallet(payment, wallet));
     } catch (error) {
@@ -103,6 +125,7 @@ router.post(
 );
 
 router.use(listRouter);
+router.use(statusRouter);
 router.use(detailRouter);
 router.use(updateRouter);
 router.use(removeRouter);

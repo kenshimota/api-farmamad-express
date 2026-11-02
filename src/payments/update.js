@@ -8,6 +8,7 @@ const { toPublicPayment } = require("./serializer");
 const { paymentService } = require("./service");
 const { handlePaymentError } = require("./errors");
 const { loadPayment } = require("./shared");
+const { uploadSingleImage } = require("../products/upload");
 
 const router = Router();
 
@@ -19,9 +20,9 @@ const router = Router();
  * @returns {void}
  */
 function requireAnyUpdateField(req, res, next) {
-  const present = PAYMENT_UPDATE_FIELDS.some(
-    (field) => req.validated[field] !== undefined,
-  );
+  const present =
+    Boolean(req.file) ||
+    PAYMENT_UPDATE_FIELDS.some((field) => req.validated[field] !== undefined);
 
   if (!present) {
     return res.status(400).json({ message: "At least one field is required" });
@@ -34,12 +35,15 @@ function requireAnyUpdateField(req, res, next) {
  * @openapi
  * /payments/{id}:
  *   put:
- *     summary: Updates the metadata of a payment; admin and seller
+ *     summary: Updates the metadata and reference image of a payment; admin and seller
  *     description: >
  *       Only `reference`, `notes` and `paid_at` are editable. `customer_id`,
  *       `method_payment_id`, `currency_id` and `amount` are immutable: sending
- *       another value answers 422. A payment with invoice allocations answers
- *       409. A successful update responds 202.
+ *       another value answers 422. Accepts JSON or multipart/form-data; a new
+ *       `image` replaces `reference_image_id` while the previous image row and
+ *       files stay for audit. `image_id` and `reference_image_id` are never
+ *       accepted in the body. A payment with invoice allocations answers 409.
+ *       A successful update responds 202.
  *     tags:
  *       - Payments
  *     security:
@@ -60,6 +64,14 @@ function requireAnyUpdateField(req, res, next) {
  *               reference: { type: string, maxLength: 100 }
  *               notes: { type: string, maxLength: 1000 }
  *               paid_at: { type: string, format: date-time }
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reference: { type: string, maxLength: 100 }
+ *               notes: { type: string, maxLength: 1000 }
+ *               paid_at: { type: string, format: date-time }
+ *               image: { type: string, format: binary }
  *     responses:
  *       202:
  *         description: Updated payment
@@ -93,8 +105,13 @@ function requireAnyUpdateField(req, res, next) {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorMessage' }
  *             example: { message: Payment has allocations }
+ *       413:
+ *         description: The image exceeds 5 MB
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorMessage' }
  *       422:
- *         description: Invalid field or immutable value
+ *         description: Invalid field, immutable value or invalid image
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ValidationErrors' }
@@ -105,15 +122,17 @@ router.put(
   "/:id",
   authenticate,
   authorize("admin", "seller"),
+  uploadSingleImage,
   validateRequest({ schema: updatePaymentSchema, fields: [] }),
   requireAnyUpdateField,
   loadPayment,
   async (req, res) => {
     try {
-      const payment = await paymentService.updatePayment(
-        req.payment,
-        req.validated,
-      );
+      const payment = req.file
+        ? await paymentService.updatePayment(req.payment, req.validated, {
+            file: req.file,
+          })
+        : await paymentService.updatePayment(req.payment, req.validated);
 
       return res.status(202).json(toPublicPayment(payment));
     } catch (error) {

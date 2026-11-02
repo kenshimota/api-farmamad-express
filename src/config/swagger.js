@@ -106,7 +106,7 @@ const swaggerSpec = swaggerJsdoc({
       {
         name: "Payments",
         description:
-          "Received payments that credit a customer wallet and append a deposit movement, including their metadata updates and deletion.",
+          "Received payments: pending creation with an optional reference image, conciliation/rejection with the wallet deposit, append-only status history, metadata updates and deletion.",
       },
       {
         name: "Customer wallets",

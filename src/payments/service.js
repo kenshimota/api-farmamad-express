@@ -1,111 +1,48 @@
 const { paymentRepository } = require("./repository");
 const { IMMUTABLE_PAYMENT_FIELDS } = require("./fields");
 const {
+  processPaymentImage,
+  removePaymentImageFiles,
+} = require("./image-service");
+const { removeFiles } = require("../shared/image-service");
+const {
   customerNotFound,
   depositNotFound,
-  immutableField,
-  invalidMethodPayment,
-  methodPaymentNotFound,
   paymentHasAllocations,
   walletBalanceWouldBeNegative,
 } = require("./errors");
+const {
+  assertImmutable,
+  assertUsableMethod,
+  buildUpdates,
+  isUsableMethod,
+  removeImageBestEffort,
+  toCents,
+} = require("./service-support");
+const { imageAttributes, storeReferenceImage } = require("./reference-image");
 
-/**
- * Rounds a money value to two decimals.
- * @param {unknown} value - Raw decimal value.
- * @returns {number} The rounded number.
- */
-function toCents(value) {
-  return Math.round(Number(value) * 100) / 100;
-}
-
-/**
- * Tells whether a payment method can receive money: the method, its type and
- * the inherited currency must all be active.
- * @param {object|null} method - Method with its type and currency.
- * @returns {boolean} True when the method is usable.
- */
-function isUsableMethod(method) {
-  return Boolean(
-    method &&
-    method.is_active === true &&
-    method.method_payment_type &&
-    method.method_payment_type.is_active === true &&
-    method.method_payment_type.currency &&
-    method.method_payment_type.currency.is_active === true,
-  );
-}
-
-/**
- * Throws the documented 404/422 errors when the method cannot be used.
- * @param {object|null} method - Loaded method.
- * @returns {object} The usable method.
- * @throws {Error} 404 when missing and 422 when inactive or unusable.
- */
-function assertUsableMethod(method) {
-  if (!method) {
-    throw methodPaymentNotFound();
-  }
-
-  if (!isUsableMethod(method)) {
-    throw invalidMethodPayment();
-  }
-
-  return method;
-}
-
-/**
- * Compares an immutable payment field with the persisted value.
- * @param {object} payment - Loaded payment.
- * @param {object} values - Validated update attributes.
- * @param {string} field - Field name.
- * @returns {void}
- * @throws {Error} 422 when the value changes.
- */
-function assertImmutable(payment, values, field) {
-  if (values[field] === undefined) {
-    return;
-  }
-
-  const current = Number(payment[field]);
-  const next = Number(values[field]);
-
-  if (current !== next) {
-    throw immutableField(field);
-  }
-}
-
-/**
- * Builds the metadata updates of a payment, normalizing empty text to null.
- * @param {object} values - Validated update attributes.
- * @returns {object} The attributes to persist.
- */
-function buildUpdates(values) {
-  const updates = {};
-
-  if (values.reference !== undefined) {
-    updates.reference = values.reference;
-  }
-
-  if (values.notes !== undefined) {
-    updates.notes = values.notes;
-  }
-
-  if (values.paid_at !== undefined) {
-    updates.paid_at = values.paid_at;
-  }
-
-  return updates;
-}
+const PENDING_STATUS = "pending";
+const CONCILIATED_STATUS = "conciliated";
 
 /**
  * Creates the payments service. All business rules and the atomic wallet
  * updates live here so routers only parse, authorize and serialize.
  * @param {object} [dependencies] - Injectable dependencies.
  * @param {object} [dependencies.repository] - Payment repository.
+ * @param {function(object): Promise<object>} [dependencies.imageProcessor] -
+ *   Image processor used by create and update.
+ * @param {function(string[]): Promise<void>} [dependencies.fileRemover] -
+ *   Cleanup used when a transaction rolls back.
+ * @param {function(object): Promise<void>} [dependencies.imageCleaner] -
+ *   Best-effort file cleanup used after deleting a payment.
  * @returns {object} The payments service.
  */
-function createPaymentService({ repository = paymentRepository } = {}) {
+function createPaymentService({
+  repository = paymentRepository,
+  imageProcessor = processPaymentImage,
+  fileRemover = removeFiles,
+  imageCleaner = removePaymentImageFiles,
+} = {}) {
   return {
     /**
      * Lists payments with the optional filters.
@@ -117,127 +54,170 @@ function createPaymentService({ repository = paymentRepository } = {}) {
     },
 
     /**
-     * Loads one payment with its method and currency.
+     * Loads one payment with its method, currency, status, image and history.
      * @param {number} id - Payment id.
      * @returns {Promise<object|null>} The payment or null.
      */
     getPayment(id) {
-      return repository.findById(id);
+      return repository.findById(id, {}, { includeHistory: true });
     },
 
     /**
-     * Registers a received payment and credits the customer wallet inside one
-     * transaction. The wallet is created on the first deposit.
+     * Lists the status history of one payment.
+     * @param {number} id - Payment id.
+     * @returns {Promise<object[]>} The events with their actor.
+     */
+    listHistory(id) {
+      return repository.listStatusHistory(id);
+    },
+
+    /**
+     * Registers a payment in `pending` without touching the wallet. An optional
+     * image is validated and stored atomically; if anything fails the files are
+     * removed and no payment, image or history row remains.
      * @param {object} values - Validated attributes.
      * @param {number} userId - Authenticated user id.
-     * @returns {Promise<{ payment: object, wallet: object }>} The created
-     *   payment and the credited wallet.
+     * @param {object} [options] - Extra request data.
+     * @param {object|null} [options.file] - Multer in-memory image.
+     * @returns {Promise<{ payment: object, wallet: null }>} The pending payment.
      * @throws {Error} 404/422 for an invalid customer or method.
      */
-    async createPayment(values, userId) {
+    async createPayment(values, userId, { file = null } = {}) {
       return repository.transaction(async (transaction) => {
         const options = { transaction };
-        const customer = await repository.findCustomer(values.customer_id, {
-          transaction,
-        });
+        let files = [];
 
-        if (!customer) {
-          throw customerNotFound();
-        }
-
-        const method = assertUsableMethod(
-          await repository.findMethod(values.method_payment_id, {
+        try {
+          const customer = await repository.findCustomer(values.customer_id, {
             transaction,
-          }),
-        );
-        const currencyId = method.method_payment_type.currency_id;
-        const wallet = await repository.findOrCreateWallet(
-          customer.id,
-          currencyId,
-          options,
-        );
-        const amount = toCents(values.amount);
+          });
 
-        const creditedWallet = await repository.incrementBalance(
-          wallet,
-          amount,
-          options,
-        );
-        const balanceAfter = toCents(creditedWallet.balance);
-        const payment = await repository.create(
-          {
-            customer_id: customer.id,
-            method_payment_id: method.id,
-            currency_id: currencyId,
-            amount,
-            paid_at: values.paid_at ?? new Date(),
-            reference: values.reference ?? null,
-            notes: values.notes ?? null,
-            created_by_user_id: userId,
-          },
-          options,
-        );
+          if (!customer) {
+            throw customerNotFound();
+          }
 
-        await repository.createWalletTransaction(
-          {
-            wallet_id: wallet.id,
-            transaction_type: "deposit",
-            amount,
-            balance_after: balanceAfter,
-            payment_id: payment.id,
-            invoice_id: null,
-            payment_allocation_id: null,
-            description: values.notes ?? values.reference ?? null,
-            created_by_user_id: userId,
-          },
-          options,
-        );
+          const method = assertUsableMethod(
+            await repository.findMethod(values.method_payment_id, {
+              transaction,
+            }),
+          );
+          let referenceImageId = null;
 
-        return { payment, wallet: creditedWallet };
+          if (file) {
+            const stored = await storeReferenceImage(
+              repository,
+              imageProcessor,
+              file,
+              options,
+            );
+            files = stored.files;
+            referenceImageId = stored.referenceImageId;
+          }
+
+          const payment = await repository.create(
+            {
+              customer_id: customer.id,
+              method_payment_id: method.id,
+              currency_id: method.method_payment_type.currency_id,
+              amount: toCents(values.amount),
+              paid_at: values.paid_at ?? new Date(),
+              reference: values.reference ?? null,
+              notes: values.notes ?? null,
+              status: PENDING_STATUS,
+              rejection_reason: null,
+              reference_image_id: referenceImageId,
+              created_by_user_id: userId,
+            },
+            options,
+          );
+
+          await repository.createStatusHistory(
+            {
+              payment_id: payment.id,
+              from_status: null,
+              to_status: PENDING_STATUS,
+              reason: null,
+              actor_user_id: userId,
+              metadata: null,
+            },
+            options,
+          );
+
+          return { payment, wallet: null };
+        } catch (error) {
+          await fileRemover(files);
+          throw error;
+        }
       });
     },
 
     /**
-     * Updates the metadata of a payment. Amount, customer, method and currency
-     * are immutable and a payment with invoice allocations cannot be edited.
+     * Updates the metadata of a payment and optionally replaces its reference
+     * image. Amount, customer, method and currency are immutable and a payment
+     * with invoice allocations cannot be edited. The previous image row and its
+     * files are kept for audit.
      * @param {object} payment - Loaded payment.
      * @param {object} values - Validated update attributes.
+     * @param {object} [options] - Extra request data.
+     * @param {object|null} [options.file] - Multer in-memory image.
      * @returns {Promise<object>} The updated payment.
      * @throws {Error} 409/422 when the payment has allocations or an immutable
      *   field changes.
      */
-    async updatePayment(payment, values) {
+    async updatePayment(payment, values, { file = null } = {}) {
       return repository.transaction(async (transaction) => {
-        if (
-          (await repository.countAllocations(payment.id, { transaction })) > 0
-        ) {
-          throw paymentHasAllocations();
+        const options = { transaction };
+        let files = [];
+
+        try {
+          if (
+            (await repository.countAllocations(payment.id, { transaction })) > 0
+          ) {
+            throw paymentHasAllocations();
+          }
+
+          for (const field of IMMUTABLE_PAYMENT_FIELDS) {
+            assertImmutable(payment, values, field);
+          }
+
+          const updates = buildUpdates(values);
+
+          if (file) {
+            const stored = await storeReferenceImage(
+              repository,
+              imageProcessor,
+              file,
+              options,
+            );
+            files = stored.files;
+            updates.reference_image_id = stored.referenceImageId;
+          }
+
+          if (Object.keys(updates).length > 0) {
+            await repository.update(payment, updates, options);
+          }
+
+          return repository.findById(payment.id, options);
+        } catch (error) {
+          await fileRemover(files);
+          throw error;
         }
-
-        for (const field of IMMUTABLE_PAYMENT_FIELDS) {
-          assertImmutable(payment, values, field);
-        }
-
-        const updates = buildUpdates(values);
-
-        if (Object.keys(updates).length > 0) {
-          await repository.update(payment, updates, { transaction });
-        }
-
-        return repository.findById(payment.id, { transaction });
       });
     },
 
     /**
-     * Deletes a payment only when it has no invoice allocations, reverting the
-     * deposit and refusing to leave a negative wallet balance.
+     * Deletes a payment only when it has no invoice allocations. A conciliated
+     * payment reverts its deposit and refuses to leave a negative balance; a
+     * pending or rejected payment never touches the wallet. Unreferenced
+     * reference images are removed after the transaction on a best-effort
+     * basis.
      * @param {object} payment - Loaded payment.
      * @returns {Promise<void>} Resolves once the payment is deleted.
      * @throws {Error} 409 when the payment has allocations, has no deposit or
      *   would leave a negative balance.
      */
     async deletePayment(payment) {
-      return repository.transaction(async (transaction) => {
+      const image = await repository.transaction(async (transaction) => {
         const options = { transaction };
 
         if (
@@ -246,27 +226,42 @@ function createPaymentService({ repository = paymentRepository } = {}) {
           throw paymentHasAllocations();
         }
 
-        const deposit = await repository.findDeposit(payment.id, options);
+        if (payment.status === CONCILIATED_STATUS) {
+          const deposit = await repository.findDeposit(payment.id, options);
 
-        if (!deposit) {
-          throw depositNotFound();
+          if (!deposit) {
+            throw depositNotFound();
+          }
+
+          const wallet = await repository.findWalletForUpdate(
+            deposit.wallet_id,
+            options,
+          );
+          const amount = toCents(payment.amount);
+          const balanceAfter = toCents(Number(wallet.balance) - amount);
+
+          if (balanceAfter < 0) {
+            throw walletBalanceWouldBeNegative();
+          }
+
+          await repository.incrementBalance(wallet, -amount, options);
+          await repository.removeWalletTransaction(deposit, options);
         }
 
-        const wallet = await repository.findWalletForUpdate(
-          deposit.wallet_id,
-          options,
-        );
-        const amount = toCents(payment.amount);
-        const balanceAfter = toCents(Number(wallet.balance) - amount);
+        const referenceImage = payment.reference_image_id
+          ? await repository.findImage(payment.reference_image_id, {
+              transaction,
+            })
+          : null;
 
-        if (balanceAfter < 0) {
-          throw walletBalanceWouldBeNegative();
-        }
-
-        await repository.incrementBalance(wallet, -amount, options);
-        await repository.removeWalletTransaction(deposit, options);
         await repository.remove(payment, options);
+
+        return referenceImage;
       });
+
+      if (image) {
+        await removeImageBestEffort(repository, image, imageCleaner);
+      }
     },
   };
 }
@@ -274,7 +269,10 @@ function createPaymentService({ repository = paymentRepository } = {}) {
 const paymentService = createPaymentService();
 
 module.exports = {
+  CONCILIATED_STATUS,
+  PENDING_STATUS,
   createPaymentService,
+  imageAttributes,
   isUsableMethod,
   paymentService,
   toCents,

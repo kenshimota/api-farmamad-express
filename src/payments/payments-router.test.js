@@ -55,6 +55,35 @@ describe("GET /payments", () => {
   it("resolves an empty query to empty filters", () => {
     expect(resolveListQuery({})).toEqual({ filters: {} });
   });
+
+  it("forwards the optional status filter", async () => {
+    const response = await send(
+      "get",
+      "/payments?status=conciliated",
+      undefined,
+      tokenFor("seller"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(paymentService.listPayments).toHaveBeenCalledWith({
+      status: "conciliated",
+    });
+  });
+
+  it.each(["pending", "conciliated", "rejected"])(
+    "accepts the status filter %s",
+    (status) => {
+      expect(resolveListQuery({ status })).toEqual({
+        filters: { status },
+      });
+    },
+  );
+
+  it("responds 422 for an unknown status filter", () => {
+    expect(resolveListQuery({ status: "other" })).toEqual({
+      errors: { status: "Invalid status" },
+    });
+  });
 });
 
 describe("GET /payments/:id", () => {
