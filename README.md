@@ -4864,6 +4864,152 @@ genera movimientos `deposit` y detecta un pago con asignaciones si ya existe un
 movimiento `invoice_payment` o uno con `payment_allocation_id`.
 
 
+## Tienda (catálogo del cliente) — HU-33
+
+El módulo `store` expone el catálogo que consume un cliente autenticado y la
+venta asistida de un vendedor. El precio se resuelve con la lista asignada al
+cliente en `customers.price_list_id` usando la fórmula de `src/pricing/`; nunca
+se usa `products.sale_price` ni `products.currency_id`. La disponibilidad se
+calcula desde `lots` como `SUM(lots.stock - lots.reserved)`; `stocks.quantity`
+solo se usa como control (`stocks.quantity = SUM(lots.stock)` en el listado).
+
+Permisos:
+
+| Rol                 | `GET /store/products` | `GET /store/products/:id` |
+| ------------------- | --------------------- | ------------------------- |
+| `customer`          | ✅ Solo su lista      | ✅ Solo su lista          |
+| `admin`             | ✅ Con `customer_id`  | ✅ Con `customer_id`      |
+| `seller`            | ✅ Con `customer_id` asignado | ✅ Con `customer_id` asignado |
+| `dispatcher`        | ❌ `403`              | ❌ `403`                  |
+| `manager_warehouse` | ❌ `403`              | ❌ `403`                  |
+| `support`           | ❌ `403`              | ❌ `403`                  |
+
+Sin token o con token inválido/expirado: `401`. Usuario bloqueado: `403` con
+`{ "message": "User is blocked" }`.
+
+### `GET /store/products`
+
+Protegido para `customer`, `admin` y `seller`. Un `customer` consulta
+automáticamente su propio perfil; un `admin` o `seller` debe enviar
+`customer_id`, y el `seller` solo puede consultar clientes asignados en
+`customer_sellers`. El filtro opcional `item_state_id` limita el resultado a un
+estado vendible; sin filtro se devuelven todos los estados con
+`is_sellable = true`.
+
+```bash
+curl "http://localhost:3001/store/products?item_state_id=1" \
+  -H "Authorization: Bearer <jwt-customer>"
+```
+
+Venta asistida:
+
+```bash
+curl "http://localhost:3001/store/products?customer_id=8&item_state_id=1" \
+  -H "Authorization: Bearer <jwt-seller>"
+```
+
+Respuesta `200` (una entrada por producto + estado vendible con precio
+resoluble, moneda activa y existencia):
+
+```json
+[
+  {
+    "id": 15,
+    "name": "Ibuprofeno 400 mg",
+    "description": "Analgésico y antiinflamatorio",
+    "reference": "IBU-400",
+    "category_id": 2,
+    "image_id": 7,
+    "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
+    "price": 14.29,
+    "currency_id": 3,
+    "currency": {
+      "id": 3,
+      "code": "USD_BCV",
+      "name": "Dólar BCV",
+      "symbol": "$"
+    },
+    "available": true,
+    "category": { "id": 2, "name": "Analgésicos" },
+    "image": {
+      "id": 7,
+      "url": "https://cdn.example.com/ibuprofeno.png",
+      "pathname": null,
+      "reference": "ibuprofeno-400",
+      "thumbnail": "https://cdn.example.com/ibuprofeno-thumb.png"
+    }
+  }
+]
+```
+
+El listado se ordena por `name` ascendente, `id` ascendente y `item_state.id`
+ascendente. No incluye variantes agotadas, sin costo para el estado, sin precio
+resoluble, con moneda inactiva ni con existencias inconsistentes. Un catálogo
+sin variantes responde `200` con `[]`. No expone cantidades, costos, lotes,
+bodegas, estantes, secciones, márgenes ni `sale_price`.
+
+### `GET /store/products/:id`
+
+Aplica las mismas reglas de cliente y lista de precios. Devuelve los campos del
+producto y un arreglo `variants` con cada estado vendible que tenga costo y
+precio resoluble. A diferencia del listado, una variante con precio pero sin
+existencia se devuelve con `"available": false`. El parámetro opcional
+`item_state_id` limita `variants` a ese estado.
+
+```bash
+curl "http://localhost:3001/store/products/15?item_state_id=1" \
+  -H "Authorization: Bearer <jwt-customer>"
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 15,
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 2,
+  "image_id": 7,
+  "category": { "id": 2, "name": "Analgésicos" },
+  "image": {
+    "id": 7,
+    "url": "https://cdn.example.com/ibuprofeno.png",
+    "pathname": null,
+    "reference": "ibuprofeno-400",
+    "thumbnail": "https://cdn.example.com/ibuprofeno-thumb.png"
+  },
+  "variants": [
+    {
+      "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
+      "price": 14.29,
+      "currency_id": 3,
+      "currency": {
+        "id": 3,
+        "code": "USD_BCV",
+        "name": "Dólar BCV",
+        "symbol": "$"
+      },
+      "available": true
+    }
+  ]
+}
+```
+
+Errores del catálogo:
+
+| Código | Situación | Cuerpo esperado |
+| ------ | --------- | --------------- |
+| `400`  | `admin` o `seller` sin `customer_id` | `{ "message": "customer_id is required" }` |
+| `401`  | Token ausente, inválido o expirado | `{ "message": "Unauthorized" }` |
+| `403`  | Rol sin permiso o usuario bloqueado | `{ "message": "Forbidden" }` / `{ "message": "User is blocked" }` |
+| `403`  | `customer` sin vínculo o sin lista | `{ "message": "Customer profile is not linked" }` / `{ "message": "Customer price list is not assigned" }` |
+| `403`  | `seller` no asignado al cliente | `{ "message": "Customer is not assigned to this seller" }` |
+| `404`  | Producto inexistente o sin variante con precio | `{ "message": "Product not found" }` |
+| `422`  | Id de producto inválido | `{ "errors": { "id": "Invalid product id" } }` |
+| `422`  | `item_state_id` inválido o no vendible | `{ "errors": { "item_state_id": "Invalid item state id" } }` / `{ "errors": { "item_state_id": "Invalid item state" } }` |
+| `503`  | Sin moneda activa por defecto | `{ "message": "Default transaction currency is not configured" }` |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
