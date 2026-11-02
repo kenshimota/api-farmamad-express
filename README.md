@@ -4666,6 +4666,204 @@ columnas de auditoría.
 | `422`  | Id o filtro inválido                | `{ "errors": { ... } }`                           |
 | `500`  | Error interno                       | Manejador global existente                        |
 
+## Billetera del cliente y pagos recibidos (HU-42)
+
+Registro de los depósitos que recibe la empresa y del saldo disponible de cada
+cliente (HU-42). Reutiliza `customers`, `currencies`, `method_payments`,
+`method_payment_types` y `users`; no crea métodos de pago ni monedas nuevas.
+
+Tablas nuevas, todas con migración reversible:
+
+| Tabla                 | Contenido                                                                   |
+| --------------------- | --------------------------------------------------------------------------- |
+| `customer_wallets`    | Una billetera por `(customer_id, currency_id)` con `balance >= 0`.          |
+| `payments`            | Pagos recibidos con cliente, método, moneda derivada y autor.               |
+| `wallet_transactions` | Movimientos append-only (`deposit`, `invoice_payment`) con `balance_after`. |
+
+Además, `users.customer_id` (nullable, FK a `customers.id`) vincula una cuenta
+con su perfil de cliente. Un usuario con rol `customer` sin ese vínculo recibe
+`403 { "message": "Customer profile is not linked" }` en los endpoints de
+billetera y pagos.
+
+Reglas de negocio:
+
+- La primera vez que se registra un pago se crea automáticamente la billetera
+  del cliente y la moneda del método. Una segunda recarga reutiliza la misma
+  billetera.
+- `currency_id` no se acepta en el cuerpo: se copia de
+  `method_payment_types.currency_id`. El método, su tipo y su moneda deben
+  existir y estar activos.
+- `amount` debe ser numérico, mayor que `0` y tener como máximo dos decimales.
+  `reference` y `notes` se recortan y un texto vacío se guarda como `null`.
+- El depósito es atómico: se bloquea o crea la billetera, se incrementa el
+  saldo, se crea el pago y se agrega el movimiento `deposit` con
+  `balance_after` dentro de la misma transacción. Dos depósitos simultáneos no
+  pierden movimientos.
+- `wallet_transactions` es append-only: la API no permite editar ni borrar
+  movimientos. `payments` solo permite editar `reference`, `notes` y `paid_at`;
+  `customer_id`, `method_payment_id`, `currency_id` y `amount` son inmutables.
+- Un pago con asignaciones a facturas responde `409 Payment has allocations` al
+  editarse o borrarse. El borrado revierte el depósito y nunca deja saldo
+  negativo.
+
+### Roles
+
+| Acción                                   | `customer`   | `admin` | `seller` | Otros roles |
+| ---------------------------------------- | ------------ | ------- | -------- | ----------- |
+| `POST /payments`                         | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
+| `GET /payments`                          | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
+| `GET /payments/:id`                      | Solo propio  | ✅      | ✅       | ❌ `403`    |
+| `PUT /payments/:id`                      | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
+| `DELETE /payments/:id`                   | ❌ `403`     | ✅      | ❌ `403` | ❌ `403`    |
+| `GET /customer-wallets`                  | Solo propias | ✅      | ✅       | ❌ `403`    |
+| `GET /customer-wallets/:id`              | Solo propia  | ✅      | ✅       | ❌ `403`    |
+| `GET /customer-wallets/:id/transactions` | Solo propia  | ✅      | ✅       | ❌ `403`    |
+
+`admin` y `seller` deben enviar `?customer_id=` al listar billeteras; sin él la
+respuesta es `400 { "message": "customer_id is required" }`. Un `customer`
+puede omitirlo y siempre se resuelve su propio perfil. Una billetera o un pago
+de otro cliente responde `404` para ocultar su existencia.
+
+### `POST /payments`
+
+Solo `admin` y `seller`. Requiere `customer_id`, `method_payment_id` y
+`amount`; `paid_at` (por defecto ahora), `reference` y `notes` son opcionales.
+
+```bash
+curl -X POST http://localhost:3001/payments \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id":8,"method_payment_id":3,"amount":100,"reference":"TRX-123","notes":"Depósito Binance"}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "customer_id": 8,
+  "method_payment_id": 3,
+  "method_payment": { "id": 3, "label": "Binance Farmamad" },
+  "currency_id": 2,
+  "currency": { "id": 2, "code": "USDT", "name": "Tether", "symbol": "$" },
+  "amount": 100,
+  "paid_at": "2026-11-01T12:00:00.000Z",
+  "reference": "TRX-123",
+  "notes": "Depósito Binance",
+  "wallet": { "id": 5, "customer_id": 8, "currency_id": 2, "balance": 100 }
+}
+```
+
+### `GET /payments` y `GET /payments/:id`
+
+La lista (solo `admin` y `seller`) ordena por `paid_at` descendente e `id`
+descendente. Filtros exactos opcionales: `?customer_id=`,
+`?method_payment_id=`, `?currency_id=`, `?paid_from=YYYY-MM-DD` y
+`?paid_to=YYYY-MM-DD`. El detalle también lo puede consultar el `customer`
+dueño.
+
+```bash
+curl "http://localhost:3001/payments?customer_id=8&paid_from=2026-11-01" \
+  -H "Authorization: Bearer <jwt-seller>"
+```
+
+### `PUT /payments/:id` y `DELETE /payments/:id`
+
+`PUT` (solo `admin` y `seller`) actualiza `reference`, `notes` y `paid_at`, y
+responde `202`. Enviar otro `customer_id`, `method_payment_id`, `currency_id` o
+`amount` responde `422`. `DELETE` (solo `admin`) responde `204` y revierte el
+saldo. Ambos responden `409` si el pago ya tiene asignaciones.
+
+```bash
+curl -X PUT http://localhost:3001/payments/1 \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"reference":"TRX-456","notes":"Conciliado"}'
+```
+
+### `GET /customer-wallets`
+
+Devuelve todas las billeteras del cliente con su moneda y saldo.
+
+```bash
+curl "http://localhost:3001/customer-wallets?customer_id=8" \
+  -H "Authorization: Bearer <jwt-seller>"
+```
+
+```json
+[
+  {
+    "id": 5,
+    "customer_id": 8,
+    "currency_id": 2,
+    "currency": { "id": 2, "code": "USDT", "name": "Tether", "symbol": "$" },
+    "balance": 100
+  }
+]
+```
+
+### `GET /customer-wallets/:id` y `GET /customer-wallets/:id/transactions`
+
+El detalle devuelve la billetera. El historial devuelve los movimientos por
+`createdAt` e `id` descendente con `transaction_type`, `amount`,
+`balance_after`, `currency`, `payment_id`, `invoice_id`,
+`payment_allocation_id`, `description` y `created_at`. Para `admin` y `seller`
+incluye `created_by` (`{ id, username, email }`); el cliente no lo ve.
+
+```bash
+curl "http://localhost:3001/customer-wallets/5/transactions" \
+  -H "Authorization: Bearer <jwt-customer>"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "transaction_type": "deposit",
+    "amount": 100,
+    "balance_after": 100,
+    "currency": { "id": 2, "code": "USDT", "name": "Tether", "symbol": "$" },
+    "payment_id": 1,
+    "invoice_id": null,
+    "payment_allocation_id": null,
+    "description": "Depósito Binance",
+    "created_at": "2026-11-01T12:00:00.000Z"
+  }
+]
+```
+
+### Errores del módulo
+
+| Código | Cuerpo esperado                                                                    |
+| ------ | ---------------------------------------------------------------------------------- |
+| `400`  | `{ "message": "customer_id, method_payment_id and amount are required" }`          |
+| `400`  | `{ "message": "customer_id is required" }`                                         |
+| `400`  | `{ "message": "At least one field is required" }`                                  |
+| `401`  | `{ "message": "Unauthorized" }`                                                    |
+| `403`  | `{ "message": "Forbidden" }`                                                       |
+| `403`  | `{ "message": "Customer profile is not linked" }`                                  |
+| `404`  | `{ "message": "Customer not found" }`                                              |
+| `404`  | `{ "message": "Payment method not found" }`                                        |
+| `404`  | `{ "message": "Payment not found" }`                                               |
+| `404`  | `{ "message": "Wallet not found" }`                                                |
+| `409`  | `{ "message": "Payment has allocations" }`                                         |
+| `409`  | `{ "message": "Wallet balance would become negative" }`                            |
+| `422`  | `{ "errors": { "amount": "amount must be a positive number with two decimals" } }` |
+| `422`  | `{ "errors": { "method_payment_id": "Invalid payment method" } }`                  |
+| `422`  | `{ "errors": { "<campo>": "<campo> cannot be changed" } }`                         |
+| `422`  | `{ "errors": { "id": "Invalid payment id" } }`                                     |
+| `422`  | `{ "errors": { "id": "Invalid wallet id" } }`                                      |
+| `500`  | Error interno manejado por el handler global                                       |
+
+### Pendiente por dependencia de facturación (HU-43)
+
+`wallet_transactions.invoice_id` ya tiene FK `RESTRICT` a `invoices.id`
+(HU-40). `payment_allocation_id` sigue nullable y **sin foreign key** porque la
+tabla `payment_allocations` se agrega en HU-43. Mientras tanto, la API solo
+genera movimientos `deposit` y detecta un pago con asignaciones si ya existe un
+movimiento `invoice_payment` o uno con `payment_allocation_id`.
+
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,

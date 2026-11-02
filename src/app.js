@@ -31,6 +31,8 @@ const customerSellersRouter = require("./customer-sellers");
 const taxesRouter = require("./taxes");
 const methodPaymentTypesRouter = require("./method-payment-types");
 const methodPaymentsRouter = require("./method-payments");
+const paymentsRouter = require("./payments");
+const walletsRouter = require("./wallets");
 const priceListsRouter = require("./price-lists");
 const invoicesRouter = require("./invoices");
 
@@ -77,6 +79,8 @@ app.use("/customer-sellers", customerSellersRouter);
 app.use("/taxes", taxesRouter);
 app.use("/method-payment-types", methodPaymentTypesRouter);
 app.use("/method-payments", methodPaymentsRouter);
+app.use("/payments", paymentsRouter);
+app.use("/customer-wallets", walletsRouter);
 app.use("/price-lists", priceListsRouter);
 app.use("/invoices", invoicesRouter);
 

@@ -101,19 +101,27 @@ function as(method, path, token) {
 async function resetDatabase() {
   await Product.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await Category.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await Image.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await User.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
 }
 

@@ -123,7 +123,9 @@ async function resetDatabase() {
   ]) {
     await model.destroy({
       where: {},
-      truncate: { cascade: true, restartIdentity: true },
+      truncate: true,
+      cascade: true,
+      restartIdentity: true,
     });
   }
 }

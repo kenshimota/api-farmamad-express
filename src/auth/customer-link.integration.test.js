@@ -75,12 +75,14 @@ beforeEach(async () => {
   assertTestDatabase(sequelize.config.database);
   await User.destroy({
     where: {},
-    truncate: { cascade: true },
+    truncate: true,
+    cascade: true,
     restartIdentity: true,
   });
   await Customer.destroy({
     where: {},
-    truncate: { cascade: true },
+    truncate: true,
+    cascade: true,
     restartIdentity: true,
   });
 });

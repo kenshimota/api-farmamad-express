@@ -35,6 +35,10 @@ const User = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    customer_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     isBlocked: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
