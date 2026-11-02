@@ -93,6 +93,8 @@ describe("GET /customers", () => {
           longitude: -63.1821,
           direction: "Av. Monseñor Rivero 123",
           email: "juan@example.com",
+          price_list_id: null,
+          price_list: null,
         },
         {
           id: 2,
@@ -101,13 +103,18 @@ describe("GET /customers", () => {
           longitude: -63.19,
           direction: "Calle 2 #45",
           email: "ana@example.com",
+          price_list_id: null,
+          price_list: null,
         },
       ]);
       expect(response.body[0]).not.toHaveProperty("isRegistered");
       expect(response.body[0]).not.toHaveProperty("createdAt");
-      expect(Customer.findAll).toHaveBeenCalledWith({
-        order: [["id", "ASC"]],
-      });
+      expect(Customer.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          order: [["id", "ASC"]],
+          include: expect.any(Array),
+        }),
+      );
     },
   );
 
@@ -166,8 +173,13 @@ describe("GET /customers/:id", () => {
         longitude: -63.1821,
         direction: "Av. Monseñor Rivero 123",
         email: "juan@example.com",
+        price_list_id: null,
+        price_list: null,
       });
-      expect(Customer.findByPk).toHaveBeenCalledWith(1);
+      expect(Customer.findByPk).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ include: expect.any(Array) }),
+      );
     },
   );
 

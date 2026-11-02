@@ -3,6 +3,7 @@ const app = require("../../src/app");
 const User = require("../../src/models/user");
 const Role = require("../../src/models/role");
 const Customer = require("../../src/models/customer");
+const PriceList = require("../../src/models/price-list");
 
 const PASSWORD = "secret123";
 const BODY = {
@@ -19,6 +20,8 @@ const PUBLIC_CUSTOMER = {
   longitude: -63.1821,
   direction: "Av. Monseñor Rivero 123",
   email: "juan@example.com",
+  price_list_id: null,
+  price_list: null,
 };
 const USERS = {
   admin: { username: "admin", email: "admin@superking.com", name: "Admin" },
@@ -105,6 +108,10 @@ function as(method, path, token) {
  */
 async function resetDatabase() {
   await Customer.destroy({
+    where: {},
+    truncate: { cascade: true, restartIdentity: true },
+  });
+  await PriceList.destroy({
     where: {},
     truncate: { cascade: true, restartIdentity: true },
   });

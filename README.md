@@ -558,7 +558,10 @@ Los clientes viven en la tabla `customers` (modelo `Customer`), separada de
 `users`: un cliente es un tercero al que se le vende, no un usuario que inicia
 sesión. `latitude` y `longitude` se persisten como `DECIMAL(10,7)` y la API las
 devuelve como **números** con hasta 7 decimales. Ninguna respuesta incluye
-`createdAt`, `updatedAt` ni `isRegistered`.
+`createdAt`, `updatedAt` ni `isRegistered`. Todas las respuestas incluyen
+`price_list_id` (número o `null`) y `price_list` con la forma `{ id, name }` (o
+`null`) cuando el cliente tiene una lista asignada; el porcentaje y la
+descripción de la lista nunca se exponen.
 
 Permisos por endpoint:
 
@@ -579,7 +582,8 @@ todos los endpoints, y sin token (o con token inválido/expirado) la respuesta e
 Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos:
 `fullName`, `latitude` (entre `-90` y `90`), `longitude` (entre `-180` y `180`),
 `direction` y `email`. El campo opcional `isRegistered` (booleano) se guarda en
-la tabla pero no se expone en la respuesta.
+la tabla pero no se expone en la respuesta. El campo opcional `price_list_id`
+asigna una lista de precios existente al cliente.
 
 ```bash
 curl -X POST http://localhost:3001/customers \
@@ -597,7 +601,9 @@ Respuesta `201`:
   "latitude": -17.7833,
   "longitude": -63.1821,
   "direction": "Av. Monseñor Rivero 123",
-  "email": "juan@example.com"
+  "email": "juan@example.com",
+  "price_list_id": null,
+  "price_list": null
 }
 ```
 
@@ -610,6 +616,7 @@ Errores:
 | `403`  | `{ "message": "Forbidden" }`                                                       |
 | `409`  | `{ "message": "Customer already exists" }`                                         |
 | `422`  | `{ "errors": { "latitude": "Latitud inválida" } }`                                 |
+| `422`  | `{ "errors": { "price_list_id": "Invalid price list" } }`                          |
 
 ### `GET /customers`
 
@@ -631,7 +638,9 @@ Respuesta `200`:
     "latitude": -17.7833,
     "longitude": -63.1821,
     "direction": "Av. Monseñor Rivero 123",
-    "email": "juan@example.com"
+    "email": "juan@example.com",
+    "price_list_id": null,
+    "price_list": null
   }
 ]
 ```
@@ -661,7 +670,9 @@ Respuesta `200`:
   "latitude": -17.7833,
   "longitude": -63.1821,
   "direction": "Av. Monseñor Rivero 123",
-  "email": "juan@example.com"
+  "email": "juan@example.com",
+  "price_list_id": null,
+  "price_list": null
 }
 ```
 
@@ -679,7 +690,9 @@ Errores:
 Protegido: requiere un JWT con rol `admin` o `seller`. Es una actualización
 completa: exige los mismos campos que la creación (`fullName`, `latitude`,
 `longitude`, `direction` y `email`); `isRegistered` es opcional y, si se omite,
-conserva su valor anterior.
+conserva su valor anterior. `price_list_id` también es opcional: si se omite
+conserva la lista actual, si llega `null` limpia la asignación y si llega un
+entero reemplaza la lista.
 
 ```bash
 curl -X PUT http://localhost:3001/customers/1 \
@@ -697,7 +710,9 @@ Respuesta `202`:
   "latitude": -17.79,
   "longitude": -63.19,
   "direction": "Av. Monseñor Rivero 456",
-  "email": "juan@example.com"
+  "email": "juan@example.com",
+  "price_list_id": null,
+  "price_list": null
 }
 ```
 
@@ -734,6 +749,186 @@ Errores:
 El email duplicado se detecta con la restricción única de Postgres
 (`UniqueConstraintError`), de modo que dos peticiones simultáneas nunca crean
 clientes repetidos.
+
+## Listas de precios
+
+Las listas viven en la tabla `price_lists` (modelo `PriceList`) y guardan un
+`name` único sin distinguir mayúsculas, una `description` opcional y un
+`percentage` de margen sobre el costo real. Cada cliente puede tener a lo sumo
+una lista mediante `customers.price_list_id`; la columna es nullable por
+compatibilidad, pero para vender el cliente debe tener una lista asignada.
+
+Permisos por endpoint (lectura y escritura):
+
+| Endpoint                | `admin` | `seller` | `dispatcher` | `manager_warehouse` | `support` | `customer` |
+| ----------------------- | ------- | -------- | ------------ | ------------------- | --------- | ---------- |
+| `POST /price-lists`     | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /price-lists`      | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `GET /price-lists/:id`  | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `PUT /price-lists/:id`  | ✅      | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+| `DELETE /price-lists/:id` | ✅    | ✅       | ❌ `403`     | ❌ `403`            | ❌ `403`  | ❌ `403`   |
+
+### `POST /price-lists`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. `name` y `percentage`
+son obligatorios; `description` es opcional y se guarda como `null` si llega
+vacía. `percentage` debe ser un número finito en `[0, 100)` con máximo dos
+decimales.
+
+```bash
+curl -X POST http://localhost:3001/price-lists \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Mayorista 30","description":"Margen del 30 % para mayoristas","percentage":30}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "name": "Mayorista 30",
+  "description": "Margen del 30 % para mayoristas",
+  "percentage": 30
+}
+```
+
+Errores:
+
+| Código | Cuerpo                                                                |
+| ------ | --------------------------------------------------------------------- |
+| `400`  | `{ "message": "name and percentage are required" }`                    |
+| `401`  | `{ "message": "Unauthorized" }`                                       |
+| `403`  | `{ "message": "Forbidden" }` o `{ "message": "User is blocked" }`     |
+| `409`  | `{ "message": "Price list already exists" }`                          |
+| `422`  | `{ "errors": { "name": "Nombre inválido" } }`                         |
+| `422`  | `{ "errors": { "percentage": "Invalid percentage" } }`                |
+| `422`  | `{ "errors": { "percentage": "percentage must be < 100" } }`          |
+
+### `GET /price-lists`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Devuelve todas las listas
+ordenadas por `name` ascendente y luego por `id` ascendente.
+
+```bash
+curl http://localhost:3001/price-lists -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Mayorista 30",
+    "description": "Margen del 30 % para mayoristas",
+    "percentage": 30
+  }
+]
+```
+
+### `GET /price-lists/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Devuelve una lista o
+`404` si no existe.
+
+```bash
+curl http://localhost:3001/price-lists/1 -H "Authorization: Bearer <jwt>"
+```
+
+Errores:
+
+| Código | Cuerpo                                              |
+| ------ | --------------------------------------------------- |
+| `401`  | `{ "message": "Unauthorized" }`                     |
+| `403`  | `{ "message": "Forbidden" }`                        |
+| `404`  | `{ "message": "Price list not found" }`             |
+| `422`  | `{ "errors": { "id": "Invalid price list id" } }`   |
+
+### `PUT /price-lists/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Es un reemplazo completo:
+`name` y `percentage` son obligatorios y `description` se guarda como `null`
+cuando se omite. Responde `202` con la lista actualizada.
+
+```bash
+curl -X PUT http://localhost:3001/price-lists/1 \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Mayorista 35","description":"Margen del 35 %","percentage":35}'
+```
+
+### `DELETE /price-lists/:id`
+
+Protegido: requiere un JWT con rol `admin` o `seller`. Si la lista está asignada
+a al menos un cliente responde `409` con `{ "message": "Price list is in use" }`.
+Si no está asignada responde `204` sin cuerpo.
+
+### Asignación a clientes
+
+`POST /customers` y `PUT /customers/:id` aceptan `price_list_id` opcional. En la
+actualización, omitirlo conserva la lista actual, `null` la limpia y un entero la
+reemplaza. Un `price_list_id` inexistente responde `422` con
+`{ "errors": { "price_list_id": "Invalid price list" } }`.
+
+```bash
+curl -X PUT http://localhost:3001/customers/8 \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Cliente Demo","latitude":-17.7833,"longitude":-63.1821,"direction":"Av. Monseñor Rivero 123","email":"cliente@example.com","price_list_id":1}'
+```
+
+Respuesta `202`:
+
+```json
+{
+  "id": 8,
+  "fullName": "Cliente Demo",
+  "latitude": -17.7833,
+  "longitude": -63.1821,
+  "direction": "Av. Monseñor Rivero 123",
+  "email": "cliente@example.com",
+  "price_list_id": 1,
+  "price_list": { "id": 1, "name": "Mayorista 30" }
+}
+```
+
+### Cálculo del precio de compra
+
+El módulo compartido `src/pricing/` resuelve el precio a partir del costo real y
+el margen de la lista del cliente. Recibe `product_id`, `item_state_id`,
+`price_list_id` y la moneda de transacción (por defecto, la moneda activa
+marcada para transacciones):
+
+```text
+precio_con_margen = costs.cost / (1 - price_lists.percentage / 100)
+precio_final = round2(precio_con_margen × costoMoneda.rate ÷ transaccionMoneda.rate)
+```
+
+Con un costo de `10.00` USD, `percentage = 30` y la misma moneda de transacción:
+
+```text
+precio = 10.00 / (1 - 0.30) = 14.2857...
+precio final = 14.29
+```
+
+Reglas del resolvedor:
+
+- el estado de ítem debe existir y tener `is_sellable = true`; si no, responde
+  `422` con `{ "errors": { "item_state_id": "Invalid item state" } }`;
+- si el cliente no tiene lista responde `403` con
+  `{ "message": "Customer price list is not assigned" }`;
+- un producto sin costo, con costo negativo o con moneda inexistente/inactiva
+  responde `422` con
+  `{ "errors": { "product_id": "Product has no price for this item state and price list" } }`;
+- un precio mayor a `9999999999.99` responde `422` con
+  `{ "errors": { "product_id": "Price out of range" } }`;
+- si no hay moneda activa por defecto para transacciones responde `503` con
+  `{ "message": "Default transaction currency is not configured" }`.
+
+El cálculo es dinámico y no usa `products.sale_price` ni `products.currency_id`.
+Los pedidos que lo consuman deben congelar `unit_price` y `subtotal` al momento
+de solicitarlos.
 
 ## Bodegas
 

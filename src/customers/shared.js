@@ -1,6 +1,16 @@
 const { UniqueConstraintError } = require("sequelize");
 const Customer = require("../models/customer");
-const { parseCustomerId } = require("./validators");
+const PriceList = require("../models/price-list");
+const { PRICE_LIST_ID_MESSAGE, parseCustomerId } = require("./validators");
+
+const CUSTOMER_INCLUDE = Object.freeze([
+  {
+    model: PriceList,
+    as: "price_list",
+    attributes: ["id", "name"],
+    required: false,
+  },
+]);
 
 /**
  * Express middleware for the routes that address a single customer. It parses
@@ -19,7 +29,7 @@ async function loadCustomer(req, res, next) {
     return res.status(422).json({ errors: { id: "Invalid customer id" } });
   }
 
-  const customer = await Customer.findByPk(id);
+  const customer = await Customer.findByPk(id, { include: CUSTOMER_INCLUDE });
 
   if (!customer) {
     return res.status(404).json({ message: "Customer not found" });
@@ -28,6 +38,43 @@ async function loadCustomer(req, res, next) {
   req.customer = customer;
 
   return next();
+}
+
+/**
+ * Express middleware that validates an optional `price_list_id` reference
+ * before writing a customer. A missing or `null` value is accepted; a positive
+ * integer must point to an existing price list.
+ * @param {import("express").Request} req - Express request.
+ * @param {import("express").Response} res - Express response.
+ * @param {import("express").NextFunction} next - Next middleware.
+ * @returns {Promise<void>} Resolves after calling next or answering an error.
+ */
+async function ensurePriceListAssignment(req, res, next) {
+  const priceListId = req.validated.price_list_id;
+
+  if (priceListId === undefined || priceListId === null) {
+    return next();
+  }
+
+  const priceList = await PriceList.findByPk(priceListId);
+
+  if (!priceList) {
+    return res
+      .status(422)
+      .json({ errors: { price_list_id: PRICE_LIST_ID_MESSAGE } });
+  }
+
+  return next();
+}
+
+/**
+ * Reloads a customer with its price list association so the response always
+ * exposes the nested `{ id, name }` summary.
+ * @param {object} customer - Stored customer.
+ * @returns {Promise<object>} The customer with `price_list` loaded.
+ */
+function reloadCustomer(customer) {
+  return Customer.findByPk(customer.id, { include: CUSTOMER_INCLUDE });
 }
 
 /**
@@ -47,4 +94,10 @@ function handleWriteError(error, res) {
   throw error;
 }
 
-module.exports = { handleWriteError, loadCustomer };
+module.exports = {
+  CUSTOMER_INCLUDE,
+  ensurePriceListAssignment,
+  handleWriteError,
+  loadCustomer,
+  reloadCustomer,
+};

@@ -26,7 +26,7 @@ jest.mock("./models/customer", () => ({
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
+jest.mock("./models/price-list", () => ({}));
 jest.mock("./models/warehouse", () => ({
   create: jest.fn(),
   findAll: jest.fn(),

@@ -101,6 +101,8 @@ describe("POST /customers", () => {
         longitude: -63.1821,
         direction: "Av. Monseñor Rivero 123",
         email: "juan@example.com",
+        price_list_id: null,
+        price_list: null,
       });
       expect(response.body).not.toHaveProperty("isRegistered");
       expect(response.body).not.toHaveProperty("createdAt");
@@ -218,7 +220,12 @@ describe("router composition", () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual([]);
-    expect(Customer.findAll).toHaveBeenCalledWith({ order: [["id", "ASC"]] });
+    expect(Customer.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order: [["id", "ASC"]],
+        include: expect.any(Array),
+      }),
+    );
   });
 
   it("mounts the update router on PUT /customers/:id", async () => {
@@ -243,6 +250,8 @@ describe("router composition", () => {
       longitude: validBody.longitude,
       direction: validBody.direction,
       email: validBody.email,
+      price_list_id: null,
+      price_list: null,
     });
     expect(customer.update).toHaveBeenCalledWith(validBody);
   });

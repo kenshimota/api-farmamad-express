@@ -47,7 +47,10 @@ describe("loadCustomer", () => {
 
     await loadCustomer({ params: { id: "999" } }, res, next);
 
-    expect(Customer.findByPk).toHaveBeenCalledWith(999);
+    expect(Customer.findByPk).toHaveBeenCalledWith(
+      999,
+      expect.objectContaining({ include: expect.any(Array) }),
+    );
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.body).toEqual({ message: "Customer not found" });
     expect(next).not.toHaveBeenCalled();
@@ -62,7 +65,10 @@ describe("loadCustomer", () => {
 
     await loadCustomer(req, res, next);
 
-    expect(Customer.findByPk).toHaveBeenCalledWith(1);
+    expect(Customer.findByPk).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ include: expect.any(Array) }),
+    );
     expect(req.customer).toBe(customer);
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();

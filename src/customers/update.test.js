@@ -103,6 +103,8 @@ describe("PUT /customers/:id", () => {
         longitude: -63.19,
         direction: "Av. Monseñor Rivero 456",
         email: "juan@example.com",
+        price_list_id: null,
+        price_list: null,
       });
       expect(customer.update).toHaveBeenCalledWith(validBody);
       expect(response.body).not.toHaveProperty("isRegistered");

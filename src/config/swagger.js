@@ -103,6 +103,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Concrete payment methods (PayPal account, Binance wallet, bank account, mobile payment) with JSONB details validated against their type and the currency inherited from it.",
       },
+      {
+        name: "Price lists",
+        description:
+          "Customer price lists with a margin percentage over the real cost: creation, listing, lookup, update and deletion.",
+      },
     ],
     components: {
       securitySchemes: {

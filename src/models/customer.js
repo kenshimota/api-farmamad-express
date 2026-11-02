@@ -36,6 +36,10 @@ const Customer = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    price_list_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     tableName: "customers",
@@ -52,3 +56,7 @@ Customer.prototype.toJSON = function toJSON() {
 };
 
 module.exports = Customer;
+
+// Registers the `Customer.belongsTo(PriceList)` association declared by the
+// price-list model once both modules are fully loaded.
+require("./price-list");

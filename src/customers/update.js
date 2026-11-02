@@ -7,7 +7,12 @@ const {
   createCustomerSchema,
   REQUIRED_CUSTOMER_FIELDS,
 } = require("./validators");
-const { handleWriteError, loadCustomer } = require("./shared");
+const {
+  ensurePriceListAssignment,
+  handleWriteError,
+  loadCustomer,
+  reloadCustomer,
+} = require("./shared");
 
 const router = Router();
 
@@ -68,6 +73,14 @@ const router = Router();
  *                 type: boolean
  *                 description: Optional; when omitted the stored value is kept
  *                 example: false
+ *               price_list_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 nullable: true
+ *                 description: >
+ *                   Optional; omitted keeps the current list, `null` clears it
+ *                   and an integer replaces it.
+ *                 example: 1
  *     responses:
  *       202:
  *         description: Updated public customer data
@@ -136,11 +149,17 @@ router.put(
     fields: REQUIRED_CUSTOMER_FIELDS,
   }),
   loadCustomer,
+  ensurePriceListAssignment,
   async (req, res) => {
     try {
       await req.customer.update(req.validated);
 
-      return res.status(202).json(toPublicCustomer(req.customer));
+      const customer =
+        req.validated.price_list_id !== undefined
+          ? await reloadCustomer(req.customer)
+          : req.customer;
+
+      return res.status(202).json(toPublicCustomer(customer));
     } catch (error) {
       return handleWriteError(error, res);
     }
