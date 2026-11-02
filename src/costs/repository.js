@@ -5,10 +5,19 @@ const Currency = require("../models/currency");
 const {
   CURRENCY_SUMMARY_ATTRIBUTES: CURRENCY_ATTRIBUTES,
 } = require("../currencies/attributes");
+const { findPage } = require("../shared/pagination");
+const { buildDayRange } = require("../shared/list-query");
 
 const LIST_ORDER = Object.freeze([
   ["product_id", "ASC"],
   ["item_state_id", "ASC"],
+]);
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "product_id",
+  "item_state_id",
+  "currency_id",
+  "cost",
 ]);
 const ITEM_STATE_ATTRIBUTES = Object.freeze([
   "id",
@@ -77,8 +86,11 @@ function createCostRepository(
      * @param {number} [filters.currencyId] - Exact currency id.
      * @returns {Promise<object[]>} The matching instances.
      */
-    list({ productId, itemStateId, currencyId } = {}) {
-      const options = { order: LIST_ORDER, include };
+    list(
+      { productId, itemStateId, currencyId, from, to } = {},
+      { pagination, order = LIST_ORDER } = {},
+    ) {
+      const options = { order, include };
       const where = {};
 
       if (productId !== undefined) {
@@ -93,11 +105,17 @@ function createCostRepository(
         where.currency_id = currencyId;
       }
 
-      if (Object.keys(where).length > 0) {
+      const range = buildDayRange("createdAt", from, to);
+
+      if (range) {
+        Object.assign(where, range);
+      }
+
+      if (Reflect.ownKeys(where).length > 0) {
         options.where = where;
       }
 
-      return model.findAll(options);
+      return findPage(model, options, pagination);
     },
 
     /**
@@ -168,6 +186,7 @@ module.exports = {
   CURRENCY_ATTRIBUTES,
   ITEM_STATE_ATTRIBUTES,
   LIST_ORDER,
+  SORT_FIELDS,
   createCostRepository,
   costRepository,
 };

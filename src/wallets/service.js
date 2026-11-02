@@ -14,8 +14,10 @@ function createWalletService({ repository = walletRepository } = {}) {
      * @param {number} customerId - Customer id.
      * @returns {Promise<object[]>} The wallets.
      */
-    listWallets(customerId) {
-      return repository.findByCustomer(customerId);
+    listWallets(customerId, options) {
+      return options === undefined
+        ? repository.findByCustomer(customerId)
+        : repository.findByCustomer(customerId, options);
     },
 
     /**

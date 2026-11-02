@@ -153,8 +153,10 @@ function createInvoiceService({
      * @param {object} [filters] - Exact listing filters.
      * @returns {Promise<object[]>} The matching invoices.
      */
-    listInvoices(filters) {
-      return repository.list(filters);
+    listInvoices(filters, options) {
+      return options === undefined
+        ? repository.list(filters)
+        : repository.list(filters, options);
     },
 
     getInvoice,

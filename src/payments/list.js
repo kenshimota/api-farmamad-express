@@ -7,8 +7,24 @@ const { toPublicPayment } = require("./serializer");
 const { paymentService } = require("./service");
 const { addDays, parseDateOnly } = require("./validators");
 const { PAYMENT_STATUS_CODES } = require("./statuses");
+const { parseListQuery, needsListOptions } = require("../shared/list-query");
+const { sendListResponse } = require("../shared/pagination");
 
 const router = Router();
+
+const LIST_ORDER = Object.freeze([
+  ["paid_at", "DESC"],
+  ["id", "DESC"],
+]);
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "paid_at",
+  "amount",
+  "status",
+  "customer_id",
+  "method_payment_id",
+  "currency_id",
+]);
 
 const ID_FILTERS = Object.freeze([
   {
@@ -28,6 +44,12 @@ const ID_FILTERS = Object.freeze([
     field: "currencyId",
     parse: parsePositiveInteger,
     message: "Invalid currency_id",
+  },
+  {
+    query: "invoice_id",
+    field: "invoiceId",
+    parse: parsePositiveInteger,
+    message: "Invalid invoice_id",
   },
 ]);
 
@@ -55,27 +77,50 @@ function resolveListQuery(query = {}) {
     filters.status = query.status;
   }
 
-  if (query.paid_from !== undefined) {
-    const paidFrom = parseDateOnly(query.paid_from);
+  if (query.paid_from !== undefined || query.from !== undefined) {
+    const raw = query.paid_from ?? query.from;
+    const paidFrom = parseDateOnly(raw);
 
     if (!paidFrom) {
-      return { errors: { paid_from: "Invalid paid_from" } };
+      return {
+        errors: {
+          [query.paid_from !== undefined ? "paid_from" : "from"]:
+            "Invalid from",
+        },
+      };
     }
 
     filters.paidFrom = paidFrom;
   }
 
-  if (query.paid_to !== undefined) {
-    const paidTo = parseDateOnly(query.paid_to);
+  if (query.paid_to !== undefined || query.to !== undefined) {
+    const raw = query.paid_to ?? query.to;
+    const paidTo = parseDateOnly(raw);
 
     if (!paidTo) {
-      return { errors: { paid_to: "Invalid paid_to" } };
+      return {
+        errors: {
+          [query.paid_to !== undefined ? "paid_to" : "to"]: "Invalid to",
+        },
+      };
     }
 
     filters.paidTo = addDays(paidTo, 1);
   }
 
   return { filters };
+}
+
+/**
+ * Parses pagination, ordering and the free-text search of the payment listing.
+ * @param {object} query - Express query object.
+ * @returns {object} `{ errors }` or the list options.
+ */
+function resolveListOptions(query = {}) {
+  return parseListQuery(query, {
+    sortFields: SORT_FIELDS,
+    defaultOrder: LIST_ORDER,
+  });
 }
 
 /**
@@ -100,6 +145,11 @@ function resolveListQuery(query = {}) {
  *       - { in: query, name: status, schema: { type: string, enum: [pending, conciliated, rejected] } }
  *       - { in: query, name: paid_from, schema: { type: string, format: date } }
  *       - { in: query, name: paid_to, schema: { type: string, format: date } }
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+ *       - { in: query, name: sort, schema: { type: string } }
+ *       - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+ *       - { in: query, name: q, schema: { type: string }, description: Partial case-insensitive search }
  *     responses:
  *       200:
  *         description: Payments newest first
@@ -134,16 +184,32 @@ router.get(
   authorize("admin", "seller"),
   async (req, res) => {
     const query = resolveListQuery(req.query);
+    const list = resolveListOptions(req.query);
+    const errors = { ...query.errors, ...list.errors };
 
-    if (query.errors) {
-      return res.status(422).json({ errors: query.errors });
+    if (Object.keys(errors).length > 0) {
+      return res.status(422).json({ errors });
     }
 
-    const payments = await paymentService.listPayments(query.filters);
+    const filters = { ...query.filters };
 
-    return res.json(payments.map((payment) => toPublicPayment(payment)));
+    if (list.q !== undefined) {
+      filters.q = list.q;
+    }
+
+    const payments = needsListOptions(list)
+      ? await paymentService.listPayments(filters, {
+          pagination: list.pagination,
+          order: list.order,
+        })
+      : await paymentService.listPayments(filters);
+
+    return sendListResponse(res, payments, (payment) =>
+      toPublicPayment(payment),
+    );
   },
 );
 
 module.exports = router;
+module.exports.resolveListOptions = resolveListOptions;
 module.exports.resolveListQuery = resolveListQuery;

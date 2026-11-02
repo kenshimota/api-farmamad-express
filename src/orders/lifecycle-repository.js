@@ -12,10 +12,20 @@ const Currency = require("../models/currency");
 const OrderStatus = require("../models/order-status");
 const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 const { buildOrderIncludes } = require("./includes");
+const { findPage } = require("../shared/pagination");
+const { buildDayRange, buildNumberSearch } = require("../shared/list-query");
 
 const LIST_ORDER = Object.freeze([
   ["createdAt", "DESC"],
   ["id", "DESC"],
+]);
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "number",
+  "status",
+  "customer_id",
+  "total",
+  "createdAt",
 ]);
 const WALLET_INCLUDE = Object.freeze({
   model: Currency,
@@ -60,17 +70,41 @@ function createOrderLifecycleRepository({
      * @param {number} [filters.customerId] - Customer scope.
      * @returns {Promise<object[]>} The matching orders.
      */
-    findOrders({ customerId } = {}) {
+    findOrders(
+      { customerId, status, createdFrom, createdTo, q } = {},
+      { pagination, order = LIST_ORDER } = {},
+    ) {
+      const where = {};
       const options = {
-        order: LIST_ORDER,
+        order,
         include: buildOrderIncludes({ includeHistory: false }),
       };
 
       if (customerId !== undefined) {
-        options.where = { customer_id: customerId };
+        where.customer_id = customerId;
       }
 
-      return (model ?? require("../models/order")).findAll(options);
+      if (status !== undefined) {
+        where.status = status;
+      }
+
+      const range = buildDayRange("createdAt", createdFrom, createdTo);
+
+      if (range) {
+        Object.assign(where, range);
+      }
+
+      const search = buildNumberSearch(q, ["number"]);
+
+      if (search) {
+        Object.assign(where, search);
+      }
+
+      if (Reflect.ownKeys(where).length > 0) {
+        options.where = where;
+      }
+
+      return findPage(model ?? require("../models/order"), options, pagination);
     },
 
     /**

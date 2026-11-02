@@ -182,13 +182,18 @@ function createOrderService({
      * @param {object} actor - JWT payload.
      * @returns {Promise<object[]>} The orders.
      */
-    async listOrders(actor) {
+    async listOrders(actor, listQuery = {}) {
       const context = await access.resolveContext(actor);
+      const { filters = {}, pagination, order } = listQuery;
+      const customerId =
+        context.role === CUSTOMER_ROLE
+          ? context.customerId
+          : filters.customerId;
 
-      return repository.findOrders({
-        customerId:
-          context.role === CUSTOMER_ROLE ? context.customerId : undefined,
-      });
+      return repository.findOrders(
+        { ...filters, customerId },
+        { pagination, order },
+      );
     },
 
     /**

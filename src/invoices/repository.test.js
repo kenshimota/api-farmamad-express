@@ -1,6 +1,7 @@
 jest.mock("../models/invoice", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
+  findAndCountAll: jest.fn(),
   findByPk: jest.fn(),
   findOne: jest.fn(),
 }));

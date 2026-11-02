@@ -6,6 +6,7 @@ const Currency = require("../models/currency");
 const Lot = require("../models/lot");
 const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 const { createPurchaseStockService } = require("./purchase-service");
+const { findPage } = require("../shared/pagination");
 
 const ITEM_STATE_ATTRIBUTES = Object.freeze([
   "id",
@@ -18,6 +19,13 @@ const LIST_ORDER = Object.freeze([
   ["item_state_id", "ASC"],
 ]);
 const PRODUCT_LIST_ORDER = Object.freeze([["item_state_id", "ASC"]]);
+const LOW_STOCK_THRESHOLD = 10;
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "product_id",
+  "item_state_id",
+  "quantity",
+]);
 
 /**
  * Creates a repository that encapsulates every read query of the stocks
@@ -54,8 +62,11 @@ function createStockRepository(
      * @param {boolean} [filters.inStock] - True for quantity > 0, false for 0.
      * @returns {Promise<object[]>} The matching instances.
      */
-    list({ productId, itemStateId, inStock } = {}) {
-      const options = { order: LIST_ORDER, include: [itemStateInclude] };
+    list(
+      { productId, itemStateId, inStock, warehouseId, lowStock } = {},
+      { pagination, order = LIST_ORDER } = {},
+    ) {
+      const options = { order, include: [itemStateInclude] };
       const where = {};
 
       if (productId !== undefined) {
@@ -70,11 +81,41 @@ function createStockRepository(
         where.quantity = inStock ? { [Op.gt]: 0 } : { [Op.eq]: 0 };
       }
 
-      if (Object.keys(where).length > 0) {
+      if (lowStock !== undefined) {
+        where.quantity = lowStock
+          ? { [Op.gt]: 0, [Op.lte]: LOW_STOCK_THRESHOLD }
+          : { [Op.gt]: LOW_STOCK_THRESHOLD };
+      }
+
+      if (warehouseId !== undefined) {
+        options.include.push({
+          model: lotModel,
+          as: "warehouse_lots",
+          attributes: [],
+          required: true,
+          where: { warehouse_id: warehouseId },
+          on: {
+            [Op.and]: [
+              Sequelize.where(
+                Sequelize.col("Stock.product_id"),
+                Op.eq,
+                Sequelize.col("warehouse_lots.product_id"),
+              ),
+              Sequelize.where(
+                Sequelize.col("Stock.item_state_id"),
+                Op.eq,
+                Sequelize.col("warehouse_lots.item_state_id"),
+              ),
+            ],
+          },
+        });
+      }
+
+      if (Reflect.ownKeys(where).length > 0) {
         options.where = where;
       }
 
-      return model.findAll(options);
+      return findPage(model, options, pagination);
     },
 
     /**
@@ -193,7 +234,9 @@ const stockRepository = createStockRepository();
 module.exports = {
   ITEM_STATE_ATTRIBUTES,
   LIST_ORDER,
+  LOW_STOCK_THRESHOLD,
   PRODUCT_LIST_ORDER,
+  SORT_FIELDS,
   createStockRepository,
   stockRepository,
 };

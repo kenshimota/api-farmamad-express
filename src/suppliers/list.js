@@ -8,8 +8,33 @@ const {
   STATE_ID_MESSAGE,
   parseSupplierId,
 } = require("./validators");
+const { parseListQuery, needsListOptions } = require("../shared/list-query");
+const { sendListResponse } = require("../shared/pagination");
 
 const router = Router();
+
+const FILTER_SPECS = Object.freeze([
+  {
+    query: "state_id",
+    field: "stateId",
+    parse: parseSupplierId,
+    message: STATE_ID_MESSAGE,
+  },
+  {
+    query: "city_id",
+    field: "cityId",
+    parse: parseSupplierId,
+    message: CITY_ID_MESSAGE,
+  },
+]);
+
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "name",
+  "identification",
+  "state_id",
+  "city_id",
+]);
 
 /**
  * @openapi
@@ -46,6 +71,11 @@ const router = Router();
  *           type: string
  *         description: Partial term over name and identification
  *         example: salud
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+ *       - { in: query, name: sort, schema: { type: string } }
+ *       - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+ *       - { in: query, name: q, schema: { type: string }, description: Partial case-insensitive search }
  *     responses:
  *       200:
  *         description: Suppliers ordered by name with their location nested
@@ -86,35 +116,27 @@ const router = Router();
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", ...readAccess(), async (req, res) => {
-  let stateId;
-  let cityId;
-
-  if (req.query.state_id !== undefined) {
-    stateId = parseSupplierId(req.query.state_id);
-
-    if (stateId === null) {
-      return res.status(422).json({ errors: { state_id: STATE_ID_MESSAGE } });
-    }
-  }
-
-  if (req.query.city_id !== undefined) {
-    cityId = parseSupplierId(req.query.city_id);
-
-    if (cityId === null) {
-      return res.status(422).json({ errors: { city_id: CITY_ID_MESSAGE } });
-    }
-  }
-
-  const suppliers = await supplierRepository.list({
-    stateId,
-    cityId,
-    q: req.query.q,
+  const query = parseListQuery(req.query, {
+    filters: FILTER_SPECS,
+    sortFields: SORT_FIELDS,
+    defaultOrder: [["name", "ASC"]],
   });
 
-  return res.json(
-    suppliers.map((supplier) =>
-      toPublicSupplier(supplier, { includeLocation: true }),
-    ),
+  if (query.errors) {
+    return res.status(422).json({ errors: query.errors });
+  }
+
+  const filters = { ...query.filters, q: query.q };
+  const options = {
+    pagination: query.pagination,
+    order: query.order,
+  };
+  const suppliers = needsListOptions(query)
+    ? await supplierRepository.list(filters, options)
+    : await supplierRepository.list(filters);
+
+  return sendListResponse(res, suppliers, (supplier) =>
+    toPublicSupplier(supplier, { includeLocation: true }),
   );
 });
 

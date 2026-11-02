@@ -7,10 +7,22 @@ const Warehouse = require("../models/warehouse");
 const Shelf = require("../models/shelf");
 const ShelfSection = require("../models/shelf-section");
 const { buildIncludes } = require("./relations");
+const { findPage } = require("../shared/pagination");
+const { buildDayRange, buildTextSearch } = require("../shared/list-query");
+const { filterBySupplier } = require("./supplier-filter");
 
 const LIST_ORDER = Object.freeze([
   ["expiration_date", "ASC"],
   ["id", "ASC"],
+]);
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "number",
+  "product_id",
+  "warehouse_id",
+  "expiration_date",
+  "stock",
+  "location_status",
 ]);
 const LOT_INCLUDES = Object.freeze(
   buildIncludes({
@@ -164,7 +176,7 @@ function createLotRepository({
      * @param {object} [filters] - Listing filters.
      * @returns {Promise<object[]>} The matching instances.
      */
-    list(filters = {}) {
+    list(filters = {}, { pagination, order = LIST_ORDER } = {}) {
       const where = {};
       const fields = {
         product_id: filters.productId,
@@ -185,19 +197,46 @@ function createLotRepository({
         where.number = { [Op.iLike]: filters.number };
       }
 
-      const expiration = expirationCondition(filters);
+      const search = buildTextSearch(filters.q, ["number"]);
 
-      if (expiration) {
-        where.expiration_date = expiration;
+      if (search) {
+        if (where.number === undefined) {
+          Object.assign(where, search);
+        } else {
+          where[Op.and] = [search];
+        }
       }
 
-      const options = { order: LIST_ORDER, include: LOT_INCLUDES };
+      const conditions = [];
+      const expiration = expirationCondition(filters);
+      const expiresRange = buildDayRange(
+        "expiration_date",
+        filters.expiresFrom,
+        filters.expiresTo,
+        { dateOnly: true },
+      );
 
-      if (Object.keys(where).length > 0) {
+      if (expiration) {
+        conditions.push(expiration);
+      }
+
+      if (expiresRange) {
+        conditions.push(expiresRange.expiration_date);
+      }
+
+      if (conditions.length === 1) {
+        where.expiration_date = conditions[0];
+      } else if (conditions.length > 1) {
+        where.expiration_date = { [Op.and]: conditions };
+      }
+
+      const options = { order, include: [...LOT_INCLUDES] };
+
+      if (Reflect.ownKeys(where).length > 0) {
         options.where = where;
       }
 
-      return model.findAll(options);
+      return filterBySupplier(model, options, pagination, filters.supplierId);
     },
 
     /**
@@ -237,6 +276,7 @@ const lotRepository = createLotRepository();
 module.exports = {
   LIST_ORDER,
   LOT_INCLUDES,
+  SORT_FIELDS,
   createLotRepository,
   expirationCondition,
   lotRepository,

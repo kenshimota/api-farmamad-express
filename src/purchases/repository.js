@@ -6,75 +6,19 @@ const Supplier = require("../models/supplier");
 const Product = require("../models/product");
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
-const Currency = require("../models/currency");
-const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
-const { ITEM_ORDER } = require("./item-repository");
+const { findPage } = require("../shared/pagination");
+const {
+  CURRENCY_INCLUDE,
+  ITEM_INCLUDE,
+  LIST_ORDER,
+  SORT_FIELDS,
+  buildListOptions,
+} = require("./list-options");
 
-const LIST_ORDER = Object.freeze([["number", "DESC"]]);
-const ITEM_INCLUDE = Object.freeze({
-  model: PurchaseItem,
-  as: "items",
-  separate: true,
-  order: ITEM_ORDER,
-});
 const SUPPLIER_INCLUDE = Object.freeze({
   model: Supplier,
   as: "supplier",
 });
-const CURRENCY_INCLUDE = Object.freeze({
-  model: Currency,
-  as: "currency",
-  attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
-});
-
-/**
- * Builds the Sequelize options for the purchase listing.
- * @param {object} [filters] - Listing filters.
- * @param {number} [filters.supplierId] - Exact supplier id.
- * @param {string} [filters.status] - Exact status.
- * @param {number} [filters.number] - Exact purchase number.
- * @param {number} [filters.currencyId] - Exact currency id.
- * @param {boolean} [filters.includeItems] - Nest the purchase lines.
- * @returns {object} Options accepted by `Purchase.findAll`.
- */
-function buildListOptions({
-  supplierId,
-  status,
-  number,
-  currencyId,
-  includeItems = false,
-} = {}) {
-  const options = { order: LIST_ORDER };
-  const where = {};
-
-  if (supplierId !== undefined) {
-    where.supplier_id = supplierId;
-  }
-
-  if (status !== undefined) {
-    where.status = status;
-  }
-
-  if (number !== undefined) {
-    where.number = number;
-  }
-
-  if (currencyId !== undefined) {
-    where.currency_id = currencyId;
-  }
-
-  if (Object.keys(where).length > 0) {
-    options.where = where;
-  }
-
-  options.include = [{ ...CURRENCY_INCLUDE }];
-
-  if (includeItems) {
-    options.include.push({ ...ITEM_INCLUDE });
-  }
-
-  return options;
-}
 
 /**
  * Creates a repository that encapsulates every persistence call of the
@@ -172,8 +116,8 @@ function createPurchaseRepository({
      * @param {object} [filters] - Listing filters.
      * @returns {Promise<object[]>} The matching instances.
      */
-    list(filters) {
-      return model.findAll(buildListOptions(filters));
+    list(filters, { pagination, order = LIST_ORDER } = {}) {
+      return findPage(model, buildListOptions(filters, order), pagination);
     },
 
     findById,
@@ -279,6 +223,7 @@ module.exports = {
   CURRENCY_INCLUDE,
   ITEM_INCLUDE,
   LIST_ORDER,
+  SORT_FIELDS,
   SUPPLIER_INCLUDE,
   buildListOptions,
   createPurchaseRepository,

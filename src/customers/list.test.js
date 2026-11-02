@@ -3,6 +3,7 @@ process.env.JWT_SECRET = "test-secret";
 jest.mock("../models/customer", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
+  findAndCountAll: jest.fn(),
   findByPk: jest.fn(),
 }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
@@ -71,6 +72,7 @@ function get(path, token = tokenFor()) {
 beforeEach(() => {
   Customer.create.mockReset();
   Customer.findAll.mockReset();
+  Customer.findAndCountAll.mockReset();
   Customer.findByPk.mockReset();
   User.findByPk.mockReset();
   User.findByPk.mockResolvedValue(AUTH_USER);

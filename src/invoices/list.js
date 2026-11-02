@@ -1,5 +1,4 @@
 const { Router } = require("express");
-const { resolveQueryFilters } = require("../shared/query-filters");
 const { toPublicInvoice } = require("./serializer");
 const { readAccess } = require("./guards");
 const { invoiceService } = require("./service");
@@ -13,8 +12,27 @@ const {
   parseOrderFilter,
   parsePaymentStatusFilter,
 } = require("./parsers");
+const {
+  parseListQuery,
+  parseDateOnly,
+  needsListOptions,
+} = require("../shared/list-query");
+const { sendListResponse } = require("../shared/pagination");
 
 const router = Router();
+
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "number",
+  "issued_at",
+  "due_date",
+  "total",
+  "customer_id",
+  "order_id",
+  "payment_status",
+]);
+
+const STATUS_MESSAGE = PAYMENT_STATUS_MESSAGE;
 
 const FILTER_SPECS = Object.freeze([
   {
@@ -36,10 +54,40 @@ const FILTER_SPECS = Object.freeze([
     message: NUMBER_FILTER_MESSAGE,
   },
   {
+    query: "status",
+    field: "paymentStatus",
+    parse: parsePaymentStatusFilter,
+    message: STATUS_MESSAGE,
+  },
+  {
     query: "payment_status",
     field: "paymentStatus",
     parse: parsePaymentStatusFilter,
     message: PAYMENT_STATUS_MESSAGE,
+  },
+  {
+    query: "from",
+    field: "from",
+    parse: parseDateOnly,
+    message: "Invalid from",
+  },
+  {
+    query: "to",
+    field: "to",
+    parse: parseDateOnly,
+    message: "Invalid to",
+  },
+  {
+    query: "due_from",
+    field: "dueFrom",
+    parse: parseDateOnly,
+    message: "Invalid due_from",
+  },
+  {
+    query: "due_to",
+    field: "dueTo",
+    parse: parseDateOnly,
+    message: "Invalid due_to",
   },
 ]);
 
@@ -70,6 +118,11 @@ const FILTER_SPECS = Object.freeze([
  *       - in: query
  *         name: payment_status
  *         schema: { type: string, enum: [pending, partial, paid] }
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+ *       - { in: query, name: sort, schema: { type: string } }
+ *       - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+ *       - { in: query, name: q, schema: { type: string }, description: Partial case-insensitive search }
  *     responses:
  *       200:
  *         description: Invoice summaries ordered by issue date descending
@@ -100,15 +153,33 @@ const FILTER_SPECS = Object.freeze([
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", ...readAccess(), async (req, res) => {
-  const { filters, errors } = resolveQueryFilters(req.query, FILTER_SPECS);
+  const query = parseListQuery(req.query, {
+    filters: FILTER_SPECS,
+    sortFields: SORT_FIELDS,
+    defaultOrder: [
+      ["issued_at", "DESC"],
+      ["id", "DESC"],
+    ],
+  });
 
-  if (errors) {
-    return res.status(422).json({ errors });
+  if (query.errors) {
+    return res.status(422).json({ errors: query.errors });
   }
 
-  const invoices = await invoiceService.listInvoices(filters);
+  const filters = { ...query.filters };
 
-  return res.json(invoices.map((invoice) => toPublicInvoice(invoice)));
+  if (query.q !== undefined) {
+    filters.q = query.q;
+  }
+
+  const invoices = needsListOptions(query)
+    ? await invoiceService.listInvoices(filters, {
+        pagination: query.pagination,
+        order: query.order,
+      })
+    : await invoiceService.listInvoices(filters);
+
+  return sendListResponse(res, invoices, (invoice) => toPublicInvoice(invoice));
 });
 
 module.exports = router;

@@ -3,70 +3,11 @@ const { toPublicCost } = require("./serializer");
 const { loadCost } = require("./shared");
 const { readAccess } = require("./guards");
 const { costRepository } = require("./repository");
-const {
-  CURRENCY_FILTER_MESSAGE,
-  ITEM_STATE_FILTER_MESSAGE,
-  PRODUCT_FILTER_MESSAGE,
-  parseCurrencyId,
-  parseItemStateId,
-  parseProductId,
-} = require("./validators");
+const { PRODUCT_FILTER_MESSAGE, parseProductId } = require("./validators");
+const { resolveFilters } = require("./list-query");
+const { sendListResponse } = require("../shared/pagination");
 
 const router = Router();
-
-const FILTER_SPECS = Object.freeze([
-  {
-    query: "product_id",
-    key: "productId",
-    parse: parseProductId,
-    message: PRODUCT_FILTER_MESSAGE,
-  },
-  {
-    query: "item_state_id",
-    key: "itemStateId",
-    parse: parseItemStateId,
-    message: ITEM_STATE_FILTER_MESSAGE,
-  },
-  {
-    query: "currency_id",
-    key: "currencyId",
-    parse: parseCurrencyId,
-    message: CURRENCY_FILTER_MESSAGE,
-  },
-]);
-
-/**
- * Parses the optional exact filters in documented order.
- * @param {object} query - Express query object.
- * @returns {{ filters: object }|{ error: { status: number, body: object } }}
- *   The repository filters or the HTTP error to answer.
- */
-function resolveFilters(query) {
-  const filters = {};
-
-  for (const spec of FILTER_SPECS) {
-    const raw = query[spec.query];
-
-    if (raw === undefined) {
-      continue;
-    }
-
-    const value = spec.parse(raw);
-
-    if (value === null) {
-      return {
-        error: {
-          status: 422,
-          body: { errors: { [spec.query]: spec.message } },
-        },
-      };
-    }
-
-    filters[spec.key] = value;
-  }
-
-  return { filters };
-}
 
 /**
  * @openapi
@@ -104,6 +45,11 @@ function resolveFilters(query) {
  *           type: integer
  *           minimum: 1
  *         example: 3
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+ *       - { in: query, name: sort, schema: { type: string } }
+ *       - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+ *       - { in: query, name: q, schema: { type: string }, description: Partial case-insensitive search }
  *     responses:
  *       200:
  *         description: Costs ordered by product and item state
@@ -144,15 +90,18 @@ function resolveFilters(query) {
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", ...readAccess(), async (req, res) => {
-  const { filters, error } = resolveFilters(req.query);
+  const { query, error } = resolveFilters(req.query);
 
   if (error) {
     return res.status(error.status).json(error.body);
   }
 
-  const costs = await costRepository.list(filters);
+  const result = await costRepository.list(query.filters, {
+    pagination: query.pagination,
+    order: query.order,
+  });
 
-  return res.json(costs.map((cost) => toPublicCost(cost)));
+  return sendListResponse(res, result, (cost) => toPublicCost(cost));
 });
 
 /**

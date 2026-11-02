@@ -1,6 +1,7 @@
 jest.mock("../models/purchase", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
+  findAndCountAll: jest.fn(),
   findByPk: jest.fn(),
 }));
 jest.mock("../models/purchase-item", () => ({
