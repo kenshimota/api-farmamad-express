@@ -1,4 +1,5 @@
 const {
+  httpError,
   itemAlreadyExists,
   itemNotFound,
   notEditable,
@@ -47,12 +48,13 @@ function createPurchaseItemOperations({ repository, itemRepository, support }) {
 
         await support.assertItemReferences([values]);
 
-        const existing = await itemRepository.findByCombination(
-          id,
-          values.product_id,
-          values.item_state_id,
-          { transaction },
-        );
+        const existing = await support.findDuplicateLine({
+          purchaseId: id,
+          productId: values.product_id,
+          itemStateId: values.item_state_id,
+          lotNumber: values.lot_number,
+          transaction,
+        });
 
         if (existing) {
           throw itemAlreadyExists();
@@ -64,6 +66,8 @@ function createPurchaseItemOperations({ repository, itemRepository, support }) {
             product_id: values.product_id,
             item_state_id: values.item_state_id,
             quantity: values.quantity,
+            lot_number: values.lot_number ?? null,
+            expiration_date: values.expiration_date ?? null,
             ...toLineAmounts(values),
           },
           { transaction },
@@ -99,17 +103,28 @@ function createPurchaseItemOperations({ repository, itemRepository, support }) {
         const quantity = changes.quantity ?? item.quantity;
         const unitCost = changes.unit_cost ?? item.unit_cost;
         const taxAmount = changes.tax_amount ?? item.tax_amount ?? 0;
+        const lotNumber = changes.lot_number ?? item.lot_number ?? null;
+        const expirationDate =
+          changes.expiration_date ?? item.expiration_date ?? null;
+
+        if (lotNumber === null || expirationDate === null) {
+          throw httpError(400, {
+            message: "lot_number and expiration_date are required",
+          });
+        }
 
         await support.assertItemReferences([
           { product_id: productId, item_state_id: itemStateId },
         ]);
 
-        const duplicate = await itemRepository.findByCombination(
+        const duplicate = await support.findDuplicateLine({
           purchaseId,
           productId,
           itemStateId,
-          { excludeId: item.id, transaction },
-        );
+          lotNumber,
+          excludeId: item.id,
+          transaction,
+        });
 
         if (duplicate) {
           throw itemAlreadyExists();
@@ -122,6 +137,8 @@ function createPurchaseItemOperations({ repository, itemRepository, support }) {
             product_id: productId,
             item_state_id: itemStateId,
             quantity,
+            lot_number: lotNumber,
+            expiration_date: expirationDate,
             ...toLineAmounts({
               quantity,
               unit_cost: unitCost,

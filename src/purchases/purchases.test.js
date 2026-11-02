@@ -29,6 +29,8 @@ describe("POST /purchases", () => {
               quantity: 40,
               unit_cost: 20,
               tax_amount: 128,
+              lot_number: "LOTE-1",
+              expiration_date: "2027-03-31",
             },
           ],
         },
@@ -57,6 +59,9 @@ describe("POST /purchases", () => {
             subtotal: 800,
             tax_amount: 128,
             total: 928,
+            lot_number: "LOTE-1",
+            expiration_date: "2027-03-31",
+            received_lot_id: null,
           },
         ],
       });
@@ -70,6 +75,8 @@ describe("POST /purchases", () => {
             quantity: 40,
             unit_cost: 20,
             tax_amount: 128,
+            lot_number: "LOTE-1",
+            expiration_date: "2027-03-31",
           },
         ],
       });

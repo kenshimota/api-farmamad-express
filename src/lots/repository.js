@@ -172,6 +172,7 @@ function createLotRepository({
         warehouse_id: filters.warehouseId,
         shelf_id: filters.shelfId,
         section_id: filters.sectionId,
+        location_status: filters.locationStatus,
       };
 
       for (const [field, value] of Object.entries(fields)) {

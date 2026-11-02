@@ -144,6 +144,7 @@ describe("createStoreRepository", () => {
     });
     const options = models.lotModel.findAll.mock.calls[0][0];
     expect(options.group).toEqual(["product_id", "item_state_id"]);
+    expect(options.where.location_status).toBe("located");
     expect(options.raw).toBe(true);
   });
 

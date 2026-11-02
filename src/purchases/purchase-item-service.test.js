@@ -6,10 +6,6 @@ const {
   repositoryDouble,
 } = require("../../test/helpers/purchase-service-doubles");
 
-/**
- * Builds the line operations with fresh doubles.
- * @returns {object} Operations and doubles.
- */
 function setup() {
   const repository = repositoryDouble();
   const itemRepository = itemRepositoryDouble();
@@ -23,11 +19,6 @@ function setup() {
   return { operations, repository, itemRepository };
 }
 
-/**
- * Builds a stored purchase.
- * @param {object} [overrides] - Attribute overrides.
- * @returns {object} Purchase double.
- */
 function purchase(overrides = {}) {
   return {
     id: 1,
@@ -41,11 +32,6 @@ function purchase(overrides = {}) {
   };
 }
 
-/**
- * Builds a stored line.
- * @param {object} [overrides] - Attribute overrides.
- * @returns {object} Line double.
- */
 function line(overrides = {}) {
   return {
     id: 4,
@@ -56,6 +42,8 @@ function line(overrides = {}) {
     unit_cost: "10.00",
     subtotal: "20.00",
     tax_amount: "3.20",
+    lot_number: "LOTE-1",
+    expiration_date: "2027-03-31",
     ...overrides,
   };
 }
@@ -105,6 +93,8 @@ describe("addItem", () => {
       quantity: 2,
       unit_cost: 10,
       tax_amount: 3.2,
+      lot_number: "LOTE-2",
+      expiration_date: "2027-06-30",
     });
 
     expect(itemRepository.create).toHaveBeenCalledWith(
@@ -116,6 +106,8 @@ describe("addItem", () => {
         unit_cost: "10.00",
         subtotal: "20.00",
         tax_amount: "3.20",
+        lot_number: "LOTE-2",
+        expiration_date: "2027-06-30",
       },
       { transaction: TRANSACTION },
     );
@@ -134,7 +126,7 @@ describe("addItem", () => {
   it("rejects a duplicated product/item state pair", async () => {
     const { operations, repository, itemRepository } = setup();
     repository.findByIdForUpdate.mockResolvedValue(purchase());
-    itemRepository.findByCombination.mockResolvedValue(line());
+    itemRepository.findByLotNumber.mockResolvedValue(line());
 
     await expect(
       operations.addItem(1, {
@@ -143,6 +135,8 @@ describe("addItem", () => {
         quantity: 1,
         unit_cost: 1,
         tax_amount: 0,
+        lot_number: "LOTE-1",
+        expiration_date: "2027-03-31",
       }),
     ).rejects.toMatchObject({
       status: 409,
@@ -163,6 +157,8 @@ describe("addItem", () => {
         quantity: 1,
         unit_cost: 1,
         tax_amount: 0,
+        lot_number: "LOTE-1",
+        expiration_date: "2027-03-31",
       }),
     ).rejects.toMatchObject({
       status: 422,
@@ -196,6 +192,8 @@ describe("updateItem", () => {
         product_id: 15,
         item_state_id: 1,
         subtotal: "37.50",
+        lot_number: "LOTE-1",
+        expiration_date: "2027-03-31",
       },
       { transaction: TRANSACTION },
     );
@@ -246,7 +244,7 @@ describe("updateItem", () => {
     const { operations, repository, itemRepository } = setup();
     repository.findByIdForUpdate.mockResolvedValue(purchase());
     itemRepository.findById.mockResolvedValue(line());
-    itemRepository.findByCombination.mockResolvedValue(line({ id: 8 }));
+    itemRepository.findByLotNumber.mockResolvedValue(line({ id: 8 }));
 
     await expect(
       operations.updateItem(1, 4, { product_id: 20 }),

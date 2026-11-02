@@ -3,6 +3,7 @@ const purchaseSchemas = require("./swagger-purchase-schemas");
 const currencySchemas = require("./swagger-currency-schemas");
 const shelfSchemas = require("./swagger-shelf-schemas");
 const lotSchemas = require("./swagger-lot-schemas");
+const warehouseInboxSchemas = require("./swagger-warehouse-inbox-schemas");
 const customerSellerSchemas = require("./swagger-customer-seller-schemas");
 const taxSchemas = require("./swagger-tax-schemas");
 const methodPaymentTypeSchemas = require("./swagger-method-payment-type-schemas");
@@ -26,6 +27,7 @@ const schemas = {
   ...currencySchemas,
   ...shelfSchemas,
   ...lotSchemas,
+  ...warehouseInboxSchemas,
   ...customerSellerSchemas,
   ...taxSchemas,
   ...methodPaymentTypeSchemas,
@@ -243,6 +245,7 @@ const schemas = {
       product_id: { type: "integer", example: 15 },
       item_state_id: { type: "integer", example: 1 },
       quantity: { type: "integer", minimum: 1, example: 40 },
+      located_quantity: { type: "integer", minimum: 0, example: 40 },
       cost: {
         type: "number",
         format: "double",

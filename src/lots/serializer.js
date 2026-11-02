@@ -29,14 +29,30 @@ function toPublicRelation(record, fields) {
 }
 
 /**
+ * Serializes a timestamp as an ISO string, keeping null/undefined as null.
+ * @param {unknown} value - Date, string or null.
+ * @returns {string|null} The ISO timestamp or null.
+ */
+function toIsoOrNull(value) {
+  if (!value) {
+    return null;
+  }
+
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+/**
  * Builds the public representation of a lot: the stored columns, the calculated
  * `available` and the five nested relations with the documented fields only.
+ * Non-located lots report `available = 0` because their stock cannot be sold.
  * @param {object} lot - Lot instance or plain object.
  * @returns {object} Public lot data.
  */
 function toPublicLot(lot) {
   const stock = Number(readField(lot, "stock") ?? 0);
   const reserved = Number(readField(lot, "reserved") ?? 0);
+  const locationStatus = readField(lot, "location_status") ?? "located";
+  const available = locationStatus === "located" ? stock - reserved : 0;
   const relations = RELATION_FIELDS.reduce(
     (publicRelations, { as, fields }) => {
       publicRelations[as] = toPublicRelation(readField(lot, as), fields);
@@ -53,12 +69,20 @@ function toPublicLot(lot) {
     item_state_id: readField(lot, "item_state_id"),
     stock,
     reserved,
-    available: stock - reserved,
-    warehouse_id: readField(lot, "warehouse_id"),
-    shelf_id: readField(lot, "shelf_id"),
-    section_id: readField(lot, "section_id"),
+    available,
+    warehouse_id: readField(lot, "warehouse_id") ?? null,
+    shelf_id: readField(lot, "shelf_id") ?? null,
+    section_id: readField(lot, "section_id") ?? null,
+    location_status: locationStatus,
+    location_started_at: toIsoOrNull(readField(lot, "location_started_at")),
+    located_at: toIsoOrNull(readField(lot, "located_at")),
     ...relations,
   };
 }
 
-module.exports = { readField, toPublicLot, toPublicRelation };
+module.exports = {
+  readField,
+  toIsoOrNull,
+  toPublicLot,
+  toPublicRelation,
+};

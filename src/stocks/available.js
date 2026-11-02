@@ -24,9 +24,16 @@ async function sendAvailable(req, res) {
     });
   }
 
-  const stocks = await stockRepository.listAvailable(productId);
+  const [stocks, located] = await Promise.all([
+    stockRepository.listAvailable(productId),
+    stockRepository.getLocatedQuantities(productId),
+  ]);
 
-  return res.json(stocks.map((stock) => toAvailableStock(stock)));
+  return res.json(
+    stocks.map((stock) =>
+      toAvailableStock(stock, located.get(Number(stock.item_state_id)) ?? 0),
+    ),
+  );
 }
 
 /**
@@ -36,12 +43,14 @@ async function sendAvailable(req, res) {
  *     summary: Lists the sellable stock of a product; allowed to admin, seller and manager_warehouse
  *     description: >
  *       Returns only the rows with `quantity > 0` whose item state is
- *       `is_sellable = true`, ordered by item state name ascending. Each row
- *       includes the current cost of the same `(product_id, item_state_id)`
- *       combination or `null` when no cost is registered, together with the
- *       currency of that cost (`currency_id` and `currency`, both null without
- *       cost). Stocks, item states, costs and currencies are resolved in one
- *       Sequelize join, without N+1.
+ *       `is_sellable = true`, ordered by item state name ascending. `quantity`
+ *       is the physical total and `located_quantity` is the sum of the located
+ *       lots, which is the only sellable quantity. Each row includes the
+ *       current cost of the same `(product_id, item_state_id)` combination or
+ *       `null` when no cost is registered, together with the currency of that
+ *       cost (`currency_id` and `currency`, both null without cost). Stocks,
+ *       item states, costs and currencies are resolved in one Sequelize join,
+ *       without N+1.
  *     tags:
  *       - Stocks
  *     security:

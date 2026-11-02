@@ -45,7 +45,6 @@ const BODY = {
   expiration_date: "2027-03-31",
   item_state_id: 1,
   stock: 120,
-  reserved: 15,
   warehouse_id: 1,
   shelf_id: 1,
   section_id: 2,
@@ -134,11 +133,14 @@ describe("POST /lots", () => {
         expiration_date: "2027-03-31",
         item_state_id: 1,
         stock: 120,
-        reserved: 15,
-        available: 105,
+        reserved: 0,
+        available: 120,
         warehouse_id: 1,
         shelf_id: 1,
         section_id: 2,
+        location_status: "located",
+        location_started_at: null,
+        located_at: null,
         product: { id: 15, name: "Ibuprofeno 800 mg", reference: "IBU-800" },
         item_state: {
           id: 1,
@@ -152,9 +154,15 @@ describe("POST /lots", () => {
       });
       expect(response.body).not.toHaveProperty("createdAt");
       expect(response.body).not.toHaveProperty("updatedAt");
-      expect(Lot.create).toHaveBeenCalledWith(BODY, {
-        transaction: { id: "tx" },
-      });
+      expect(Lot.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...BODY,
+          reserved: 0,
+          location_status: "located",
+          located_at: expect.any(Date),
+        }),
+        { transaction: { id: "tx" } },
+      );
     },
   );
 
@@ -178,6 +186,8 @@ describe("POST /lots", () => {
         number: "l-2026-009",
         stock: 0,
         reserved: 0,
+        location_status: "located",
+        located_at: expect.any(Date),
       },
       { transaction: { id: "tx" } },
     );
@@ -192,7 +202,7 @@ describe("POST /lots", () => {
       updatedAt: "2026-09-01",
     });
 
-    expect(Lot.create).toHaveBeenCalledWith(BODY, {
+    expect(Lot.create).toHaveBeenCalledWith(expect.objectContaining(BODY), {
       transaction: { id: "tx" },
     });
   });
@@ -217,7 +227,6 @@ describe("POST /lots", () => {
     [{ ...BODY, stock: -1 }, "stock"],
     [{ ...BODY, stock: 1.5 }, "stock"],
     [{ ...BODY, stock: 1000000001 }, "stock"],
-    [{ ...BODY, reserved: -1 }, "reserved"],
   ])("responds 422 for invalid fields in %p", async (body, field) => {
     const response = await call("post", "/lots", body);
 
@@ -226,16 +235,17 @@ describe("POST /lots", () => {
     expect(Lot.create).not.toHaveBeenCalled();
   });
 
-  it("responds 422 when reserved exceeds stock", async () => {
+  it("ignores reserved and creates the lot with reserved zero", async () => {
     const response = await call("post", "/lots", {
       ...BODY,
       stock: 10,
       reserved: 11,
     });
 
-    expect(response.status).toBe(422);
-    expect(response.body).toEqual({
-      errors: { reserved: "reserved cannot exceed stock" },
-    });
+    expect(response.status).toBe(201);
+    expect(Lot.create).toHaveBeenCalledWith(
+      expect.objectContaining({ stock: 10, reserved: 0 }),
+      { transaction: { id: "tx" } },
+    );
   });
 });

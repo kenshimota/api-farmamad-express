@@ -144,6 +144,7 @@ function createBaseOrderRepository({
         where: {
           product_id: productId,
           item_state_id: itemStateId,
+          location_status: "located",
           stock: { [Op.gt]: Sequelize.col("reserved") },
         },
         order: [

@@ -37,10 +37,6 @@ afterAll(async () => {
   await sequelize.close();
 });
 
-/**
- * Builds the references needed by a purchase.
- * @returns {Promise<object>} Supplier, products and item states.
- */
 async function references() {
   const supplier = await createPurchaseSupplier();
   const product = await createProduct({ reference: "PUR-INT-1" });
@@ -57,11 +53,6 @@ async function references() {
   return { supplier, product, sellable, damaged };
 }
 
-/**
- * Builds a purchase body with two lines.
- * @param {object} refs - References built by `references`.
- * @returns {object} Request body.
- */
 function purchaseBody(refs) {
   return {
     supplier_id: refs.supplier.id,
@@ -73,6 +64,8 @@ function purchaseBody(refs) {
         quantity: 40,
         unit_cost: 20,
         tax_amount: 128,
+        lot_number: "LOTE-1",
+        expiration_date: "2027-03-31",
       },
       {
         product_id: refs.product.id,
@@ -80,6 +73,8 @@ function purchaseBody(refs) {
         quantity: 3,
         unit_cost: 12.5,
         tax_amount: 6,
+        lot_number: "LOTE-2",
+        expiration_date: "2027-06-30",
       },
     ],
   };
@@ -119,6 +114,9 @@ describe("POST /purchases with a real database", () => {
             subtotal: 800,
             tax_amount: 128,
             total: 928,
+            lot_number: "LOTE-1",
+            expiration_date: "2027-03-31",
+            received_lot_id: null,
           },
           {
             id: expect.any(Number),
@@ -129,6 +127,9 @@ describe("POST /purchases with a real database", () => {
             subtotal: 37.5,
             tax_amount: 6,
             total: 43.5,
+            lot_number: "LOTE-2",
+            expiration_date: "2027-06-30",
+            received_lot_id: null,
           },
         ],
       });
@@ -178,6 +179,8 @@ describe("POST /purchases with a real database", () => {
           quantity: 1,
           unit_cost: 100,
           tax_amount: 8.25,
+          lot_number: "L-IGNORED",
+          expiration_date: "2027-01-31",
         },
       ],
     });
@@ -195,6 +198,8 @@ describe("POST /purchases with a real database", () => {
           item_state_id: refs.sellable.id,
           quantity: 1,
           unit_cost: 100,
+          lot_number: "L-MISSING",
+          expiration_date: "2027-01-31",
         },
       ],
     });
@@ -222,6 +227,8 @@ describe("POST /purchases with a real database", () => {
           quantity: 1,
           unit_cost: 1,
           tax_amount: 0,
+          lot_number: "LOTE-DUP",
+          expiration_date: "2027-01-31",
         },
         {
           product_id: refs.product.id,
@@ -229,6 +236,8 @@ describe("POST /purchases with a real database", () => {
           quantity: 2,
           unit_cost: 2,
           tax_amount: 0,
+          lot_number: "LOTE-DUP",
+          expiration_date: "2027-01-31",
         },
       ],
     });
@@ -252,6 +261,8 @@ describe("POST /purchases with a real database", () => {
           quantity: 1,
           unit_cost: 1,
           tax_amount: 0,
+          lot_number: "LOTE-X",
+          expiration_date: "2027-01-31",
         },
       ],
     });
@@ -269,6 +280,8 @@ describe("POST /purchases with a real database", () => {
           quantity: 1,
           unit_cost: 1,
           tax_amount: 0,
+          lot_number: "LOTE-Y",
+          expiration_date: "2027-01-31",
         },
       ],
     });

@@ -14,6 +14,36 @@ const itemsRouter = require("./purchase-items");
 const router = Router();
 
 /**
+ * Answers 400 when a nested purchase line omits its lot data, matching the
+ * documented error contract before the generic schema validation runs.
+ * @param {import("express").Request} req - Express request.
+ * @param {import("express").Response} res - Express response.
+ * @param {import("express").NextFunction} next - Next middleware.
+ * @returns {void}
+ */
+function requireItemLotFields(req, res, next) {
+  const items = req.body?.items;
+
+  if (Array.isArray(items)) {
+    const missing = items.some(
+      (item) =>
+        item?.lot_number === undefined ||
+        item?.lot_number === null ||
+        item?.expiration_date === undefined ||
+        item?.expiration_date === null,
+    );
+
+    if (missing) {
+      return res.status(400).json({
+        message: "lot_number and expiration_date are required",
+      });
+    }
+  }
+
+  return next();
+}
+
+/**
  * @openapi
  * /purchases:
  *   post:
@@ -22,10 +52,12 @@ const router = Router();
  *       Assigns an ascending server-side `number`, ignores any
  *       `number`, `status`, totals or `confirmed_at` sent by the client and
  *       calculates the subtotal, tax and total from the optional `items`.
- *       Every line requires its own absolute `tax_amount`; `tax_rate` is
- *       ignored. `currency_id` defaults to the active default transaction
- *       currency. Every amount is expressed in that currency; no conversion
- *       is done.
+ *       Every line requires its own absolute `tax_amount`, `lot_number` and
+ *       `expiration_date`; `tax_rate` is ignored. The same product/state may
+ *       repeat with different lots, but the same product and lot cannot repeat
+ *       in one purchase. `currency_id` defaults to the active default
+ *       transaction currency. Every amount is expressed in that currency; no
+ *       conversion is done.
  *     tags:
  *       - Purchases
  *     security:
@@ -69,7 +101,7 @@ const router = Router();
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       409:
- *         description: Duplicated product/item state line
+ *         description: Duplicated product/lot line
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorMessage' }
@@ -91,6 +123,7 @@ const router = Router();
 router.post(
   "/",
   ...writeAccess(),
+  requireItemLotFields,
   ...validatedBody(createPurchaseSchema),
   async (req, res) => {
     try {

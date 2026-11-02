@@ -3,6 +3,7 @@ const {
   isCalendarDate,
   parseExpired,
   parseExpiringBefore,
+  parseLocationStatus,
   parseLotId,
   parseNumberFilter,
   parsePositiveInteger,
@@ -35,6 +36,14 @@ describe("lot validators", () => {
     expect(parseExpired(1)).toBeUndefined();
   });
 
+  it("parses only the three location statuses", () => {
+    expect(parseLocationStatus(" pending ")).toBe("pending");
+    expect(parseLocationStatus("in_progress")).toBe("in_progress");
+    expect(parseLocationStatus("located")).toBe("located");
+    expect(parseLocationStatus("all")).toBeNull();
+    expect(parseLocationStatus(1)).toBeNull();
+  });
+
   it("parses expiring_before as a real calendar date", () => {
     expect(parseExpiringBefore(" 2027-01-31 ")).toBe("2027-01-31");
     expect(parseExpiringBefore("2026-02-30")).toBeNull();
@@ -44,7 +53,7 @@ describe("lot validators", () => {
     expect(isCalendarDate("2025-02-29")).toBe(false);
   });
 
-  it("defaults stock and reserved to zero on create", async () => {
+  it("defaults stock to zero and strips reserved on create", async () => {
     const values = await createLotSchema.validate(
       {
         number: " L-1 ",
@@ -65,7 +74,6 @@ describe("lot validators", () => {
       expiration_date: "2027-03-31",
       item_state_id: 1,
       stock: 0,
-      reserved: 0,
       warehouse_id: 1,
       shelf_id: 1,
       section_id: 2,
@@ -86,24 +94,23 @@ describe("lot validators", () => {
     ).resolves.toBeTruthy();
   });
 
-  it("reports reserved above stock under the reserved key", async () => {
-    await expect(
-      updateLotSchema.validate(
-        {
-          number: "L-1",
-          product_id: 1,
-          expiration_date: "2027-03-31",
-          item_state_id: 1,
-          stock: 1,
-          reserved: 2,
-          warehouse_id: 1,
-          shelf_id: 1,
-          section_id: 2,
-        },
-        { abortEarly: false },
-      ),
-    ).rejects.toMatchObject({
-      errors: ["reserved cannot exceed stock"],
-    });
+  it("ignores reserved because it is immutable through the API", async () => {
+    const values = await updateLotSchema.validate(
+      {
+        number: "L-1",
+        product_id: 1,
+        expiration_date: "2027-03-31",
+        item_state_id: 1,
+        stock: 1,
+        reserved: 2,
+        warehouse_id: 1,
+        shelf_id: 1,
+        section_id: 2,
+      },
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    expect(values).not.toHaveProperty("reserved");
+    expect(values.stock).toBe(1);
   });
 });

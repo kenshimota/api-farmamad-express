@@ -7,6 +7,8 @@ const purchaseSchemas = {
       "quantity",
       "unit_cost",
       "tax_amount",
+      "lot_number",
+      "expiration_date",
     ],
     properties: {
       product_id: { type: "integer", minimum: 1, example: 15 },
@@ -29,6 +31,17 @@ const purchaseSchemas = {
         multipleOf: 0.01,
         description: "Absolute tax amount of the line (not a rate)",
         example: 128.0,
+      },
+      lot_number: {
+        type: "string",
+        minLength: 1,
+        maxLength: 100,
+        example: "LOTE-1",
+      },
+      expiration_date: {
+        type: "string",
+        format: "date",
+        example: "2027-03-31",
       },
     },
   },
@@ -57,6 +70,17 @@ const purchaseSchemas = {
         description: "Optional; the current value is kept when omitted",
         example: 128.0,
       },
+      lot_number: {
+        type: "string",
+        minLength: 1,
+        maxLength: 100,
+        example: "LOTE-1",
+      },
+      expiration_date: {
+        type: "string",
+        format: "date",
+        example: "2027-03-31",
+      },
     },
   },
   PurchaseItem: {
@@ -74,6 +98,14 @@ const purchaseSchemas = {
         description: "subtotal + tax_amount",
         example: 928.0,
       },
+      lot_number: { type: "string", nullable: true, example: "LOTE-1" },
+      expiration_date: {
+        type: "string",
+        format: "date",
+        nullable: true,
+        example: "2027-03-31",
+      },
+      received_lot_id: { type: "integer", nullable: true, example: 40 },
     },
   },
   Purchase: {
