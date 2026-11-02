@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const User = require("./user");
 const Role = require("./role");
+const Customer = require("./customer");
 const PasswordResetCode = require("./password-reset-code");
 
 describe("User model", () => {
@@ -37,6 +38,22 @@ describe("User model", () => {
   it("uses the documented model and table names", () => {
     expect(User.name).toBe("User");
     expect(User.tableName).toBe("users");
+  });
+
+  it("defines a nullable customer_id linked to a customer", () => {
+    const attributes = User.getAttributes();
+
+    expect(attributes.customer_id.type.toString()).toBe("INTEGER");
+    expect(attributes.customer_id.allowNull).toBe(true);
+    expect(User.associations.customer.target).toBe(Customer);
+    expect(User.associations.customer.foreignKey).toBe("customer_id");
+    expect(User.associations.customer.options.as).toBe("customer");
+  });
+
+  it("registers the inverse customer hasOne association", () => {
+    expect(Customer.associations.user.target).toBe(User);
+    expect(Customer.associations.user.foreignKey).toBe("customer_id");
+    expect(Customer.associations.user.options.as).toBe("user");
   });
 
   it("keeps the raw foreign keys and aliases of its associations", () => {

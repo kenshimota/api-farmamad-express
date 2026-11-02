@@ -1,6 +1,7 @@
 const { Router } = require("express");
 const { UniqueConstraintError } = require("sequelize");
 const User = require("../models/user");
+const Customer = require("../models/customer");
 const { authenticate } = require("../auth/middleware");
 const { authorize } = require("../auth/authorize");
 const { findRoleByName } = require("../auth/roles");
@@ -15,6 +16,12 @@ const { notifyWelcomeUser } = require("../auth/welcome");
 const listRouter = require("./list");
 const statusRouter = require("./status");
 const removeRouter = require("./remove");
+const customerLinkRouter = require("./customer-link");
+const {
+  CUSTOMER_LINKED_MESSAGE,
+  attachCustomer,
+  isCustomerLinkUniqueError,
+} = require("./customer-link-shared");
 
 const router = Router();
 
@@ -72,9 +79,19 @@ const router = Router();
  *                   - manager_warehouse
  *                   - support
  *                 example: seller
+ *               customer_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 nullable: true
+ *                 description: >-
+ *                   Optional customer to link. Only valid when role is
+ *                   customer; the customer must exist and be unlinked.
+ *                 example: 8
  *     responses:
  *       201:
- *         description: User created
+ *         description: >-
+ *           User created; when customer_id was sent the response also includes
+ *           customer_id and the public customer summary
  *         content:
  *           application/json:
  *             schema:
@@ -104,7 +121,7 @@ const router = Router();
  *             example:
  *               message: Forbidden
  *       409:
- *         description: Username or email already registered
+ *         description: Username, email or customer already linked
  *         content:
  *           application/json:
  *             schema:
@@ -149,24 +166,68 @@ router.post("/", authenticate, authorize("admin"), async (req, res) => {
     return res.status(422).json({ errors: { role: "Invalid role" } });
   }
 
+  const { customer_id: customerId, ...values } = data;
+  const hasCustomerLink = customerId !== undefined && customerId !== null;
+
+  if (role.name !== "customer" && customerId !== undefined) {
+    return res
+      .status(422)
+      .json({ errors: { customer_id: "User is not a customer" } });
+  }
+
+  let customer = null;
+
+  if (hasCustomerLink) {
+    customer = await Customer.findByPk(customerId);
+
+    if (!customer) {
+      return res
+        .status(422)
+        .json({ errors: { customer_id: "Invalid customer" } });
+    }
+
+    const linkedUser = await User.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (linkedUser) {
+      return res.status(409).json({ message: CUSTOMER_LINKED_MESSAGE });
+    }
+  }
+
   let user;
   try {
-    user = await User.create({ ...data, roleId: role.id });
+    user = await User.create({
+      ...values,
+      roleId: role.id,
+      ...(hasCustomerLink ? { customer_id: customerId } : {}),
+    });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
+      if (isCustomerLinkUniqueError(error)) {
+        return res.status(409).json({ message: CUSTOMER_LINKED_MESSAGE });
+      }
+
       return res.status(409).json({ message: "User already exists" });
     }
 
     throw error;
   }
 
+  if (hasCustomerLink) {
+    attachCustomer(user, customer);
+  }
+
   await notifyWelcomeUser(user);
 
-  return res.status(201).json(toPublicUser(user, role.name));
+  return res
+    .status(201)
+    .json(toPublicUser(user, role.name, { includeCustomer: hasCustomerLink }));
 });
 
 router.use(listRouter);
 router.use(statusRouter);
+router.use(customerLinkRouter);
 router.use(removeRouter);
 
 module.exports = router;

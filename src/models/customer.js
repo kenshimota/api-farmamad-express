@@ -52,3 +52,8 @@ Customer.prototype.toJSON = function toJSON() {
 };
 
 module.exports = Customer;
+
+// Load the User model so the inverse `Customer.hasOne(User)` association is
+// registered even when only the customer model is required. The association
+// itself is declared in user.js to avoid a circular definition.
+require("./user");

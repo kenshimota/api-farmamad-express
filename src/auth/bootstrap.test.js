@@ -7,6 +7,7 @@ jest.mock("../models/user", () => ({
 }));
 
 jest.mock("../models/role", () => ({ findOne: jest.fn() }));
+jest.mock("../models/customer", () => ({}));
 
 jest.mock("../models/password-reset-code", () => ({
   findOne: jest.fn(),
