@@ -99,6 +99,27 @@ function toPublicInvoicedBy(user) {
 }
 
 /**
+ * Builds the summarized payment history nested in an invoice detail. Wallet
+ * balances and the staff user are intentionally left out.
+ * @param {object[]} allocations - Payment allocations with their payment.
+ * @returns {object[]} The summarized history ordered by allocation.
+ */
+function toPublicPaymentHistory(allocations) {
+  return allocations.map((allocation) => {
+    const payment = readField(allocation, "payment");
+    const currency = payment ? readField(payment, "currency") : null;
+
+    return {
+      payment_id: readField(allocation, "payment_id"),
+      amount: toMoneyNumber(readField(allocation, "amount")),
+      currency: currency ? toPublicCurrencySummary(currency) : null,
+      applied_amount: toMoneyNumber(readField(allocation, "applied_amount")),
+      allocated_at: toIso(readField(allocation, "allocated_at")),
+    };
+  });
+}
+
+/**
  * Builds the public representation of an invoice line snapshot.
  * @param {object} item - Invoice item instance or plain object.
  * @returns {object} Public line data.
@@ -125,11 +146,16 @@ function toPublicInvoiceItem(item) {
  * @param {object} [options] - Serialization options.
  * @param {boolean} [options.includeItems] - Nest the line snapshots.
  * @param {boolean} [options.includeInvoicedBy] - Expose the internal user.
+ * @param {boolean} [options.includePaymentHistory] - Nest the payment history.
  * @returns {object} Public invoice data.
  */
 function toPublicInvoice(
   invoice,
-  { includeItems = false, includeInvoicedBy = false } = {},
+  {
+    includeItems = false,
+    includeInvoicedBy = false,
+    includePaymentHistory = false,
+  } = {},
 ) {
   const customer = readField(invoice, "customer");
   const currency = readField(invoice, "currency");
@@ -182,6 +208,15 @@ function toPublicInvoice(
     data.items = items.map((item) => toPublicInvoiceItem(item));
   }
 
+  if (includePaymentHistory) {
+    const allocations = readField(invoice, "payment_allocations");
+
+    data.payments_count = Array.isArray(allocations) ? allocations.length : 0;
+    data.payment_history = Array.isArray(allocations)
+      ? toPublicPaymentHistory(allocations)
+      : [];
+  }
+
   return data;
 }
 
@@ -193,5 +228,6 @@ module.exports = {
   toPublicInvoice,
   toPublicInvoiceItem,
   toPublicInvoicedBy,
+  toPublicPaymentHistory,
   toPublicPaymentTerm,
 };

@@ -72,6 +72,7 @@ router.get("/:id", ...detailAccess(), async (req, res) => {
       toPublicInvoice(invoice, {
         includeItems: true,
         includeInvoicedBy: ["admin", "seller"].includes(req.user.role),
+        includePaymentHistory: true,
       }),
     );
   } catch (error) {

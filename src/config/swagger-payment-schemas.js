@@ -37,13 +37,14 @@ const schemas = {
         type: "integer",
         nullable: true,
         description:
-          "Reserved for HU-40/HU-43; the invoices table does not exist in this branch yet",
+          "Invoice credited by an invoice_payment movement; null for deposits",
         example: null,
       },
       payment_allocation_id: {
         type: "integer",
         nullable: true,
-        description: "Reserved for HU-43",
+        description:
+          "Immutable allocation that produced the invoice_payment movement",
         example: null,
       },
       description: {

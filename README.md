@@ -4646,7 +4646,7 @@ pedidos (HU-39).
   factura. La restricción `(invoice_id, order_item_id)` evita duplicar una
   línea del pedido.
 - `tax_amount` es siempre `0` en esta HU; `paid_amount` nace en `0` y
-  `payment_status` en `pending`. El historial de pagos se agrega en HU-43.
+  `payment_status` en `pending`. El historial de pagos vive en la sección HU-43.
 - `due_date = issued_at + payment_terms.days`; para contado (`days = 0`) es la
   fecha de emisión. Mientras no exista `payment_terms`, el servicio usa
   `payment_term_days` del snapshot o la fecha de emisión.
@@ -5009,14 +5009,157 @@ curl "http://localhost:3001/customer-wallets/5/transactions" \
 | `422`  | `{ "errors": { "id": "Invalid wallet id" } }`                                      |
 | `500`  | Error interno manejado por el handler global                                       |
 
-### Pendiente por dependencia de facturación (HU-43)
+## Aplicación de pagos a facturas y estado de pago (HU-43)
 
-`wallet_transactions.invoice_id` ya tiene FK `RESTRICT` a `invoices.id`
-(HU-40). `payment_allocation_id` sigue nullable y **sin foreign key** porque la
-tabla `payment_allocations` se agrega en HU-43. Mientras tanto, la API solo
-genera movimientos `deposit` y detecta un pago con asignaciones si ya existe un
-movimiento `invoice_payment` o uno con `payment_allocation_id`.
+Permite aplicar el saldo de una billetera a una factura, consultar el historial
+de pagos y saber si la factura está `pending`, `partial` o `paid`. Reutiliza
+`invoices`, `payments`, `customer_wallets`, `wallet_transactions`, `currencies`,
+`method_payments`, `method_payment_types` y `users`; no crea monedas, métodos de
+pago ni variables de entorno nuevas.
 
+Tablas y restricciones nuevas, con migración reversible:
+
+| Elemento                                    | Contenido                                                                                                               |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `payment_allocations`                       | Asignación inmutable de un pago a una factura, con `amount`, `applied_amount`, `exchange_rate`, `allocated_at` y autor. |
+| `wallet_transactions.payment_allocation_id` | FK `RESTRICT` a `payment_allocations.id` e índice único: cada asignación genera exactamente un movimiento.              |
+| `invoices`                                  | CHECK `invoices_paid_amount_within_total` (`paid_amount <= total`) e índice de `payment_status`.                        |
+
+Reglas de negocio:
+
+- Un pago no se puede aplicar dos veces a la misma factura: la pareja
+  `(payment_id, invoice_id)` es única y un duplicado responde
+  `409 Payment already allocated to this invoice`.
+- El pago debe pertenecer al mismo cliente que la factura. Si no, responde
+  `422` con `{ "errors": { "payment_id": "Payment does not belong to invoice customer" } }`.
+- `amount` se descuenta de la billetera en la moneda del pago y debe ser mayor
+  que `0`, con máximo dos decimales y no mayor al saldo disponible.
+- `exchange_rate = paymentCurrency.rate ÷ invoiceCurrency.rate` y
+  `applied_amount = round2(amount × exchange_rate)` se acreditan a la factura.
+  Si `applied_amount` supera `total - paid_amount` responde `422` con
+  `{ "errors": { "amount": "Amount exceeds invoice balance" } }`.
+- Una factura ya pagada responde `409 Invoice is already paid`.
+- Todo ocurre en una única transacción: se bloquean factura, pago y billetera,
+  se crea la asignación, se debita la billetera, se agrega el movimiento
+  `invoice_payment` con `amount` negativo e `invoice_id`/`payment_allocation_id`,
+  y se actualizan `paid_amount` y `payment_status`. Un fallo no descuenta saldo
+  ni cambia la factura.
+- `paid_amount = 0` deja `pending`; `0 < paid_amount < total` deja `partial`;
+  `paid_amount = total` deja `paid`. `balance_due` se calcula como
+  `total - paid_amount` y no es una columna.
+- Las asignaciones y movimientos son inmutables: no existen endpoints `PUT` ni
+  `DELETE`. Tampoco se exponen saldos de billetera en la factura.
+
+### Roles
+
+| Acción                                              | `customer`  | `admin` | `seller` | Otros roles |
+| --------------------------------------------------- | ----------- | ------- | -------- | ----------- |
+| `POST /invoices/:id/payments`                       | ❌ `403`    | ✅      | ✅       | ❌ `403`    |
+| `GET /invoices/:id/payments`                        | Solo propia | ✅      | ✅       | ❌ `403`    |
+| Ver `payment_status`, `paid_amount` y `balance_due` | Solo propia | ✅      | ✅       | ❌ `403`    |
+
+Sin token, o con token inválido/expirado, responde `401 Unauthorized`. Un
+usuario bloqueado responde `403 User is blocked`. Un `customer` sin
+`users.customer_id` responde `403 Customer profile is not linked`. Una factura
+de otro cliente responde `404 Invoice not found` para no revelar su existencia.
+
+### `POST /invoices/:id/payments`
+
+Solo `admin` y `seller`. Requiere `payment_id` y `amount`.
+
+```bash
+curl -X POST http://localhost:3001/invoices/1/payments \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"payment_id":1,"amount":25}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 1,
+  "payment_id": 1,
+  "invoice_id": 1,
+  "amount": 25,
+  "currency": { "id": 2, "code": "USDT", "name": "Tether", "symbol": "$" },
+  "applied_amount": 25,
+  "exchange_rate": 1.124,
+  "allocated_at": "2026-11-01T13:00:00.000Z",
+  "invoice": {
+    "id": 1,
+    "number": 1,
+    "total": 25,
+    "paid_amount": 25,
+    "balance_due": 0,
+    "payment_status": "paid"
+  }
+}
+```
+
+### `GET /invoices/:id/payments`
+
+`admin`, `seller` o el `customer` dueño. Devuelve las asignaciones ordenadas por
+`allocated_at` ascendente y luego `id` ascendente. Cada fila incluye el monto y
+la moneda del pago, el monto aplicado, la tasa, la fecha, `method_payment` y
+`method_payment_type`. `created_by` solo aparece para `admin` y `seller`.
+
+```bash
+curl "http://localhost:3001/invoices/1/payments" \
+  -H "Authorization: Bearer <jwt-customer>"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "payment_id": 1,
+    "amount": 25,
+    "currency": { "id": 2, "code": "USDT", "name": "Tether", "symbol": "$" },
+    "applied_amount": 25,
+    "exchange_rate": 1.124,
+    "allocated_at": "2026-11-01T13:00:00.000Z",
+    "method_payment": { "id": 3, "label": "Binance Farmamad" },
+    "method_payment_type": { "id": 2, "code": "BINANCE", "name": "Binance" }
+  }
+]
+```
+
+### Factura y filtros actualizados
+
+`GET /invoices/:id` agrega `payments_count` y `payment_history`, un resumen con
+`{ payment_id, amount, currency, applied_amount, allocated_at }` sin saldos de
+billetera ni el usuario interno. `GET /invoices` ya acepta
+`?payment_status=pending|partial|paid`; un valor inválido responde `422`.
+
+```bash
+curl "http://localhost:3001/invoices?payment_status=partial" \
+  -H "Authorization: Bearer <jwt-seller>"
+```
+
+### Errores del módulo
+
+| Código | Situación                                                             | Cuerpo esperado                                                             |
+| ------ | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `400`  | Falta `payment_id` o `amount`                                         | `{ "message": "payment_id and amount are required" }`                       |
+| `401`  | Token ausente, inválido o expirado                                    | `{ "message": "Unauthorized" }`                                             |
+| `403`  | Rol sin permiso, usuario bloqueado o cliente sin vínculo              | Mensaje específico                                                          |
+| `404`  | Factura o pago inexistente                                            | `{ "message": "Invoice not found" }` / `{ "message": "Payment not found" }` |
+| `409`  | Factura pagada, asignación duplicada o saldo insuficiente             | Mensaje específico                                                          |
+| `422`  | Monto inválido, cliente distinto o monto mayor al saldo de la factura | `{ "errors": { ... } }`                                                     |
+| `500`  | Error interno manejado por el handler global                          | `{ "message": "Internal server error" }`                                    |
+
+### Pendiente por dependencia de pedidos (HU-43/RF-04)
+
+La regla de exigir saldo de billetera al pasar un pedido de contado
+(`payment_terms.days = 0`) no se implementa todavía porque `orders`,
+`order_items` y `payment_terms` (HU-34/#58, HU-39/#63 y HU-41/#65) aún no
+existen en esta rama. Cuando se integren, `generate` deberá calcular
+`available = SUM(wallet.balance × walletCurrency.rate ÷ orderCurrency.rate)` y
+responder `409 { "message": "Insufficient wallet balance" }` sin reservar lotes
+ni generar el pedido cuando `available < orders.total`. La validación es solo de
+saldo disponible: no debita ni bloquea la billetera; el débito ocurre al aplicar
+el pago con `POST /invoices/:id/payments`.
 
 ## Tienda (catálogo del cliente) — HU-33
 
