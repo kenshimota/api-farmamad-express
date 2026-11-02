@@ -4,6 +4,7 @@ const WalletTransaction = require("../models/wallet-transaction");
 const Currency = require("../models/currency");
 const User = require("../models/user");
 const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
+const { findPage } = require("../shared/pagination");
 
 const WALLET_ORDER = Object.freeze([["currency_id", "ASC"]]);
 const TRANSACTION_ORDER = Object.freeze([
@@ -16,6 +17,7 @@ const CURRENCY_INCLUDE = Object.freeze({
   attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
 });
 const CREATED_BY_ATTRIBUTES = Object.freeze(["id", "username", "email"]);
+const SORT_FIELDS = Object.freeze(["id", "currency_id", "customer_id"]);
 
 /**
  * Creates a repository that encapsulates every persistence call of the wallet
@@ -39,12 +41,16 @@ function createWalletRepository({
      * @param {number} customerId - Customer id.
      * @returns {Promise<object[]>} The wallets.
      */
-    findByCustomer(customerId) {
-      return walletModel.findAll({
-        where: { customer_id: customerId },
-        order: WALLET_ORDER,
-        include: [CURRENCY_INCLUDE],
-      });
+    findByCustomer(customerId, { pagination, order = WALLET_ORDER } = {}) {
+      return findPage(
+        walletModel,
+        {
+          where: { customer_id: customerId },
+          order,
+          include: [CURRENCY_INCLUDE],
+        },
+        pagination,
+      );
     },
 
     /**
@@ -94,6 +100,7 @@ function createWalletRepository({
 const walletRepository = createWalletRepository();
 
 module.exports = {
+  SORT_FIELDS,
   TRANSACTION_ORDER,
   WALLET_ORDER,
   createWalletRepository,

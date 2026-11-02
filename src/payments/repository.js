@@ -10,10 +10,22 @@ const Currency = require("../models/currency");
 const Image = require("../models/image");
 const PaymentStatus = require("../models/payment-status");
 const PaymentStatusHistory = require("../models/payment-status-history");
+const PaymentAllocation = require("../models/payment-allocation");
 const User = require("../models/user");
 const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 const { createWalletOperations } = require("./wallet-operations");
 const { createAssetOperations } = require("./repository-assets");
+const { findPage } = require("../shared/pagination");
+const { buildTextSearch } = require("../shared/list-query");
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "paid_at",
+  "amount",
+  "status",
+  "customer_id",
+  "method_payment_id",
+  "currency_id",
+]);
 const {
   LIST_ORDER,
   METHOD_ATTRIBUTES,
@@ -118,14 +130,19 @@ function createPaymentRepository({
      * @param {object} [filters] - Listing filters.
      * @returns {Promise<object[]>} The matching payments.
      */
-    list({
-      customerId,
-      methodPaymentId,
-      currencyId,
-      status,
-      paidFrom,
-      paidTo,
-    } = {}) {
+    list(
+      {
+        customerId,
+        methodPaymentId,
+        currencyId,
+        status,
+        paidFrom,
+        paidTo,
+        invoiceId,
+        q,
+      } = {},
+      { pagination, order = LIST_ORDER } = {},
+    ) {
       const where = {};
 
       if (customerId !== undefined) {
@@ -156,11 +173,24 @@ function createPaymentRepository({
         }
       }
 
-      return model.findAll({
-        where,
-        order: LIST_ORDER,
-        include: buildPaymentIncludes(models),
-      });
+      const include = buildPaymentIncludes(models);
+      const search = buildTextSearch(q, ["reference", "notes"]);
+
+      if (search) {
+        Object.assign(where, search);
+      }
+
+      if (invoiceId !== undefined) {
+        include.push({
+          model: PaymentAllocation,
+          as: "allocations",
+          attributes: [],
+          required: true,
+          where: { invoice_id: invoiceId },
+        });
+      }
+
+      return findPage(model, { where, order, include }, pagination);
     },
 
     /**
@@ -245,6 +275,7 @@ const paymentRepository = createPaymentRepository();
 module.exports = {
   LIST_ORDER,
   METHOD_ATTRIBUTES,
+  SORT_FIELDS,
   createPaymentRepository,
   paymentRepository,
 };

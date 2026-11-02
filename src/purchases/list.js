@@ -14,67 +14,73 @@ const {
   parseStatusFilter,
   parseSupplierFilter,
 } = require("./parsers");
+const {
+  parseListQuery,
+  parseDateOnly,
+  needsListOptions,
+} = require("../shared/list-query");
+const { sendListResponse } = require("../shared/pagination");
+const { SORT_FIELDS } = require("./repository");
 
 const router = Router();
 
 const FILTER_SPECS = Object.freeze([
   {
     query: "supplier_id",
-    key: "supplierId",
+    field: "supplierId",
     parse: parseSupplierFilter,
     message: SUPPLIER_FILTER_MESSAGE,
   },
   {
     query: "status",
-    key: "status",
+    field: "status",
     parse: parseStatusFilter,
     message: STATUS_MESSAGE,
   },
   {
     query: "number",
-    key: "number",
+    field: "number",
     parse: parseNumberFilter,
     message: NUMBER_FILTER_MESSAGE,
   },
   {
     query: "currency_id",
-    key: "currencyId",
+    field: "currencyId",
     parse: parseCurrencyFilter,
     message: CURRENCY_FILTER_MESSAGE,
+  },
+  {
+    query: "from",
+    field: "from",
+    parse: parseDateOnly,
+    message: "Invalid from",
+  },
+  {
+    query: "to",
+    field: "to",
+    parse: parseDateOnly,
+    message: "Invalid to",
   },
 ]);
 
 /**
- * Parses the optional exact filters in documented order.
+ * Parses the optional filters, sort and pagination of the purchase listing.
  * @param {object} query - Express query object.
- * @returns {{ filters: object }|{ error: { status: number, body: object } }}
- *   The service filters or the HTTP error to answer.
+ * @returns {{ query: object }|{ error: { status: number, body: object } }}
+ *   The parsed query or the HTTP error to answer.
  */
 function resolveFilters(query) {
-  const filters = {};
+  const parsed = parseListQuery(query, {
+    filters: FILTER_SPECS,
+    sortFields: SORT_FIELDS,
+    defaultOrder: [["number", "DESC"]],
+  });
 
-  for (const spec of FILTER_SPECS) {
-    const raw = query[spec.query];
-
-    if (raw === undefined) {
-      continue;
-    }
-
-    const value = spec.parse(raw);
-
-    if (value === null) {
-      return {
-        error: {
-          status: 422,
-          body: { errors: { [spec.query]: spec.message } },
-        },
-      };
-    }
-
-    filters[spec.key] = value;
+  if (parsed.errors) {
+    return { error: { status: 422, body: { errors: parsed.errors } } };
   }
 
-  return { filters };
+  return { query: parsed };
 }
 
 /**
@@ -107,6 +113,11 @@ function resolveFilters(query) {
  *       - in: query
  *         name: include
  *         schema: { type: string, enum: [items] }
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+ *       - { in: query, name: sort, schema: { type: string } }
+ *       - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+ *       - { in: query, name: q, schema: { type: string }, description: Partial case-insensitive search }
  *     responses:
  *       200:
  *         description: Purchases ordered by number descending
@@ -137,21 +148,28 @@ function resolveFilters(query) {
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", ...readAccess(), async (req, res) => {
-  const { filters, error } = resolveFilters(req.query);
+  const { query, error } = resolveFilters(req.query);
 
   if (error) {
     return res.status(error.status).json(error.body);
   }
 
   const includeItems = req.query.include === "items";
-  const purchases = await purchaseService.listPurchases({
-    ...filters,
-    includeItems,
-  });
+  const filters = { ...query.filters, includeItems };
 
-  return res.json(
-    purchases.map((purchase) => toPublicPurchase(purchase, { includeItems })),
-  );
+  if (query.q !== undefined) {
+    filters.q = query.q;
+  }
+
+  const purchases = needsListOptions(query)
+    ? await purchaseService.listPurchases(filters, {
+        pagination: query.pagination,
+        order: query.order,
+      })
+    : await purchaseService.listPurchases(filters);
+  const serialize = (purchase) => toPublicPurchase(purchase, { includeItems });
+
+  return sendListResponse(res, purchases, serialize);
 });
 
 /**

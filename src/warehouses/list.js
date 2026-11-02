@@ -22,6 +22,13 @@ const router = Router();
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
+ *         name: q
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Partial term; alias-compatible with `search` and wins when both are sent
+ *         example: central
+ *       - in: query
  *         name: search
  *         required: false
  *         schema:
@@ -59,7 +66,10 @@ const router = Router();
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", ...readAccess(), async (req, res) => {
-  const warehouses = await warehouseRepository.list(req.query.search);
+  // `q` is the shared search parameter; `search` stays as a backwards
+  // compatible alias and loses when both are present.
+  const term = req.query.q !== undefined ? req.query.q : req.query.search;
+  const warehouses = await warehouseRepository.list(term);
 
   return res.json(warehouses.map((warehouse) => toPublicWarehouse(warehouse)));
 });

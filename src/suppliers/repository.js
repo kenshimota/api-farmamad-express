@@ -2,6 +2,7 @@ const Supplier = require("../models/supplier");
 const City = require("../models/city");
 const State = require("../models/state");
 const { supplierSearch } = require("./search");
+const { findPage } = require("../shared/pagination");
 
 const LIST_ORDER = Object.freeze([["name", "ASC"]]);
 const LOCATION_INCLUDE = Object.freeze([
@@ -18,8 +19,8 @@ const LOCATION_INCLUDE = Object.freeze([
  * @param {unknown} [filters.q] - Raw search term.
  * @returns {object} Options accepted by `Supplier.findAll`.
  */
-function buildListOptions({ stateId, cityId, q } = {}) {
-  const options = { order: LIST_ORDER, include: LOCATION_INCLUDE };
+function buildListOptions({ stateId, cityId, q } = {}, order = LIST_ORDER) {
+  const options = { order, include: LOCATION_INCLUDE };
   const where = {};
 
   if (stateId !== undefined) {
@@ -36,7 +37,7 @@ function buildListOptions({ stateId, cityId, q } = {}) {
     Object.assign(where, supplierSearch.buildFilter(term));
   }
 
-  if (Object.keys(where).length || term) {
+  if (Reflect.ownKeys(where).length || term) {
     options.where = where;
   }
 
@@ -74,8 +75,8 @@ function createSupplierRepository(
      * @param {object} [filters] - Listing filters.
      * @returns {Promise<object[]>} The matching instances.
      */
-    list(filters) {
-      return model.findAll(buildListOptions(filters));
+    list(filters, { pagination, order = LIST_ORDER } = {}) {
+      return findPage(model, buildListOptions(filters, order), pagination);
     },
 
     /**

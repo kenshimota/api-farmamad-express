@@ -6,10 +6,22 @@ const {
   resolveCustomerScope,
 } = require("../shared/customer-access");
 const { toPublicWallet } = require("./serializer");
-const { parseCustomerId } = require("./parsers");
 const { walletService } = require("./service");
+const { parsePositiveInteger } = require("../shared/parsers");
+const { parseListQuery, needsListOptions } = require("../shared/list-query");
+const { sendListResponse } = require("../shared/pagination");
 
 const router = Router();
+
+const SORT_FIELDS = Object.freeze(["id", "currency_id", "customer_id"]);
+const FILTER_SPECS = Object.freeze([
+  {
+    query: "customer_id",
+    field: "customerId",
+    parse: parsePositiveInteger,
+    message: "Invalid customer_id",
+  },
+]);
 
 /**
  * @openapi
@@ -30,6 +42,11 @@ const router = Router();
  *         required: false
  *         schema: { type: integer, minimum: 1 }
  *         example: 8
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+ *       - { in: query, name: sort, schema: { type: string } }
+ *       - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+ *       - { in: query, name: q, schema: { type: string }, description: Partial case-insensitive search }
  *     responses:
  *       200:
  *         description: Wallets ordered by currency id
@@ -70,24 +87,31 @@ router.get(
   authorize("admin", "seller", "customer"),
   loadCurrentUser,
   async (req, res) => {
-    const raw = req.query.customer_id;
-    const parsed = raw === undefined ? undefined : parseCustomerId(raw);
+    const query = parseListQuery(req.query, {
+      filters: FILTER_SPECS,
+      sortFields: SORT_FIELDS,
+      defaultOrder: [["currency_id", "ASC"]],
+    });
 
-    if (parsed === null) {
-      return res.status(422).json({
-        errors: { customer_id: "Invalid customer_id" },
-      });
+    if (query.errors) {
+      return res.status(422).json({ errors: query.errors });
     }
 
+    const parsed = query.filters.customerId;
     const scope = resolveCustomerScope(req.currentUser, parsed);
 
     if (scope.body) {
       return res.status(scope.status).json(scope.body);
     }
 
-    const wallets = await walletService.listWallets(scope.customerId);
+    const wallets = needsListOptions(query)
+      ? await walletService.listWallets(scope.customerId, {
+          pagination: query.pagination,
+          order: query.order,
+        })
+      : await walletService.listWallets(scope.customerId);
 
-    return res.json(wallets.map((wallet) => toPublicWallet(wallet)));
+    return sendListResponse(res, wallets, (wallet) => toPublicWallet(wallet));
   },
 );
 

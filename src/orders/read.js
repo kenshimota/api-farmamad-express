@@ -6,8 +6,51 @@ const { handleOrderError } = require("./shared");
 const { parsePositiveId } = require("./parsers");
 const { toPublicInvoice } = require("../invoices/serializer");
 const { INTERNAL_ROLES } = require("./constants");
+const { parsePositiveInteger } = require("../shared/parsers");
+const {
+  parseListQuery,
+  parseDateOnly,
+  parseNonEmptyString,
+} = require("../shared/list-query");
+const { sendListResponse } = require("../shared/pagination");
 
 const router = Router();
+
+const SORT_FIELDS = Object.freeze([
+  "id",
+  "number",
+  "status",
+  "customer_id",
+  "total",
+  "createdAt",
+]);
+
+const FILTER_SPECS = Object.freeze([
+  {
+    query: "customer_id",
+    field: "customerId",
+    parse: parsePositiveInteger,
+    message: "Invalid customer_id",
+  },
+  {
+    query: "status",
+    field: "status",
+    parse: parseNonEmptyString,
+    message: "Invalid status",
+  },
+  {
+    query: "created_from",
+    field: "createdFrom",
+    parse: parseDateOnly,
+    message: "Invalid created_from",
+  },
+  {
+    query: "created_to",
+    field: "createdTo",
+    parse: parseDateOnly,
+    message: "Invalid created_to",
+  },
+]);
 
 /**
  * @openapi
@@ -21,6 +64,12 @@ const router = Router();
  *       - Orders
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+ *       - { in: query, name: sort, schema: { type: string } }
+ *       - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+ *       - { in: query, name: q, schema: { type: string }, description: Partial case-insensitive search }
  *     responses:
  *       200:
  *         description: Orders ordered newest first
@@ -48,12 +97,35 @@ const router = Router();
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", ...orderAccess(), async (req, res) => {
-  try {
-    const orders = await orderService.listOrders(req.user);
+  const query = parseListQuery(req.query, {
+    filters: FILTER_SPECS,
+    sortFields: SORT_FIELDS,
+    defaultOrder: [
+      ["createdAt", "DESC"],
+      ["id", "DESC"],
+    ],
+  });
 
-    return res.json(
-      orders.map((order) => toPublicOrder(order, { includeItemsCount: true })),
-    );
+  if (query.errors) {
+    return res.status(422).json({ errors: query.errors });
+  }
+
+  try {
+    const filters = { ...query.filters };
+
+    if (query.q !== undefined) {
+      filters.q = query.q;
+    }
+
+    const orders = await orderService.listOrders(req.user, {
+      filters,
+      pagination: query.pagination,
+      order: query.order,
+    });
+    const serialize = (order) =>
+      toPublicOrder(order, { includeItemsCount: true });
+
+    return sendListResponse(res, orders, serialize);
   } catch (error) {
     return handleOrderError(error, res);
   }

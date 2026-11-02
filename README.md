@@ -109,6 +109,84 @@ responder: no hay procesamiento en cola. Los errores (`400`, `401`, `403`,
 Esta convención aplica a los endpoints actuales y a los futuros: el camino
 exitoso de un `PUT` nunca responde `200` ni `204`.
 
+## Paginación, filtros y autocompletado
+
+Los endpoints de alto volumen aceptan `page`, `page_size`, `sort`, `order`, `q`
+y sus filtros de módulo. La paginación es **opt-in**: sin `page` ni
+`page_size` la respuesta sigue siendo el arreglo plano de siempre. Cuando se
+envía al menos uno de esos dos parámetros la respuesta usa el sobre:
+
+```json
+{
+  "data": [],
+  "meta": {
+    "page": 1,
+    "page_size": 20,
+    "total": 0,
+    "total_pages": 0,
+    "has_next": false,
+    "has_prev": false
+  }
+}
+```
+
+- `page`: entero `>= 1` (por defecto `1`).
+- `page_size`: entero entre `1` y `100` (por defecto `20`).
+- `sort`: campo de la lista blanca del módulo; `order`: `asc` o `desc`.
+  El orden siempre desempata por `id` ascendente.
+- `q` recorta el término y busca de forma parcial e insensible a mayúsculas.
+- Una página fuera de rango responde `200` con `data: []` y el `meta` correcto.
+- Un parámetro inválido responde `422` con la clave del parámetro:
+  `{ "errors": { "page": "Invalid page" } }`.
+- Las fechas usan `YYYY-MM-DD` y son inclusivas (`00:00:00` a
+  `23:59:59.999`).
+- No existe `all=true`; los recursos grandes se consumen paginados o por
+  autocompletado.
+
+Ejemplo paginado y de autocompletado:
+
+```bash
+curl "http://localhost:3001/products?page=2&page_size=10&category_id=3&q=ibu&sort=name&order=asc" \
+  -H "Authorization: Bearer <jwt>"
+
+curl "http://localhost:3001/products?q=ibu&page_size=10" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Endpoints de alto volumen
+
+| Endpoint              | Filtros mínimos                                                                 |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `GET /products`       | `category_id`, `tax_id`, `image_id`, `reference`, `q`                           |
+| `GET /users`          | `role`, `is_active`, `customer_id`, `q`                                         |
+| `GET /customers`      | `state_id`, `city_id`, `seller_id`, `q`                                         |
+| `GET /suppliers`      | `state_id`, `city_id`, `q`                                                      |
+| `GET /images`         | `q`                                                                             |
+| `GET /costs`          | `product_id`, `item_state_id`, `currency_id`, `from`, `to`                      |
+| `GET /stocks`         | `product_id`, `warehouse_id`, `item_state_id`, `in_stock`, `low_stock`          |
+| `GET /lots`           | `product_id`, `supplier_id`, `warehouse_id`, `expires_from`, `expires_to`, `location_status`, `q` |
+| `GET /purchases`      | `supplier_id`, `status`, `from`, `to`, `include=items`, `q`                     |
+| `GET /orders`         | `customer_id`, `status`, `created_from`, `created_to`, `q`                      |
+| `GET /invoices`       | `customer_id`, `order_id`, `status`/`payment_status`, `from`, `to`, `due_from`, `due_to`, `q` |
+| `GET /payments`       | `customer_id`, `invoice_id`, `method_payment_id`, `status`, `from`, `to`, `q`   |
+| `GET /customer-wallets` | `customer_id`                                                                 |
+
+`q` actúa como autocompletado con un `page_size` pequeño (por ejemplo `10`);
+el cliente debe esperar al menos 300 ms desde la última pulsación. Aplica a
+`products`, `customers`, `suppliers`, `users`, `invoices`, `orders` y
+`purchases`.
+
+### Catálogos para selectores
+
+Los catálogos pequeños siguen devolviendo el arreglo completo, sin paginación,
+para poblar `<select>`: `GET /taxes`, `GET /currencies`, `GET /roles`,
+`GET /states`, `GET /cities?state_id=`, `GET /categories`,
+`GET /item-states`, `GET /order-statuses`, `GET /payment-terms`,
+`GET /method-payment-types`, `GET /method-payments`, `GET /price-lists`,
+`GET /warehouses` y `GET /shelves?warehouse_id=`. Si se envían `page` o
+`page_size` a un catálogo se ignoran. `GET /warehouses` mantiene `search` como
+alias de `q`; si llegan ambos gana `q`.
+
 ## Endpoints
 
 ### `GET /hello-world`
@@ -535,9 +613,11 @@ Errores:
 
 ### `GET /users`
 
-Protegido: requiere un JWT con rol `admin`. Devuelve la colección de usuarios
-ordenada por `id` ascendente, con los datos públicos de cada uno y **sin**
-`password` ni `roleId`. Si no hay usuarios responde `200` con `[]`.
+Protegido: requiere un JWT con rol `admin`. Sin paginación devuelve la
+colección de usuarios ordenada por `id` ascendente, con los datos públicos de
+cada uno y **sin** `password` ni `roleId`. Con `page`/`page_size` devuelve el
+sobre paginado. Filtros: `role`, `is_active`, `customer_id` y `q` (username,
+email y nombre). Sort: `id`, `username`, `email`, `name`.
 
 ```bash
 curl http://localhost:3001/users -H "Authorization: Bearer <jwt>"
@@ -1724,12 +1804,16 @@ Errores:
 
 ### `GET /products`
 
-Protegido: requiere un JWT válido, de cualquier rol. Devuelve la colección
-completa ordenada por `id` ascendente. Si no hay productos responde `200` con
-`[]` (nunca `404`).
+Protegido: requiere un JWT válido, de cualquier rol. Sin `page` ni
+`page_size` devuelve la colección completa ordenada por `id` ascendente (nunca
+`404`; `[]` cuando no hay productos). Con paginación devuelve
+`{ data, meta }`. Acepta `category_id`, `tax_id`, `image_id`, `reference`, `q`,
+`sort` (`id`, `name`, `reference`, `category_id`, `tax_id`) y `order`.
 
 ```bash
 curl http://localhost:3001/products -H "Authorization: Bearer <jwt>"
+curl "http://localhost:3001/products?q=ibu&page_size=10" \
+  -H "Authorization: Bearer <jwt>"
 ```
 
 Respuesta `200`:
@@ -2745,8 +2829,10 @@ No existe `POST`, `PUT` ni `DELETE` público para `stocks`; esas rutas responden
 
 Protegido para `admin`, `seller` y `manager_warehouse`. Devuelve el inventario
 ordenado por `product_id` y `item_state_id` ascendente, con el estado anidado.
-Los filtros son opcionales y exactos: `?product_id=`, `?item_state_id=` y
-`?in_stock=true|false` (`true` deja solo `quantity > 0`). Un filtro inválido
+Los filtros son opcionales y exactos: `?product_id=`, `?warehouse_id=`,
+`?item_state_id=`, `?in_stock=true|false` (`true` deja solo `quantity > 0`) y
+`?low_stock=true|false` (usa un umbral de 10 unidades). Acepta paginación y
+`sort` (`id`, `product_id`, `item_state_id`, `quantity`). Un filtro inválido
 responde `422` con `{ "errors": { "product_id": "Invalid id" } }`.
 
 ```bash

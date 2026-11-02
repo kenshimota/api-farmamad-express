@@ -6,6 +6,7 @@ jest.mock("../database", () => ({
 jest.mock("../models/lot", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
+  findAndCountAll: jest.fn(),
   findByPk: jest.fn(),
   findOne: jest.fn(),
   getAttributes: jest.fn(() => ({})),

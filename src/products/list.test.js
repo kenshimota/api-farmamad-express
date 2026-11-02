@@ -3,6 +3,7 @@ process.env.JWT_SECRET = "test-secret";
 jest.mock("../models/product", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
+  findAndCountAll: jest.fn(),
   findByPk: jest.fn(),
 }));
 jest.mock("../models/category", () => ({ findByPk: jest.fn() }));
@@ -81,6 +82,7 @@ function get(path, token = tokenFor()) {
 beforeEach(() => {
   Product.create.mockReset();
   Product.findAll.mockReset();
+  Product.findAndCountAll.mockReset();
   Product.findByPk.mockReset();
   User.findByPk.mockReset();
   User.findByPk.mockResolvedValue(AUTH_USER);
@@ -148,6 +150,90 @@ describe("GET /products", () => {
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ message: "User is blocked" });
     expect(Product.findAll).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /products pagination and filters", () => {
+  it("returns the {data, meta} envelope when page is sent", async () => {
+    Product.findAndCountAll.mockResolvedValue({
+      rows: [storedProducts[0]],
+      count: 21,
+    });
+
+    const response = await get("/?page=2&page_size=10");
+
+    expect(response.status).toBe(200);
+    expect(response.body.meta).toEqual({
+      page: 2,
+      page_size: 10,
+      total: 21,
+      total_pages: 3,
+      has_next: true,
+      has_prev: true,
+    });
+    expect(response.body.data).toEqual([
+      {
+        id: 1,
+        name: "Ibuprofeno 400 mg",
+        description: "Analgésico y antiinflamatorio",
+        reference: "IBU-400",
+        category_id: 1,
+        image_id: 1,
+        tax_id: 1,
+      },
+    ]);
+    expect(Product.findAndCountAll).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 10, offset: 10 }),
+    );
+  });
+
+  it("combines the module filters with q and a whitelisted sort", async () => {
+    Product.findAndCountAll.mockResolvedValue({ rows: [], count: 0 });
+
+    const response = await get(
+      "/?category_id=3&tax_id=1&image_id=5&reference=IBU&q=%20ibu%20&sort=name&order=desc&page_size=10",
+    );
+
+    expect(response.status).toBe(200);
+    const options = Product.findAndCountAll.mock.calls[0][0];
+
+    expect(options.where.category_id).toBe(3);
+    expect(options.where.tax_id).toBe(1);
+    expect(options.where.image_id).toBe(5);
+    expect(options.where.reference).toEqual(expect.objectContaining({}));
+    expect(options.where[Symbol.for("sequelize.or")]).toBeUndefined();
+    expect(options.order[0]).toEqual(["name", "DESC"]);
+    expect(options.order[1]).toEqual(["id", "ASC"]);
+  });
+
+  it("keeps the flat array and default order without pagination", async () => {
+    Product.findAll.mockResolvedValue(storedProducts);
+
+    const response = await get("/?category_id=3");
+
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(Product.findAndCountAll).not.toHaveBeenCalled();
+    expect(Product.findAll).toHaveBeenCalledWith({
+      where: { category_id: 3 },
+      order: [["id", "ASC"]],
+    });
+  });
+
+  it.each([
+    ["/?page=0", { page: "Invalid page" }],
+    ["/?page_size=101", { page_size: "Invalid page_size" }],
+    ["/?sort=description", { sort: "Invalid sort" }],
+    ["/?order=up", { order: "Invalid order" }],
+    ["/?category_id=abc", { category_id: "Invalid category_id" }],
+    ["/?tax_id=0", { tax_id: "Invalid tax_id" }],
+    ["/?q=a&q=b", { q: "Invalid q" }],
+  ])("answers 422 for %s", async (path, errors) => {
+    const response = await get(path);
+
+    expect(response.status).toBe(422);
+    expect(response.body).toEqual({ errors });
+    expect(Product.findAll).not.toHaveBeenCalled();
+    expect(Product.findAndCountAll).not.toHaveBeenCalled();
   });
 });
 

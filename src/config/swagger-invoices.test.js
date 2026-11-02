@@ -50,6 +50,11 @@ describe("swagger invoice spec", () => {
       "customer_id",
       "number",
       "payment_status",
+      "page",
+      "page_size",
+      "sort",
+      "order",
+      "q",
     ]);
     expect(list.responses["422"]).toBeDefined();
     expect(detail.responses["404"]).toBeDefined();

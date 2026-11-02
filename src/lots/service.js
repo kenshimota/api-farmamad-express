@@ -127,8 +127,10 @@ function createLotService({
      * @param {object} [filters] - Listing filters.
      * @returns {Promise<object[]>} The matching lots.
      */
-    listLots(filters) {
-      return repository.list(filters);
+    listLots(filters, options) {
+      return options === undefined
+        ? repository.list(filters)
+        : repository.list(filters, options);
     },
 
     /**

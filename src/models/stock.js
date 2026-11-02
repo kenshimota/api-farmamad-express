@@ -3,6 +3,7 @@ const sequelize = require("../database");
 const Product = require("./product");
 const ItemState = require("./item-state");
 const Cost = require("./cost");
+const Lot = require("./lot");
 
 /**
  * Sequelize model that represents the available units of a product for a
@@ -40,6 +41,12 @@ ItemState.hasMany(Stock, { foreignKey: "item_state_id", as: "stocks" });
 // Optional association used by the available view to join the current cost of
 // the same product and item state in a single query. The repository adds the
 // exact item_state_id condition to the join.
+Stock.hasMany(Lot, {
+  foreignKey: "product_id",
+  sourceKey: "product_id",
+  as: "warehouse_lots",
+  constraints: false,
+});
 Stock.hasOne(Cost, {
   foreignKey: "product_id",
   sourceKey: "product_id",

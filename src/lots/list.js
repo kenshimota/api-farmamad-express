@@ -13,7 +13,6 @@ const {
   SHELF_ID_MESSAGE,
   WAREHOUSE_ID_MESSAGE,
 } = require("./validators");
-const { resolveQueryFilters } = require("../shared/query-filters");
 const {
   parseExpired,
   parseExpiringBefore,
@@ -21,6 +20,9 @@ const {
   parseNumberFilter,
   parsePositiveInteger,
 } = require("./parsers");
+const { parseListQuery, parseDateOnly } = require("../shared/list-query");
+const { sendListResponse } = require("../shared/pagination");
+const { LIST_ORDER, SORT_FIELDS } = require("./repository");
 
 const router = Router();
 
@@ -63,6 +65,24 @@ const QUERY_FILTERS = Object.freeze([
     message: SECTION_ID_MESSAGE,
   },
   {
+    query: "supplier_id",
+    field: "supplierId",
+    parse: parsePositiveInteger,
+    message: "Invalid supplier id",
+  },
+  {
+    query: "expires_from",
+    field: "expiresFrom",
+    parse: parseDateOnly,
+    message: "Invalid expires_from",
+  },
+  {
+    query: "expires_to",
+    field: "expiresTo",
+    parse: parseDateOnly,
+    message: "Invalid expires_to",
+  },
+  {
     query: "number",
     field: "number",
     parse: parseNumberFilter,
@@ -96,7 +116,11 @@ const QUERY_FILTERS = Object.freeze([
  *   filters or the validation errors.
  */
 function resolveListQuery(query) {
-  return resolveQueryFilters(query, QUERY_FILTERS);
+  return parseListQuery(query, {
+    filters: QUERY_FILTERS,
+    sortFields: SORT_FIELDS,
+    defaultOrder: LIST_ORDER,
+  });
 }
 
 /**
@@ -128,6 +152,11 @@ function resolveListQuery(query) {
  *       - { in: query, name: location_status, schema: { type: string, enum: [pending, in_progress, located] } }
  *       - { in: query, name: expired, schema: { type: boolean } }
  *       - { in: query, name: expiring_before, schema: { type: string, format: date } }
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+ *       - { in: query, name: sort, schema: { type: string } }
+ *       - { in: query, name: order, schema: { type: string, enum: [asc, desc], default: asc } }
+ *       - { in: query, name: q, schema: { type: string }, description: Partial case-insensitive search }
  *     responses:
  *       200:
  *         description: Lots ordered by expiration date and id
@@ -163,9 +192,12 @@ router.get("/", ...readAccess(), async (req, res) => {
     return res.status(422).json({ errors: query.errors });
   }
 
-  const lots = await lotService.listLots(query.filters);
+  const result = await lotService.listLots(
+    { ...query.filters, q: query.q },
+    { pagination: query.pagination, order: query.order },
+  );
 
-  return res.json(lots.map((lot) => toPublicLot(lot)));
+  return sendListResponse(res, result, (lot) => toPublicLot(lot));
 });
 
 module.exports = router;

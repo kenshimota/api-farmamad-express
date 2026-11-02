@@ -52,8 +52,10 @@ function createPurchaseService({
      * @param {object} [filters] - Listing filters.
      * @returns {Promise<object[]>} The matching purchases.
      */
-    listPurchases(filters) {
-      return repository.list(filters);
+    listPurchases(filters, options) {
+      return options === undefined
+        ? repository.list(filters)
+        : repository.list(filters, options);
     },
 
     /**

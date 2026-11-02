@@ -244,6 +244,28 @@ const schemas = {
       message: { type: "string", example: "Not found" },
     },
   },
+  PaginationMeta: {
+    type: "object",
+    description:
+      "Pagination metadata returned when page or page_size is sent to a high-volume listing",
+    properties: {
+      page: { type: "integer", minimum: 1, example: 2 },
+      page_size: { type: "integer", minimum: 1, maximum: 100, example: 10 },
+      total: { type: "integer", minimum: 0, example: 57 },
+      total_pages: { type: "integer", minimum: 0, example: 6 },
+      has_next: { type: "boolean", example: true },
+      has_prev: { type: "boolean", example: true },
+    },
+  },
+  PaginatedResponse: {
+    type: "object",
+    description:
+      "Paginated envelope used by high-volume listings when page or page_size is sent; without them the endpoint keeps returning the flat array",
+    properties: {
+      data: { type: "array", items: {} },
+      meta: { $ref: "#/components/schemas/PaginationMeta" },
+    },
+  },
   ValidationErrors: {
     type: "object",
     properties: {

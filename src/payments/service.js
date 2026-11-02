@@ -49,8 +49,10 @@ function createPaymentService({
      * @param {object} [filters] - Listing filters.
      * @returns {Promise<object[]>} The payments.
      */
-    listPayments(filters) {
-      return repository.list(filters);
+    listPayments(filters, options) {
+      return options === undefined
+        ? repository.list(filters)
+        : repository.list(filters, options);
     },
 
     /**
