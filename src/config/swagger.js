@@ -128,6 +128,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Immutable invoice headers and line snapshots created when an order is invoiced; read-only consultation for admin, seller and the owning customer.",
       },
+      {
+        name: "Store",
+        description:
+          "Customer store catalog with prices resolved from the assigned price list and availability calculated from lots.",
+      },
     ],
     components: {
       securitySchemes: {

@@ -12,11 +12,13 @@ const invoiceSchemas = require("./swagger-invoice-schemas");
 const orderSchemas = require("./swagger-order-schemas");
 const customerSchemas = require("./swagger-customer-schemas");
 const priceListSchemas = require("./swagger-price-list-schemas");
+const storeSchemas = require("./swagger-store-schemas");
 const CURRENCY_SUMMARY = { $ref: "#/components/schemas/CurrencySummary" };
 const schemas = {
   ...authSchemas,
   ...customerSchemas,
   ...priceListSchemas,
+  ...storeSchemas,
   ...purchaseSchemas,
   ...currencySchemas,
   ...shelfSchemas,
