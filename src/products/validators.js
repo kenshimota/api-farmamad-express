@@ -5,8 +5,8 @@ const REQUIRED_PRODUCT_FIELDS = [
   "description",
   "reference",
   "category_id",
-  "image_id",
 ];
+const NUMERIC_PRODUCT_FIELDS = Object.freeze(["category_id", "image_id"]);
 const MAX_NAME_LENGTH = 150;
 const MAX_REFERENCE_LENGTH = 100;
 const POSITIVE_INTEGER_PATTERN = /^\d+$/;
@@ -16,6 +16,8 @@ const DESCRIPTION_MESSAGE = "Descripción inválida";
 const REFERENCE_MESSAGE = "Referencia inválida";
 const CATEGORY_ID_MESSAGE = "Invalid category id";
 const IMAGE_ID_MESSAGE = "Invalid image id";
+const IMAGE_REQUIRED_MESSAGE = "image or image_id is required";
+const IMAGE_ID_EXCLUSIVE_MESSAGE = "image_id cannot be combined with image";
 
 /**
  * Builds a trimmed string schema that rejects blank values and, when a limit
@@ -57,8 +59,32 @@ const productSchema = yup.object({
   description: trimmedString(DESCRIPTION_MESSAGE),
   reference: trimmedString(REFERENCE_MESSAGE, MAX_REFERENCE_LENGTH),
   category_id: positiveInteger(CATEGORY_ID_MESSAGE),
-  image_id: positiveInteger(IMAGE_ID_MESSAGE),
+  image_id: positiveInteger(IMAGE_ID_MESSAGE).optional(),
 });
+
+/**
+ * Converts the numeric fields that arrive as text in `multipart/form-data`
+ * before yup validates them. Values that are not plain digits are left intact
+ * so the schema still reports them as invalid.
+ * @param {object} [body] - Raw request body.
+ * @returns {object} A copy with numeric fields converted when possible.
+ */
+function normalizeProductBody(body = {}) {
+  const normalized = { ...body };
+
+  for (const field of NUMERIC_PRODUCT_FIELDS) {
+    const value = normalized[field];
+
+    if (
+      typeof value === "string" &&
+      POSITIVE_INTEGER_PATTERN.test(value.trim())
+    ) {
+      normalized[field] = Number(value.trim());
+    }
+  }
+
+  return normalized;
+}
 
 /**
  * Parses a product id coming from a route parameter. Only positive integers
@@ -89,9 +115,12 @@ function parseProductId(value) {
 
 module.exports = {
   CATEGORY_ID_MESSAGE,
+  IMAGE_ID_EXCLUSIVE_MESSAGE,
   IMAGE_ID_MESSAGE,
+  IMAGE_REQUIRED_MESSAGE,
   MAX_NAME_LENGTH,
   MAX_REFERENCE_LENGTH,
+  normalizeProductBody,
   parseProductId,
   productSchema,
   REQUIRED_PRODUCT_FIELDS,

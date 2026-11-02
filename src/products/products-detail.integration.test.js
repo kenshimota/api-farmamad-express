@@ -146,8 +146,7 @@ describe("PUT /products/:id with a real database", () => {
     const missing = await as("put", `/products/${product.id}`, token).send({});
     expect(missing.status).toBe(400);
     expect(missing.body).toEqual({
-      message:
-        "name, description, reference, category_id and image_id are required",
+      message: "image or image_id is required",
     });
 
     const invalid = await as("put", `/products/${product.id}`, token).send({

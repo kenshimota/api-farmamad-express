@@ -224,22 +224,34 @@ describe("POST /products", () => {
   });
 
   it.each([
-    {},
-    { ...validBody, name: undefined },
-    { ...validBody, description: "" },
-    { ...validBody, reference: null },
-    { ...validBody, category_id: undefined },
-    { ...validBody, image_id: null },
-  ])("responds 400 when a required field is missing in %p", async (body) => {
-    const response = await post(body);
+    [{}, "image or image_id is required"],
+    [{ ...validBody, image_id: null }, "image or image_id is required"],
+    [
+      { ...validBody, name: undefined },
+      "name, description, reference and category_id are required",
+    ],
+    [
+      { ...validBody, description: "" },
+      "name, description, reference and category_id are required",
+    ],
+    [
+      { ...validBody, reference: null },
+      "name, description, reference and category_id are required",
+    ],
+    [
+      { ...validBody, category_id: undefined },
+      "name, description, reference and category_id are required",
+    ],
+  ])(
+    "responds 400 when a required field is missing in %p",
+    async (body, message) => {
+      const response = await post(body);
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({
-      message:
-        "name, description, reference, category_id and image_id are required",
-    });
-    expect(Product.create).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ message });
+      expect(Product.create).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ["name is blank", { name: "   " }],

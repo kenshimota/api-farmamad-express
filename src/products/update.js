@@ -1,9 +1,11 @@
 const { Router } = require("express");
 const { toPublicProduct } = require("./serializer");
-const { productSchema } = require("./validators");
+const { normalizeProductBody, productSchema } = require("./validators");
 const { ensureReferences, handleWriteError, loadProduct } = require("./shared");
 const { validatedBody, writeAccess } = require("./guards");
 const { productRepository } = require("./repository");
+const { processUploadedImage, removeFiles } = require("./image-service");
+const { requireImageSource, uploadSingleImage } = require("./upload");
 
 const router = Router();
 
@@ -39,7 +41,6 @@ const router = Router();
  *               - description
  *               - reference
  *               - category_id
- *               - image_id
  *             properties:
  *               name:
  *                 type: string
@@ -59,7 +60,41 @@ const router = Router();
  *               image_id:
  *                 type: integer
  *                 minimum: 1
+ *                 description: Existing image id; it cannot be combined with `image`
  *                 example: 1
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - description
+ *               - reference
+ *               - category_id
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 150
+ *                 example: Ibuprofeno 800 mg
+ *               description:
+ *                 type: string
+ *                 example: Analgésico y antiinflamatorio
+ *               reference:
+ *                 type: string
+ *                 maxLength: 100
+ *                 example: IBU-800
+ *               category_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 example: 1
+ *               image_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Existing image id; it cannot be combined with `image`
+ *                 example: 1
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: JPEG, PNG or WebP file up to 5 MB
  *     responses:
  *       202:
  *         description: Updated public product data
@@ -74,7 +109,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *             example:
- *               message: name, description, reference, category_id and image_id are required
+ *               message: image or image_id is required
  *       401:
  *         description: Missing, invalid or expired token
  *         content:
@@ -107,8 +142,16 @@ const router = Router();
  *               $ref: '#/components/schemas/ErrorMessage'
  *             example:
  *               message: Product already exists
+ *       413:
+ *         description: Uploaded image exceeds 5 MB
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *             example:
+ *               message: Image too large
  *       422:
- *         description: Invalid product id, fields or references
+ *         description: Invalid product id, fields, references or uploaded image
  *         content:
  *           application/json:
  *             schema:
@@ -119,21 +162,67 @@ const router = Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
+/**
+ * Normalises the numeric fields that arrive as text in multipart requests
+ * before yup validates them.
+ * @param {import("express").Request} req - Express request.
+ * @param {import("express").Response} res - Express response.
+ * @param {import("express").NextFunction} next - Next middleware.
+ * @returns {void}
+ */
+function normalizeBody(req, res, next) {
+  req.body = normalizeProductBody(req.body ?? {});
+
+  return next();
+}
+
+/**
+ * Updates the product. With an uploaded file it stores the new image and
+ * replaces `image_id` in one transaction without deleting the previous row or
+ * files; any failure removes the newly written files. Without a file it keeps
+ * the JSON flow with `image_id`.
+ * @param {import("express").Request} req - Express request.
+ * @param {import("express").Response} res - Express response.
+ * @returns {Promise<import("express").Response>} The updated product.
+ */
+async function updateProduct(req, res) {
+  let generated;
+
+  try {
+    if (req.file) {
+      generated = await processUploadedImage(req.file);
+    }
+
+    if (generated) {
+      await productRepository.updateWithImage(
+        req.product,
+        generated.image,
+        req.validated,
+      );
+    } else {
+      await productRepository.update(req.product, req.validated);
+    }
+
+    return res.status(202).json(toPublicProduct(req.product));
+  } catch (error) {
+    if (generated) {
+      await removeFiles(generated.files);
+    }
+
+    return handleWriteError(error, res);
+  }
+}
+
 router.put(
   "/:id",
   ...writeAccess(),
+  uploadSingleImage,
+  normalizeBody,
+  requireImageSource,
   ...validatedBody(productSchema),
   loadProduct,
   ensureReferences,
-  async (req, res) => {
-    try {
-      await productRepository.update(req.product, req.validated);
-
-      return res.status(202).json(toPublicProduct(req.product));
-    } catch (error) {
-      return handleWriteError(error, res);
-    }
-  },
+  updateProduct,
 );
 
 module.exports = router;
