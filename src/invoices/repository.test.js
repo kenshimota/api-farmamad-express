@@ -9,6 +9,8 @@ jest.mock("../models/customer", () => ({}));
 jest.mock("../models/currency", () => ({}));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/payment-term", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/payment-allocation", () => ({}));
+jest.mock("../models/payment", () => ({}));
 jest.mock("../database", () => ({
   transaction: jest.fn(),
   query: jest.fn(),
@@ -27,6 +29,7 @@ const {
   PAYMENT_TERM_INCLUDE,
   ITEM_INCLUDE,
   LIST_ORDER,
+  PAYMENT_ALLOCATION_INCLUDE,
   buildListOptions,
   createInvoiceRepository,
 } = require("./repository");
@@ -149,6 +152,7 @@ describe("invoiceRepository", () => {
       repository.findById(1, {
         includeItems: true,
         includeInvoicedBy: true,
+        includePayments: true,
         transaction: TRANSACTION,
       }),
     ).resolves.toBe(invoice);
@@ -159,6 +163,7 @@ describe("invoiceRepository", () => {
         PAYMENT_TERM_INCLUDE,
         ITEM_INCLUDE,
         INVOICED_BY_INCLUDE,
+        PAYMENT_ALLOCATION_INCLUDE,
       ],
       transaction: TRANSACTION,
       lock: undefined,

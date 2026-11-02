@@ -126,7 +126,7 @@ const swaggerSpec = swaggerJsdoc({
       {
         name: "Invoices",
         description:
-          "Immutable invoice headers and line snapshots created when an order is invoiced; read-only consultation for admin, seller and the owning customer.",
+          "Immutable invoice headers and line snapshots created when an order is invoiced, plus the immutable wallet payments applied to each invoice and their history.",
       },
       {
         name: "Payment terms",

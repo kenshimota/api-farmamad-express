@@ -86,6 +86,7 @@ function createInvoiceService({
     const invoice = await repository.findById(id, {
       includeItems: true,
       includeInvoicedBy,
+      includePayments: true,
     });
 
     if (!invoice) {

@@ -111,6 +111,10 @@ jest.mock("./models/invoice-item", () => ({
 }));
 jest.mock("./models/payment-term", () => ({}));
 jest.mock("./models/order", () => ({}));
+jest.mock("./models/payment-allocation", () => ({
+  belongsTo: jest.fn(),
+  hasMany: jest.fn(),
+}));
 jest.mock("./orders/service", () => ({
   orderService: { createOrder: jest.fn() },
 }));

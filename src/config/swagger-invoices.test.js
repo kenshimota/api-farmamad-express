@@ -57,3 +57,36 @@ describe("swagger invoice spec", () => {
     expect(detail.parameters[0].name).toBe("id");
   });
 });
+
+describe("swagger invoice payments spec", () => {
+  it("documents the apply and history endpoints", () => {
+    const payments = swaggerSpec.paths["/invoices/{id}/payments"];
+
+    expect(payments.post).toBeDefined();
+    expect(payments.post.summary).toMatch(/applies a wallet payment/i);
+    expect(payments.post.requestBody.required).toBe(true);
+    expect(payments.post.responses["201"]).toBeDefined();
+    expect(payments.post.responses["409"]).toBeDefined();
+    expect(payments.post.responses["422"]).toBeDefined();
+    expect(payments.get).toBeDefined();
+    expect(payments.get.responses["200"]).toBeDefined();
+    expect(payments.get.responses["404"]).toBeDefined();
+    expect(payments.put).toBeUndefined();
+    expect(payments.delete).toBeUndefined();
+  });
+
+  it("registers the payment allocation schemas", () => {
+    expect(swaggerSpec.components.schemas.PaymentAllocation).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        payment_id: { type: "integer" },
+        amount: { type: "number" },
+        applied_amount: { type: "number" },
+        exchange_rate: { type: "number" },
+        allocated_at: { type: "string", format: "date-time" },
+      },
+    });
+    expect(swaggerSpec.components.schemas.InvoicePaymentHistory).toBeDefined();
+  });
+});

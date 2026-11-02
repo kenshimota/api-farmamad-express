@@ -75,7 +75,8 @@ const INVOICE_BASE = {
     total: { type: "number", example: 25.0 },
     paid_amount: {
       type: "number",
-      description: "Maintained by the future payments module (HU-43)",
+      description:
+        "Accumulated applied amount; maintained by the invoice payments module (HU-43)",
       example: 0,
     },
     balance_due: {
@@ -126,6 +127,15 @@ const invoiceSchemas = {
       items: {
         type: "array",
         items: INVOICE_ITEM,
+      },
+      payments_count: {
+        type: "integer",
+        description: "Number of payment allocations of this invoice",
+        example: 1,
+      },
+      payment_history: {
+        type: "array",
+        items: { $ref: "#/components/schemas/InvoicePaymentHistory" },
       },
     },
   },

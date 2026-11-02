@@ -51,6 +51,7 @@ describe("getInvoice", () => {
       expect(repository.findById).toHaveBeenCalledWith(1, {
         includeItems: true,
         includeInvoicedBy: true,
+        includePayments: true,
       });
       expect(repository.findUserById).not.toHaveBeenCalled();
     },
@@ -66,6 +67,7 @@ describe("getInvoice", () => {
     expect(repository.findById).toHaveBeenCalledWith(1, {
       includeItems: true,
       includeInvoicedBy: false,
+      includePayments: true,
     });
   });
 
