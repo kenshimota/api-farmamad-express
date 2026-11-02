@@ -3,6 +3,7 @@ const sequelize = require("../database");
 const Customer = require("./customer");
 const Currency = require("./currency");
 const User = require("./user");
+const PaymentTerm = require("./payment-term");
 
 /**
  * Sequelize model that represents an immutable invoice header. The server
@@ -40,7 +41,7 @@ const Invoice = sequelize.define(
     },
     payment_term_id: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: false,
     },
     subtotal: {
       type: DataTypes.DECIMAL(12, 2),
@@ -100,5 +101,14 @@ User.hasMany(Invoice, {
 
 Invoice.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
 Currency.hasMany(Invoice, { foreignKey: "currency_id", as: "invoices" });
+
+Invoice.belongsTo(PaymentTerm, {
+  foreignKey: "payment_term_id",
+  as: "payment_term",
+});
+PaymentTerm.hasMany(Invoice, {
+  foreignKey: "payment_term_id",
+  as: "invoices",
+});
 
 module.exports = Invoice;

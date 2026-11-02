@@ -2,129 +2,108 @@ jest.mock("./database", () => ({
   authenticate: jest.fn().mockResolvedValue(),
   transaction: jest.fn(),
 }));
-
 jest.mock("./models/user", () => ({
   findOne: jest.fn(),
   findByPk: jest.fn(),
   count: jest.fn(),
   create: jest.fn(),
 }));
-
 jest.mock("./models/role", () => ({
   findOne: jest.fn(),
   findAll: jest.fn(),
 }));
-
 jest.mock("./models/password-reset-code", () => ({
   findOne: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
 }));
-
 jest.mock("./models/customer", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/price-list", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
   countCustomers: jest.fn(),
 }));
-
 jest.mock("./models/warehouse", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/category", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/image", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/product", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/state", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/city", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/supplier", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/item-state", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/cost", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/stock", () => ({
   findAll: jest.fn(),
   findByPk: jest.fn(),
   findOne: jest.fn(),
   findOrCreate: jest.fn(),
 }));
-
 jest.mock("./models/purchase", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/purchase-item", () => ({
   create: jest.fn(),
   bulkCreate: jest.fn(),
   findAll: jest.fn(),
   findOne: jest.fn(),
 }));
-
 jest.mock("./models/currency", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/currency-rate-history", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
 }));
-
 jest.mock("./models/shelf", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
   findByPk: jest.fn(),
 }));
-
 jest.mock("./models/shelf-section", () => ({
   create: jest.fn(),
   findAll: jest.fn(),
@@ -167,6 +146,8 @@ jest.mock("./models/invoice-item", () => ({
   belongsTo: jest.fn(),
   hasMany: jest.fn(),
 }));
+jest.mock("./models/payment-term", () => ({}));
+jest.mock("./models/order", () => ({}));
 jest.mock("./orders/service", () => ({
   orderService: { createOrder: jest.fn() },
 }));

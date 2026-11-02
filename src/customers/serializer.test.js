@@ -20,6 +20,8 @@ describe("toPublicCustomer", () => {
       email: "juan@example.com",
       price_list_id: null,
       price_list: null,
+      payment_term_id: null,
+      payment_term: null,
     });
   });
 
@@ -54,6 +56,8 @@ describe("toPublicCustomer", () => {
       email: "ana@example.com",
       price_list_id: null,
       price_list: null,
+      payment_term_id: null,
+      payment_term: null,
     });
     expect(customer.get).toHaveBeenCalledWith("id");
   });
@@ -77,6 +81,8 @@ describe("toPublicCustomer", () => {
       email: "juan@example.com",
       price_list_id: null,
       price_list: null,
+      payment_term_id: null,
+      payment_term: null,
     });
   });
 
@@ -106,6 +112,46 @@ describe("toPublicCustomer", () => {
       email: "juan@example.com",
       price_list_id: 3,
       price_list: { id: 3, name: "Mayorista 30" },
+      payment_term_id: null,
+      payment_term: null,
+    });
+  });
+
+  it("includes the assigned payment term summary", () => {
+    const customer = {
+      id: 1,
+      fullName: "Juan Pérez",
+      latitude: "-17.7833000",
+      longitude: "-63.1821000",
+      direction: "Av. Monseñor Rivero 123",
+      email: "juan@example.com",
+      payment_term_id: 3,
+      payment_term: {
+        id: 3,
+        code: "credit_15",
+        name: "Crédito 15 días",
+        days: 15,
+        description: "internal",
+        is_active: true,
+      },
+    };
+
+    expect(toPublicCustomer(customer)).toEqual({
+      id: 1,
+      fullName: "Juan Pérez",
+      latitude: -17.7833,
+      longitude: -63.1821,
+      direction: "Av. Monseñor Rivero 123",
+      email: "juan@example.com",
+      price_list_id: null,
+      price_list: null,
+      payment_term_id: 3,
+      payment_term: {
+        id: 3,
+        code: "credit_15",
+        name: "Crédito 15 días",
+        days: 15,
+      },
     });
   });
 
@@ -131,6 +177,8 @@ describe("toPublicCustomer", () => {
       "email",
       "price_list_id",
       "price_list",
+      "payment_term_id",
+      "payment_term",
     ]);
   });
 });

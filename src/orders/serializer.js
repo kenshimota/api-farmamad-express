@@ -81,6 +81,21 @@ function toPublicItemState(itemState) {
 }
 
 /**
+ * Builds the payment term snapshot nested in an order.
+ * @param {object} paymentTerm - Payment term instance or plain object.
+ * @returns {{ id: number, code: string, name: string, days: number }}
+ *   Public summary.
+ */
+function toPublicPaymentTerm(paymentTerm) {
+  return {
+    id: readField(paymentTerm, "id"),
+    code: readField(paymentTerm, "code"),
+    name: readField(paymentTerm, "name"),
+    days: readField(paymentTerm, "days"),
+  };
+}
+
+/**
  * Builds the public representation of one order line. Lot allocations, costs
  * and internal location fields are intentionally excluded.
  * @param {object} item - Order item instance or plain object.
@@ -141,6 +156,7 @@ function toPublicOrder(
   const currency = readField(order, "currency");
   const items = readField(order, "items");
   const history = readField(order, "history");
+  const paymentTerm = readField(order, "payment_term");
   const data = {
     id: readField(order, "id"),
     number: readField(order, "number"),
@@ -150,6 +166,7 @@ function toPublicOrder(
     currency_id: readField(order, "currency_id"),
     subtotal: toMoneyNumber(readField(order, "subtotal")),
     total: toMoneyNumber(readField(order, "total")),
+    payment_term_id: readField(order, "payment_term_id"),
     delivery_address: readField(order, "delivery_address"),
     notes: readField(order, "notes"),
     created_at: toIso(readField(order, "createdAt")),
@@ -161,6 +178,10 @@ function toPublicOrder(
 
   if (customer) {
     data.customer = toPublicCustomer(customer);
+  }
+
+  if (paymentTerm) {
+    data.payment_term = toPublicPaymentTerm(paymentTerm);
   }
 
   if (includeItems && Array.isArray(items)) {
@@ -183,5 +204,6 @@ module.exports = {
   toPublicOrder,
   toPublicOrderHistory,
   toPublicOrderItem,
+  toPublicPaymentTerm,
   toPublicProduct,
 };

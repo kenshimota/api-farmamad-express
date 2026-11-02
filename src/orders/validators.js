@@ -19,6 +19,7 @@ const QUANTITY_MAX_MESSAGE = "quantity must be <= 999";
 const DELIVERY_ADDRESS_MESSAGE =
   "delivery_address must have between 1 and 500 characters";
 const NOTES_MESSAGE = "notes must have at most 1000 characters";
+const PAYMENT_TERM_ID_MESSAGE = "Invalid payment term";
 
 /**
  * Builds a required positive integer schema.
@@ -104,10 +105,42 @@ function notesField() {
     .nullable();
 }
 
+/**
+ * Builds the optional payment term reference schema. `null` and omitted values
+ * are accepted in draft; the lifecycle validation before request/generate is
+ * owned by HU-39 (#63).
+ * @returns {import("yup").NumberSchema} The nullable payment term id schema.
+ */
+function paymentTermIdField() {
+  return yup
+    .number()
+    .transform((value, originalValue) => {
+      if (originalValue === null || originalValue === undefined) {
+        return originalValue;
+      }
+
+      if (typeof originalValue === "string" && originalValue.trim() === "") {
+        return NaN;
+      }
+
+      return value;
+    })
+    .nullable()
+    .integer(PAYMENT_TERM_ID_MESSAGE)
+    .min(1, PAYMENT_TERM_ID_MESSAGE)
+    .typeError(PAYMENT_TERM_ID_MESSAGE);
+}
+
 const orderItemSchema = yup.object({
   product_id: positiveInteger(PRODUCT_ID_MESSAGE),
   item_state_id: positiveInteger(ITEM_STATE_ID_MESSAGE),
   quantity: quantityField(),
+});
+
+const paymentTermUpdateSchema = yup.object({
+  payment_term_id: paymentTermIdField()
+    .transform((value) => (value === null ? NaN : value))
+    .required(PAYMENT_TERM_ID_MESSAGE),
 });
 
 const createOrderSchema = yup.object({
@@ -120,6 +153,7 @@ const createOrderSchema = yup.object({
     .required(ITEMS_REQUIRED_MESSAGE),
   delivery_address: deliveryAddressField(),
   notes: notesField(),
+  payment_term_id: paymentTermIdField(),
 });
 
 module.exports = {
@@ -133,10 +167,12 @@ module.exports = {
   MAX_QUANTITY,
   MIN_QUANTITY,
   NOTES_MESSAGE,
+  PAYMENT_TERM_ID_MESSAGE,
   PRODUCT_ID_MESSAGE,
   QUANTITY_MAX_MESSAGE,
   QUANTITY_MIN_MESSAGE,
   QUANTITY_TYPE_MESSAGE,
   REQUIRED_ORDER_FIELDS,
   createOrderSchema,
+  paymentTermUpdateSchema,
 };

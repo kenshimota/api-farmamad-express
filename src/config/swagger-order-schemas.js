@@ -113,6 +113,17 @@ const orderSchemas = {
       user_id: { type: "integer", example: 12 },
       currency_id: { type: "integer", example: 3 },
       currency: { $ref: "#/components/schemas/CurrencySummary" },
+      payment_term_id: {
+        type: "integer",
+        nullable: true,
+        description:
+          "Snapshot of the term; null while the order is a draft without a term",
+        example: 2,
+      },
+      payment_term: {
+        nullable: true,
+        allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
+      },
       subtotal: { type: "number", example: 25.0 },
       total: {
         type: "number",

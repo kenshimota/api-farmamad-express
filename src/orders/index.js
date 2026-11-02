@@ -5,6 +5,7 @@ const { REQUIRED_ORDER_FIELDS, createOrderSchema } = require("./validators");
 const { orderService } = require("./service");
 const { toPublicOrder } = require("./serializer");
 const { handleOrderError } = require("./shared");
+const paymentTermRouter = require("./payment-term");
 
 const router = Router();
 
@@ -55,6 +56,14 @@ const router = Router();
  *                 maxLength: 1000
  *                 nullable: true
  *                 example: Entregar por la tarde
+ *               payment_term_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 nullable: true
+ *                 description: >
+ *                   Optional in draft; a customer copies the term of their
+ *                   profile and cannot override it.
+ *                 example: 2
  *     responses:
  *       201:
  *         description: Order created with its price snapshot and history
@@ -130,5 +139,7 @@ router.post(
     }
   },
 );
+
+router.use(paymentTermRouter);
 
 module.exports = router;

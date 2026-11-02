@@ -7,6 +7,10 @@ const {
 const sequelize = require("../database");
 const Currency = require("../models/currency");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
+const {
+  createPaymentTerm,
+  ensurePaymentTerm,
+} = require("../../test/helpers/payment-terms");
 const { invoiceService } = require("./service");
 const {
   Invoice,
@@ -47,14 +51,14 @@ describe("invoice issuance service against a real database", () => {
     const product = await createProduct();
     const itemState = await createItemState();
     const currency = await Currency.findOne({ where: { code: "USD_BCV" } });
+    const term = await ensurePaymentTerm("credit_15");
 
     return {
       order_id: 500,
       customer_id: customer.id,
       invoiced_by_user_id: user.id,
       currency_id: currency.id,
-      payment_term_id: null,
-      payment_term_days: 15,
+      payment_term_id: term.id,
       issued_at: "2026-11-01T12:00:00.000Z",
       notes: "Factura del pedido 500",
       items: [
@@ -90,6 +94,39 @@ describe("invoice issuance service against a real database", () => {
       item_state_name: payload.items[0].item_state_name,
       subtotal: "25.00",
     });
+  });
+
+  it("uses the issue date as due date for cash terms", async () => {
+    const payload = await issuancePayload();
+    const cash = await ensurePaymentTerm("cash");
+    payload.payment_term_id = cash.id;
+    payload.order_id = 501;
+
+    const invoice = await invoiceService.createInvoice(payload);
+
+    expect(invoice.due_date).toBe("2026-11-01");
+    expect(invoice.payment_term_id).toBe(cash.id);
+  });
+
+  it("answers 422 for a missing or inactive payment term", async () => {
+    const payload = await issuancePayload();
+    payload.payment_term_id = null;
+
+    await expect(invoiceService.createInvoice(payload)).rejects.toMatchObject({
+      status: 422,
+      body: { errors: { payment_term_id: "Payment term is required" } },
+    });
+
+    const inactive = await createPaymentTerm({ is_active: false });
+    payload.payment_term_id = inactive.id;
+
+    await expect(invoiceService.createInvoice(payload)).rejects.toMatchObject({
+      status: 422,
+      body: { errors: { payment_term_id: "Invalid payment term" } },
+    });
+    await expect(
+      Invoice.findOne({ where: { order_id: payload.order_id } }),
+    ).resolves.toBeNull();
   });
 
   it("answers 409 when the order already has an invoice", async () => {

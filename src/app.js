@@ -36,6 +36,7 @@ const walletsRouter = require("./wallets");
 const priceListsRouter = require("./price-lists");
 const invoicesRouter = require("./invoices");
 const ordersRouter = require("./orders");
+const paymentTermsRouter = require("./payment-terms");
 const storeRouter = require("./store");
 
 const app = express();
@@ -86,6 +87,7 @@ app.use("/customer-wallets", walletsRouter);
 app.use("/price-lists", priceListsRouter);
 app.use("/invoices", invoicesRouter);
 app.use("/orders", ordersRouter);
+app.use("/payment-terms", paymentTermsRouter);
 app.use("/store", storeRouter);
 
 app.use(notFound);

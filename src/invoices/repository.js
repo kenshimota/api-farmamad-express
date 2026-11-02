@@ -5,6 +5,7 @@ const InvoiceItem = require("../models/invoice-item");
 const Customer = require("../models/customer");
 const Currency = require("../models/currency");
 const User = require("../models/user");
+const PaymentTerm = require("../models/payment-term");
 const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 
 const LIST_ORDER = Object.freeze([
@@ -20,6 +21,11 @@ const CURRENCY_INCLUDE = Object.freeze({
   model: Currency,
   as: "currency",
   attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
+});
+const PAYMENT_TERM_INCLUDE = Object.freeze({
+  model: PaymentTerm,
+  as: "payment_term",
+  attributes: ["id", "code", "name", "days"],
 });
 const INVOICED_BY_INCLUDE = Object.freeze({
   model: User,
@@ -73,7 +79,7 @@ function buildListOptions({
     options.where = where;
   }
 
-  options.include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE];
+  options.include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, PAYMENT_TERM_INCLUDE];
 
   if (includeItems) {
     options.include.push(ITEM_INCLUDE);
@@ -106,7 +112,7 @@ function createInvoiceRepository({
    * @returns {object[]} Sequelize includes.
    */
   function detailIncludes(includeItems, includeInvoicedBy) {
-    const include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE];
+    const include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, PAYMENT_TERM_INCLUDE];
 
     if (includeItems) {
       include.push(ITEM_INCLUDE);
@@ -252,6 +258,16 @@ function createInvoiceRepository({
     findUserById(id, transaction) {
       return userModel.findByPk(id, { transaction });
     },
+
+    /**
+     * Loads the payment term snapshot referenced by an invoice.
+     * @param {number} id - Payment term id.
+     * @param {object} [transaction] - Open transaction.
+     * @returns {Promise<object|null>} The term or null.
+     */
+    findPaymentTermById(id, transaction) {
+      return PaymentTerm.findByPk(id, { transaction });
+    },
   };
 }
 
@@ -263,6 +279,7 @@ module.exports = {
   INVOICED_BY_INCLUDE,
   ITEM_INCLUDE,
   LIST_ORDER,
+  PAYMENT_TERM_INCLUDE,
   buildListOptions,
   createInvoiceRepository,
   invoiceRepository,

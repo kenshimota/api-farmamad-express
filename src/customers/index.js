@@ -9,6 +9,7 @@ const {
   REQUIRED_CUSTOMER_FIELDS,
 } = require("./validators");
 const {
+  ensurePaymentTermAssignment,
   ensurePriceListAssignment,
   handleWriteError,
   reloadCustomer,
@@ -71,6 +72,12 @@ const router = Router();
  *                 nullable: true
  *                 description: Optional price list assigned to the customer
  *                 example: 1
+ *               payment_term_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 nullable: true
+ *                 description: Optional active payment term assigned to the customer
+ *                 example: 2
  *     responses:
  *       201:
  *         description: Customer created
@@ -133,12 +140,14 @@ router.post(
     fields: REQUIRED_CUSTOMER_FIELDS,
   }),
   ensurePriceListAssignment,
+  ensurePaymentTermAssignment,
   async (req, res) => {
     try {
       const created = await Customer.create(req.validated);
-      const customer = req.validated.price_list_id
-        ? await reloadCustomer(created)
-        : created;
+      const customer =
+        req.validated.price_list_id || req.validated.payment_term_id
+          ? await reloadCustomer(created)
+          : created;
 
       return res.status(201).json(toPublicCustomer(customer));
     } catch (error) {

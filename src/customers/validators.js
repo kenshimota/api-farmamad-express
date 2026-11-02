@@ -9,6 +9,7 @@ const REQUIRED_CUSTOMER_FIELDS = [
 ];
 const POSITIVE_INTEGER_PATTERN = /^\d+$/;
 const PRICE_LIST_ID_MESSAGE = "Invalid price list";
+const PAYMENT_TERM_ID_MESSAGE = "Invalid payment term";
 
 /**
  * Builds a trimmed string schema that rejects blank values and non-string
@@ -61,6 +62,32 @@ function priceListIdField() {
     .typeError(PRICE_LIST_ID_MESSAGE);
 }
 
+/**
+ * Builds the optional payment term reference schema. `null` clears the
+ * assignment, a positive integer replaces it and an omitted value keeps the
+ * stored one on updates.
+ * @returns {import("yup").NumberSchema} The nullable payment term id schema.
+ */
+function paymentTermIdField() {
+  return yup
+    .number()
+    .transform((value, originalValue) => {
+      if (originalValue === null || originalValue === undefined) {
+        return originalValue;
+      }
+
+      if (typeof originalValue === "string" && originalValue.trim() === "") {
+        return NaN;
+      }
+
+      return value;
+    })
+    .nullable()
+    .integer(PAYMENT_TERM_ID_MESSAGE)
+    .min(1, PAYMENT_TERM_ID_MESSAGE)
+    .typeError(PAYMENT_TERM_ID_MESSAGE);
+}
+
 const createCustomerSchema = yup.object({
   fullName: trimmedString("Nombre inválido"),
   latitude: coordinate(-90, 90, "Latitud inválida"),
@@ -72,6 +99,7 @@ const createCustomerSchema = yup.object({
     .strict()
     .typeError("isRegistered must be a boolean"),
   price_list_id: priceListIdField(),
+  payment_term_id: paymentTermIdField(),
 });
 
 /**
@@ -102,6 +130,7 @@ function parseCustomerId(value) {
 }
 
 module.exports = {
+  PAYMENT_TERM_ID_MESSAGE,
   PRICE_LIST_ID_MESSAGE,
   createCustomerSchema,
   parseCustomerId,

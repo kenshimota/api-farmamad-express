@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
 const { toPublicCustomer } = require("../customers/serializer");
+const PaymentTerm = require("./payment-term");
 
 /**
  * Sequelize model that represents a Super King customer. A customer is a third
@@ -40,6 +41,10 @@ const Customer = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    payment_term_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     tableName: "customers",
@@ -54,6 +59,15 @@ const Customer = sequelize.define(
 Customer.prototype.toJSON = function toJSON() {
   return toPublicCustomer(this);
 };
+
+Customer.belongsTo(PaymentTerm, {
+  foreignKey: "payment_term_id",
+  as: "payment_term",
+});
+PaymentTerm.hasMany(Customer, {
+  foreignKey: "payment_term_id",
+  as: "customers",
+});
 
 module.exports = Customer;
 

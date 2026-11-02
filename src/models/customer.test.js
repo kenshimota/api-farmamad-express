@@ -65,6 +65,8 @@ describe("Customer model", () => {
       email: "juan@example.com",
       price_list_id: null,
       price_list: null,
+      payment_term_id: null,
+      payment_term: null,
     });
     expect(instance.toJSON()).not.toHaveProperty("isRegistered");
     expect(instance.toJSON()).not.toHaveProperty("createdAt");

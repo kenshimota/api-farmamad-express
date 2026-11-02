@@ -110,6 +110,9 @@ function createOrderRepositoryDouble({
 
       return values;
     }),
+    updatePaymentTerm: jest.fn(async (order, paymentTermId) =>
+      order.update({ payment_term_id: paymentTermId }),
+    ),
     findById: jest.fn(async (id) => ({ id, number, items: [], history: [] })),
   };
 

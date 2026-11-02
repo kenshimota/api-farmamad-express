@@ -95,6 +95,8 @@ describe("GET /customers", () => {
           email: "juan@example.com",
           price_list_id: null,
           price_list: null,
+          payment_term_id: null,
+          payment_term: null,
         },
         {
           id: 2,
@@ -105,6 +107,8 @@ describe("GET /customers", () => {
           email: "ana@example.com",
           price_list_id: null,
           price_list: null,
+          payment_term_id: null,
+          payment_term: null,
         },
       ]);
       expect(response.body[0]).not.toHaveProperty("isRegistered");
@@ -175,6 +179,8 @@ describe("GET /customers/:id", () => {
         email: "juan@example.com",
         price_list_id: null,
         price_list: null,
+        payment_term_id: null,
+        payment_term: null,
       });
       expect(Customer.findByPk).toHaveBeenCalledWith(
         1,

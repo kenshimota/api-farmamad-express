@@ -13,9 +13,12 @@ const {
   customerProfileNotLinked,
   forbidden,
   insufficientStock,
+  orderNotEditable,
+  orderNotFound,
   priceListNotAssigned,
   unauthorized,
 } = require("./errors");
+const { assertAssignablePaymentTerm } = require("../payment-terms/assignment");
 const {
   calculateOrderTotals,
   toLineAmounts,
@@ -25,6 +28,8 @@ const {
 const CUSTOMER_ROLE = "customer";
 const PENDING_STATUS = "pending";
 const CREATED_EVENT = "created";
+const EDITABLE_PAYMENT_TERM_STATUSES = Object.freeze(["draft", "request"]);
+const PAYMENT_TERM_EDIT_ROLES = Object.freeze(["admin", "seller"]);
 
 /**
  * Creates the orders service. Every business rule lives here so the router only
@@ -85,6 +90,33 @@ function createOrderService({
     };
   }
 
+  /**
+   * Resolves the payment term snapshot of a new order. A customer always
+   * copies the term of their profile and cannot override it; the admin/seller
+   * flow belongs to HU-39 (#63) and is documented as pending. A null term is
+   * accepted because the order is born in draft.
+   * @param {object} input - Validated request body.
+   * @param {object} actor - Authenticated JWT payload.
+   * @param {object} customer - Linked customer.
+   * @returns {Promise<number|null>} The active term id or null.
+   * @throws {Error} 422 when the copied term is missing or inactive.
+   */
+  async function resolvePaymentTermId(input, actor, customer) {
+    const customerTermId = readField(customer, "payment_term_id") ?? null;
+    const requestedTermId =
+      actor && actor.role !== CUSTOMER_ROLE
+        ? (input.payment_term_id ?? customerTermId)
+        : customerTermId;
+
+    if (requestedTermId === null) {
+      return null;
+    }
+
+    await assertAssignablePaymentTerm(requestedTermId);
+
+    return Number(requestedTermId);
+  }
+
   return {
     /**
      * Creates a customer order atomically: resolves and snapshots every price,
@@ -102,6 +134,7 @@ function createOrderService({
 
       const { user, customer, priceListId, customerId } =
         await resolveCustomer(actor);
+      const paymentTermId = await resolvePaymentTermId(input, actor, customer);
       const transactionCurrency = await resolveTransactionCurrency();
 
       return repository.transaction(async (transaction) => {
@@ -167,6 +200,7 @@ function createOrderService({
             user_id: readField(user, "id"),
             currency_id: readField(transactionCurrency, "id"),
             status: PENDING_STATUS,
+            payment_term_id: paymentTermId,
             ...toOrderAmounts(totals),
             delivery_address: normalizeAddress(
               input.delivery_address,
@@ -216,6 +250,40 @@ function createOrderService({
         return repository.findById(order.id, { transaction });
       });
     },
+
+    /**
+     * Replaces the payment term snapshot of an order that is still editable.
+     * The lifecycle of HU-39 (#63) defines `draft` and `request`; until it is
+     * merged, the order statuses available in this branch are not editable.
+     * @param {number} orderId - Order id.
+     * @param {object} input - Validated body with `payment_term_id`.
+     * @param {object} actor - Authenticated JWT payload.
+     * @returns {Promise<object>} The updated order with public relations.
+     * @throws {Error} 403/404/422 controlled HTTP errors.
+     */
+    async updatePaymentTerm(orderId, input, actor) {
+      if (!actor || !PAYMENT_TERM_EDIT_ROLES.includes(actor.role)) {
+        throw forbidden();
+      }
+
+      const order = await repository.findById(orderId);
+
+      if (!order) {
+        throw orderNotFound();
+      }
+
+      if (
+        !EDITABLE_PAYMENT_TERM_STATUSES.includes(readField(order, "status"))
+      ) {
+        throw orderNotEditable();
+      }
+
+      const term = await assertAssignablePaymentTerm(input.payment_term_id);
+
+      await repository.updatePaymentTerm(order, readField(term, "id"));
+
+      return repository.findById(orderId);
+    },
   };
 }
 
@@ -224,6 +292,8 @@ const orderService = createOrderService();
 module.exports = {
   CREATED_EVENT,
   CUSTOMER_ROLE,
+  EDITABLE_PAYMENT_TERM_STATUSES,
+  PAYMENT_TERM_EDIT_ROLES,
   PENDING_STATUS,
   createOrderService,
   orderService,
