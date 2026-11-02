@@ -3744,6 +3744,160 @@ curl -X DELETE http://localhost:3001/lots/1 \
 | `422`  | `{ "errors": { "section_id": "Section does not belong to the shelf" } }`                                                  |
 | `422`  | `{ "errors": { "expiration_date": "expiration_date must be a valid date (YYYY-MM-DD)" } }`                                |
 
+## Pedidos (`orders`, `order_items`, `order_item_lot_allocations`, `order_history`) — HU-34
+
+Un pedido es una compra creada por un cliente autenticado. En esta HU la
+creación es directa y nace en estado `pending`; [HU-39 (#63)](https://github.com/kenshimota/api-farmamad-express/issues/63)
+reemplazará la creación directa por el flujo `request → generate`, pero el
+esquema base, el snapshot de precio y el mecanismo de reserva por lote siguen
+vigentes.
+
+### Tablas y numeración
+
+- `orders`: cabecera con `number` único asignado por `orders_number_seq`,
+  `customer_id`, `user_id`, `currency_id`, `status`
+  (`pending`, `confirmed`, `preparing`, `shipped`, `delivered`, `cancelled`),
+  `subtotal`, `total`, `delivery_address` y `notes`. `total = subtotal` en esta
+  HU porque no hay impuestos, descuentos ni envío.
+- `order_items`: líneas con `quantity`, `unit_price` y `subtotal` como
+  **snapshot inmutable** del momento de la compra, en la moneda del pedido.
+  La combinación `(order_id, product_id, item_state_id)` es única, por lo que
+  el mismo producto puede tener dos líneas si cambia el estado de ítem.
+- `order_item_lot_allocations`: lotes reservados para cada línea y su cantidad.
+  Solo `status = 'reserved'` cuenta como reserva activa. La tabla es interna y
+  nunca se expone en la API.
+- `order_history`: eventos append-only. La creación registra `created`; las
+  ediciones y transiciones de HU-39 agregarán `item_added`, `item_updated`,
+  `item_removed`, `status_changed` e `invoice_issued`. El cliente ve
+  `event_type`, estados, metadata y fecha.
+- `orders_number_seq`: empieza en 1 y avanza de uno en uno. Los huecos por
+  transacciones fallidas son aceptables; el cliente nunca envía `number`.
+
+### Precio y reserva
+
+- El precio se calcula con la lista de precios del cliente y el costo actual
+  del par `(product_id, item_state_id)`:
+  `unit_price = round2(costo ÷ (1 − percentage / 100) × rate_costo ÷ rate_pedido)`.
+  No se consulta `products.sale_price`.
+- La moneda del pedido es la moneda activa con
+  `is_default_for_transactions = true`; si no existe, responde `503`.
+- La disponibilidad de una línea es `SUM(lots.stock - lots.reserved)` para su
+  par producto + estado. La reserva carga y bloquea los lotes con `FOR UPDATE`
+  en orden FEFO (`expiration_date` ascendente e `id` ascendente), incrementa
+  `lots.reserved` y crea una asignación por lote.
+- Reservar **no** cambia `lots.stock` ni `stocks.quantity`; se conserva
+  `stocks.quantity = SUM(lots.stock)`.
+- La creación es atómica: si falla el precio, la existencia o cualquier
+  escritura, no queda pedido, línea, asignación, historial ni incremento de
+  `lots.reserved`.
+- Dos pedidos concurrentes por la última unidad: uno responde `201` y el otro
+  `409`.
+
+### Roles
+
+`POST /orders` requiere JWT válido y rol `customer`. Los roles internos
+(`admin`, `seller`, `dispatcher`, `manager_warehouse`, `support`) reciben `403`
+en esta HU. El usuario debe tener `users.customer_id`; si no, responde `403`
+con `{ "message": "Customer profile is not linked" }`. El pedido se asocia
+siempre al cliente del usuario autenticado y se descartan `customer_id`,
+`user_id`, `status`, `number`, `subtotal`, `total` y `currency_id` enviados por
+el cliente.
+
+### `POST /orders`
+
+```bash
+curl -X POST http://localhost:3001/orders \
+  -H "Authorization: Bearer <jwt-customer>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      { "product_id": 15, "item_state_id": 1, "quantity": 2 }
+    ],
+    "delivery_address": "Av. Monseñor Rivero 123",
+    "notes": "Entregar por la tarde"
+  }'
+```
+
+Reglas del cuerpo:
+
+- `items` es obligatorio, con 1 a 50 líneas.
+- `product_id` e `item_state_id` son enteros positivos; el estado debe existir y
+  tener `is_sellable = true`.
+- `quantity` es un entero entre 1 y 999.
+- No se aceptan pares `(product_id, item_state_id)` duplicados.
+- `delivery_address` es opcional (1–500 caracteres); si se omite se usa
+  `customers.direction`.
+- `notes` es opcional, hasta 1000 caracteres.
+
+Respuesta `201`:
+
+```json
+{
+  "id": 10,
+  "number": 1,
+  "status": "pending",
+  "customer_id": 8,
+  "user_id": 12,
+  "currency_id": 3,
+  "currency": { "id": 3, "code": "USD_BCV", "name": "Dólar BCV", "symbol": "$" },
+  "subtotal": 25.0,
+  "total": 25.0,
+  "delivery_address": "Av. Monseñor Rivero 123",
+  "notes": "Entregar por la tarde",
+  "created_at": "2026-10-30T15:00:00.000Z",
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "email": "cliente@example.com",
+    "direction": "Av. Monseñor Rivero 123"
+  },
+  "items": [
+    {
+      "id": 20,
+      "product_id": 15,
+      "item_state_id": 1,
+      "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
+      "quantity": 2,
+      "unit_price": 12.5,
+      "subtotal": 25.0,
+      "product": {
+        "id": 15,
+        "name": "Ibuprofeno 400 mg",
+        "reference": "IBU-400",
+        "image_id": 7
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_type": "created",
+      "from_status": null,
+      "to_status": "pending",
+      "created_at": "2026-10-30T15:00:00.000Z"
+    }
+  ]
+}
+```
+
+La respuesta no expone asignaciones por lote, `lot_id`, `lots.stock`,
+`lots.reserved`, costos, bodegas, estantes ni proveedores.
+
+### Errores del módulo
+
+| Código | Cuerpo                                                                 |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | `{ "message": "items is required" }`                                   |
+| `401`  | `{ "message": "Unauthorized" }`                                        |
+| `403`  | `{ "message": "Forbidden" }`                                           |
+| `403`  | `{ "message": "Customer profile is not linked" }`                      |
+| `403`  | `{ "message": "Customer price list is not assigned" }`                 |
+| `409`  | `{ "message": "Insufficient stock", "items": [{ "product_id": 15, "item_state_id": 1 }] }` |
+| `422`  | `{ "errors": { "items": "Invalid item state 1" } }`                    |
+| `422`  | `{ "errors": { "items": "Product 15 is not available for sale" } }`    |
+| `422`  | `{ "errors": { "items": "Duplicate product 15 and item state 1" } }`   |
+| `503`  | `{ "message": "Default transaction currency is not configured" }`      |
+| `500`  | `{ "message": "Internal server error" }`                               |
+
 ## Vendedores por cliente (customer_sellers)
 
 Cada cliente puede tener **como máximo un vendedor responsable**, mientras que
