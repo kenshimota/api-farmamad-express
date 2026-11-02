@@ -103,6 +103,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Concrete payment methods (PayPal account, Binance wallet, bank account, mobile payment) with JSONB details validated against their type and the currency inherited from it.",
       },
+      {
+        name: "Invoices",
+        description:
+          "Immutable invoice headers and line snapshots created when an order is invoiced; read-only consultation for admin, seller and the owning customer.",
+      },
     ],
     components: {
       securitySchemes: {
