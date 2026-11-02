@@ -147,8 +147,11 @@ async function linkedCustomerSession({
     price_list_id: priceList.id,
     direction,
   });
+  const suffix = catalog.unique("U");
   const { user, token } = await sessionFor("customer", {
     customer_id: customer.id,
+    username: `cliente_${suffix}`.slice(0, 50),
+    email: `cliente-${suffix.toLowerCase()}@example.com`,
   });
 
   return { customer, user, priceList, token };

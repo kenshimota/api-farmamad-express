@@ -1,76 +1,121 @@
-jest.mock("../payment-terms/assignment", () => ({
-  assertAssignablePaymentTerm: jest.fn(),
-}));
-
-const { assertAssignablePaymentTerm } = require("../payment-terms/assignment");
-const { createOrderService } = require("./service");
-const {
-  TRANSACTION_CURRENCY,
-  createOrderRepositoryDouble,
-  createPriceResolverDouble,
-  customerDouble,
-  lotDouble,
-  userDouble,
-} = require("../../test/helpers/order-service-doubles");
-
-const ACTOR = Object.freeze({ sub: 12, role: "customer" });
-const BODY = Object.freeze({
-  items: [{ product_id: 15, item_state_id: 1, quantity: 2 }],
-  notes: "Entregar por la tarde",
-});
+const { createOrderDraftService } = require("./draft");
+const { createOrderHistoryService } = require("./history-service");
 
 /**
- * Builds the service with injectable doubles.
- * @param {object} [options] - Dependency overrides.
+ * Builds the draft service with doubles recording persistence calls.
+ * @param {object} [options] - Overrides.
  * @returns {object} The service and its doubles.
  */
 function setup(options = {}) {
-  const repositoryState = createOrderRepositoryDouble(options);
-  const { repository, calls } = repositoryState;
-  const priceResolver =
-    options.priceResolver ??
-    createPriceResolverDouble(options.priceImplementation);
-  const resolveTransactionCurrency = jest
-    .fn()
-    .mockResolvedValue(TRANSACTION_CURRENCY);
-  const service = createOrderService({
+  const calls = { created: null, items: [], history: [] };
+  const order = {
+    id: 10,
+    status: "draft",
+    items: [],
+    customer: { id: 8, direction: "Calle 1", price_list_id: 1 },
+  };
+  const repository = {
+    transaction: jest.fn(async (callback) => callback({ id: "tx" })),
+    nextNumber: jest.fn().mockResolvedValue(1),
+    createOrder: jest.fn(async (values) => {
+      calls.created = values;
+      return { id: 10, ...values };
+    }),
+    createItems: jest.fn(async (rows) => {
+      calls.items = rows;
+      return rows.map((row, index) => ({ id: 20 + index, ...row }));
+    }),
+    createHistory: jest.fn(async (values) => {
+      calls.history.push(values);
+      return values;
+    }),
+    findById: jest.fn().mockResolvedValue(order),
+  };
+  const access = {
+    resolveContext: jest.fn().mockResolvedValue(
+      options.context ?? {
+        role: "customer",
+        userId: 12,
+        customerId: 8,
+      },
+    ),
+    resolveCreateCustomer: jest.fn().mockResolvedValue(
+      options.target ?? {
+        customer: { id: 8, direction: "Calle 1", payment_term_id: null },
+        customerId: 8,
+        priceListId: 1,
+      },
+    ),
+  };
+  const pricing = {
+    priceLines: jest.fn(async (lines) =>
+      lines.map((line) => ({ ...line, unit_price: 14.29 })),
+    ),
+  };
+  const history = createOrderHistoryService({ repository });
+  const service = createOrderDraftService({
     repository,
-    priceResolver,
-    resolveTransactionCurrency,
+    access,
+    pricing,
+    history,
+    resolveTransactionCurrency: jest
+      .fn()
+      .mockResolvedValue({ id: 3, code: "USD_BCV" }),
+    assertTerm: jest.fn(),
   });
 
-  return {
-    service,
-    repository,
-    calls,
-    priceResolver,
-    resolveTransactionCurrency,
-  };
+  return { service, repository, access, pricing, calls };
 }
 
-describe("order service creation", () => {
-  it("creates the order with server-side number, totals and history", async () => {
-    const lot = lotDouble({ id: 1, stock: 10, reserved: 0 });
-    const { service, repository, calls } = setup({
-      lots: { "15:1": [lot] },
-    });
+describe("order draft service", () => {
+  it("creates a draft with zero totals and no stock reservation", async () => {
+    const { service, calls } = setup();
 
-    const result = await service.createOrder(BODY, ACTOR);
+    const order = await service.createDraft(
+      { notes: "Entregar por la tarde" },
+      { sub: 12, role: "customer" },
+    );
 
-    expect(result.id).toBe(10);
-    expect(repository.transaction).toHaveBeenCalledTimes(1);
-    expect(repository.nextNumber).toHaveBeenCalledTimes(1);
+    expect(order).toMatchObject({ id: 10, status: "draft" });
     expect(calls.created).toEqual({
       number: 1,
       customer_id: 8,
       user_id: 12,
       currency_id: 3,
-      status: "pending",
+      status: "draft",
       payment_term_id: null,
+      subtotal: "0.00",
+      total: "0.00",
+      delivery_address: "Calle 1",
+      notes: "Entregar por la tarde",
+    });
+    expect(calls.items).toEqual([]);
+    expect(calls.history).toEqual([
+      {
+        order_id: 10,
+        event_type: "created",
+        from_status: null,
+        to_status: "draft",
+        actor_user_id: 12,
+        metadata: null,
+      },
+    ]);
+  });
+
+  it("prices the optional lines and totals them without reserving lots", async () => {
+    const { service, calls, repository } = setup();
+
+    await service.createDraft(
+      {
+        items: [{ product_id: 15, item_state_id: 1, quantity: 2 }],
+      },
+      { sub: 12, role: "customer" },
+    );
+
+    expect(calls.created).toMatchObject({
+      status: "draft",
       subtotal: "28.58",
       total: "28.58",
-      delivery_address: "Av. Monseñor Rivero 123",
-      notes: "Entregar por la tarde",
     });
     expect(calls.items).toEqual([
       {
@@ -82,215 +127,25 @@ describe("order service creation", () => {
         subtotal: "28.58",
       },
     ]);
-    expect(calls.allocations).toEqual([
-      { order_item_id: 20, lot_id: 1, quantity: 2, status: "reserved" },
-    ]);
-    expect(calls.reserved).toEqual([{ lotId: 1, quantity: 2 }]);
-    expect(calls.history).toEqual([
-      {
-        order_id: 10,
-        event_type: "created",
-        from_status: null,
-        to_status: "pending",
-        actor_user_id: 12,
-        metadata: null,
-      },
-    ]);
-    expect(repository.findById).toHaveBeenCalledWith(10, {
-      transaction: expect.anything(),
-    });
+    expect(repository.findLotsForUpdate).toBeUndefined();
   });
 
-  it("uses the customer price list and the default transaction currency", async () => {
-    const { service, priceResolver, resolveTransactionCurrency } = setup({
-      lots: { "15:1": [lotDouble({ id: 1, stock: 10 })] },
-    });
-
-    await service.createOrder(BODY, ACTOR);
-
-    expect(resolveTransactionCurrency).toHaveBeenCalledTimes(1);
-    expect(priceResolver).toHaveBeenCalledWith({
-      product_id: 15,
-      item_state_id: 1,
-      price_list_id: 1,
-      transactionCurrency: TRANSACTION_CURRENCY,
-    });
-  });
-
-  it("keeps an explicit delivery address and trims the notes", async () => {
-    const { service, calls } = setup({
-      lots: { "15:1": [lotDouble({ id: 1, stock: 10 })] },
-    });
-
-    await service.createOrder(
-      {
-        items: BODY.items,
-        delivery_address: "Calle 1",
-        notes: "  Entregar por la tarde  ",
-      },
-      ACTOR,
-    );
-
-    expect(calls.created.delivery_address).toBe("Calle 1");
-    expect(calls.created.notes).toBe("Entregar por la tarde");
-  });
-
-  it("supports two lines of the same product with different states", async () => {
-    const prices = { 1: 14.29, 2: 20 };
-    const priceResolver = createPriceResolverDouble(
-      async ({ product_id, item_state_id, price_list_id }) => ({
-        product_id,
-        item_state_id,
-        price_list_id,
-        price: prices[item_state_id],
-        currency: TRANSACTION_CURRENCY,
-      }),
-    );
-    const { service, calls } = setup({
-      priceResolver,
-      lots: {
-        "15:1": [lotDouble({ id: 1, stock: 10 })],
-        "15:2": [lotDouble({ id: 2, stock: 10 })],
-      },
-    });
-
-    await service.createOrder(
-      {
-        items: [
-          { product_id: 15, item_state_id: 1, quantity: 1 },
-          { product_id: 15, item_state_id: 2, quantity: 1 },
-        ],
-      },
-      ACTOR,
-    );
-
-    expect(calls.items).toEqual([
-      expect.objectContaining({
-        item_state_id: 1,
-        unit_price: "14.29",
-        subtotal: "14.29",
-      }),
-      expect.objectContaining({
-        item_state_id: 2,
-        unit_price: "20.00",
-        subtotal: "20.00",
-      }),
-    ]);
-    expect(calls.created.subtotal).toBe("34.29");
-  });
-
-  it("ignores fields the client is not allowed to set", async () => {
-    const { service, calls } = setup({
-      lots: { "15:1": [lotDouble({ id: 1, stock: 10 })] },
-    });
-
-    await service.createOrder(
-      {
-        ...BODY,
-        customer_id: 999,
-        user_id: 999,
-        status: "delivered",
-        number: 999,
-        subtotal: 0,
-        total: 0,
-        currency_id: 999,
-      },
-      ACTOR,
-    );
-
-    expect(calls.created).toMatchObject({
-      customer_id: 8,
-      user_id: 12,
-      status: "pending",
-      number: 1,
-      currency_id: 3,
-    });
-  });
-
-  it("falls back to the customer direction when the address is omitted", async () => {
-    const { service, calls } = setup({
-      customer: customerDouble({ direction: "Dirección del cliente" }),
-      lots: { "15:1": [lotDouble({ id: 1, stock: 10 })] },
-    });
-
-    await service.createOrder({ items: BODY.items }, ACTOR);
-
-    expect(calls.created.delivery_address).toBe("Dirección del cliente");
-  });
-
-  it("reserves from several lots in the received FEFO order", async () => {
-    const first = lotDouble({ id: 1, stock: 1, reserved: 0 });
-    const second = lotDouble({ id: 2, stock: 5, reserved: 0 });
-    const { service, calls } = setup({
-      lots: { "15:1": [first, second] },
-    });
-
-    await service.createOrder(
-      { items: [{ product_id: 15, item_state_id: 1, quantity: 3 }] },
-      ACTOR,
-    );
-
-    expect(calls.reserved).toEqual([
-      { lotId: 1, quantity: 1 },
-      { lotId: 2, quantity: 2 },
-    ]);
-    expect(calls.allocations).toEqual([
-      { order_item_id: 20, lot_id: 1, quantity: 1, status: "reserved" },
-      { order_item_id: 20, lot_id: 2, quantity: 2, status: "reserved" },
-    ]);
-    expect(first.reserved).toBe(1);
-    expect(second.reserved).toBe(2);
-  });
-
-  it("rejects a customer user without a linked profile", async () => {
-    const { service } = setup({ user: userDouble({ customer_id: null }) });
-
-    await expect(service.createOrder(BODY, ACTOR)).rejects.toMatchObject({
-      status: 403,
-      body: { message: "Customer profile is not linked" },
-    });
-  });
-
-  it("rejects a customer without a price list before touching stock", async () => {
-    const { service, repository } = setup({
-      customer: customerDouble({ price_list_id: null }),
-    });
-
-    await expect(service.createOrder(BODY, ACTOR)).rejects.toMatchObject({
-      status: 403,
-      body: { message: "Customer price list is not assigned" },
-    });
-    expect(repository.transaction).not.toHaveBeenCalled();
-  });
-
-  it("rejects a role other than customer", async () => {
+  it("rejects duplicated product and item state pairs with 409", async () => {
     const { service } = setup();
 
     await expect(
-      service.createOrder(BODY, { sub: 1, role: "admin" }),
-    ).rejects.toMatchObject({
-      status: 403,
-      body: { message: "Forbidden" },
-    });
-  });
-
-  it("rejects duplicated product and item state pairs", async () => {
-    const { service, repository } = setup();
-
-    await expect(
-      service.createOrder(
+      service.createDraft(
         {
           items: [
             { product_id: 15, item_state_id: 1, quantity: 1 },
             { product_id: 15, item_state_id: 1, quantity: 2 },
           ],
         },
-        ACTOR,
+        { sub: 12, role: "customer" },
       ),
     ).rejects.toMatchObject({
-      status: 422,
-      body: { errors: { items: "Duplicate product 15 and item state 1" } },
+      status: 409,
+      body: { message: "Product and item state already in order" },
     });
-    expect(repository.transaction).not.toHaveBeenCalled();
   });
 });

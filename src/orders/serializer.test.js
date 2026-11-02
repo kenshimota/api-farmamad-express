@@ -5,7 +5,7 @@ describe("orders serializer", () => {
     const order = {
       id: 10,
       number: 1,
-      status: "pending",
+      status: "draft",
       customer_id: 8,
       user_id: 12,
       currency_id: 3,
@@ -45,7 +45,7 @@ describe("orders serializer", () => {
           id: 1,
           event_type: "created",
           from_status: null,
-          to_status: "pending",
+          to_status: "draft",
           createdAt: new Date("2026-10-30T15:00:00.000Z"),
           actor_user_id: 12,
         },
@@ -57,7 +57,7 @@ describe("orders serializer", () => {
     ).toEqual({
       id: 10,
       number: 1,
-      status: "pending",
+      status: "draft",
       customer_id: 8,
       user_id: 12,
       currency_id: 3,
@@ -94,7 +94,8 @@ describe("orders serializer", () => {
         {
           event_type: "created",
           from_status: null,
-          to_status: "pending",
+          to_status: "draft",
+          metadata: null,
           created_at: "2026-10-30T15:00:00.000Z",
         },
       ],

@@ -1,6 +1,5 @@
 const yup = require("yup");
 
-const REQUIRED_ORDER_FIELDS = Object.freeze(["items"]);
 const MAX_ITEMS = 50;
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 999;
@@ -8,11 +7,10 @@ const MAX_DELIVERY_ADDRESS_LENGTH = 500;
 const MAX_NOTES_LENGTH = 1000;
 
 const ITEMS_ARRAY_MESSAGE = "items must be an array";
-const ITEMS_REQUIRED_MESSAGE = "items is required";
-const ITEMS_MIN_MESSAGE = "items must contain at least 1 line";
 const ITEMS_MAX_MESSAGE = "items must contain at most 50 lines";
 const PRODUCT_ID_MESSAGE = "Invalid product id";
 const ITEM_STATE_ID_MESSAGE = "Invalid item state id";
+const CUSTOMER_ID_MESSAGE = "Invalid customer id";
 const QUANTITY_TYPE_MESSAGE = "quantity must be an integer";
 const QUANTITY_MIN_MESSAGE = "quantity must be >= 1";
 const QUANTITY_MAX_MESSAGE = "quantity must be <= 999";
@@ -20,6 +18,7 @@ const DELIVERY_ADDRESS_MESSAGE =
   "delivery_address must have between 1 and 500 characters";
 const NOTES_MESSAGE = "notes must have at most 1000 characters";
 const PAYMENT_TERM_ID_MESSAGE = "Invalid payment term";
+const STATUS_MESSAGE = "Invalid status";
 
 /**
  * Builds a required positive integer schema.
@@ -77,16 +76,15 @@ function deliveryAddressField() {
 }
 
 /**
- * Builds the optional notes schema. Blank strings become null and 1001+
- * characters are rejected.
+ * Builds the optional notes schema. Blank strings become null.
  * @returns {import("yup").StringSchema} The notes schema.
  */
 function notesField() {
   return yup
     .string()
     .transform((value) => {
-      if (value === null) {
-        return null;
+      if (value === null || value === undefined) {
+        return value;
       }
 
       if (typeof value !== "string") {
@@ -106,9 +104,7 @@ function notesField() {
 }
 
 /**
- * Builds the optional payment term reference schema. `null` and omitted values
- * are accepted in draft; the lifecycle validation before request/generate is
- * owned by HU-39 (#63).
+ * Builds the optional payment term reference schema.
  * @returns {import("yup").NumberSchema} The nullable payment term id schema.
  */
 function paymentTermIdField() {
@@ -137,42 +133,84 @@ const orderItemSchema = yup.object({
   quantity: quantityField(),
 });
 
+const createOrderSchema = yup.object({
+  customer_id: positiveInteger(CUSTOMER_ID_MESSAGE).notRequired(),
+  items: yup
+    .array()
+    .of(orderItemSchema)
+    .typeError(ITEMS_ARRAY_MESSAGE)
+    .max(MAX_ITEMS, ITEMS_MAX_MESSAGE)
+    .notRequired(),
+  delivery_address: deliveryAddressField(),
+  notes: notesField(),
+  payment_term_id: paymentTermIdField(),
+});
+
+const updateOrderSchema = yup.object({
+  delivery_address: deliveryAddressField(),
+  notes: notesField(),
+});
+
+const addItemSchema = orderItemSchema;
+
+const updateItemSchema = yup.object({
+  quantity: quantityField(),
+});
+
+const statusUpdateSchema = yup.object({
+  status: yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : value))
+    .typeError(STATUS_MESSAGE)
+    .min(1, STATUS_MESSAGE)
+    .max(20, STATUS_MESSAGE)
+    .required(STATUS_MESSAGE),
+});
+
 const paymentTermUpdateSchema = yup.object({
   payment_term_id: paymentTermIdField()
     .transform((value) => (value === null ? NaN : value))
     .required(PAYMENT_TERM_ID_MESSAGE),
 });
 
-const createOrderSchema = yup.object({
-  items: yup
-    .array()
-    .of(orderItemSchema)
-    .typeError(ITEMS_ARRAY_MESSAGE)
-    .min(1, ITEMS_MIN_MESSAGE)
-    .max(MAX_ITEMS, ITEMS_MAX_MESSAGE)
-    .required(ITEMS_REQUIRED_MESSAGE),
-  delivery_address: deliveryAddressField(),
-  notes: notesField(),
-  payment_term_id: paymentTermIdField(),
-});
+const CREATE_FIELDS = Object.freeze([]);
+const ADD_ITEM_FIELDS = Object.freeze([
+  "product_id",
+  "item_state_id",
+  "quantity",
+]);
+const UPDATE_ITEM_FIELDS = Object.freeze(["quantity"]);
+const UPDATE_ORDER_FIELDS = Object.freeze([]);
+const STATUS_FIELDS = Object.freeze(["status"]);
+const PAYMENT_TERM_FIELDS = Object.freeze(["payment_term_id"]);
 
 module.exports = {
+  ADD_ITEM_FIELDS,
+  CREATE_FIELDS,
+  CUSTOMER_ID_MESSAGE,
   DELIVERY_ADDRESS_MESSAGE,
   ITEM_STATE_ID_MESSAGE,
   ITEMS_ARRAY_MESSAGE,
   ITEMS_MAX_MESSAGE,
-  ITEMS_MIN_MESSAGE,
-  ITEMS_REQUIRED_MESSAGE,
   MAX_ITEMS,
   MAX_QUANTITY,
   MIN_QUANTITY,
   NOTES_MESSAGE,
+  PAYMENT_TERM_FIELDS,
   PAYMENT_TERM_ID_MESSAGE,
   PRODUCT_ID_MESSAGE,
   QUANTITY_MAX_MESSAGE,
   QUANTITY_MIN_MESSAGE,
   QUANTITY_TYPE_MESSAGE,
-  REQUIRED_ORDER_FIELDS,
+  STATUS_FIELDS,
+  STATUS_MESSAGE,
+  UPDATE_ITEM_FIELDS,
+  UPDATE_ORDER_FIELDS,
+  addItemSchema,
   createOrderSchema,
+  orderItemSchema,
   paymentTermUpdateSchema,
+  statusUpdateSchema,
+  updateItemSchema,
+  updateOrderSchema,
 };

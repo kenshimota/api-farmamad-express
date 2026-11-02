@@ -148,6 +148,7 @@ jest.mock("./models/invoice-item", () => ({
 }));
 jest.mock("./models/payment-term", () => ({}));
 jest.mock("./models/order", () => ({}));
+jest.mock("./order-statuses", () => require("express").Router());
 jest.mock("./models/payment-allocation", () => ({
   belongsTo: jest.fn(),
   hasMany: jest.fn(),

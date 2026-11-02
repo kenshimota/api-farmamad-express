@@ -18,7 +18,7 @@ describe("Order models", () => {
     expect(attributes.customer_id.allowNull).toBe(false);
     expect(attributes.user_id.allowNull).toBe(false);
     expect(attributes.currency_id.allowNull).toBe(false);
-    expect(attributes.status.defaultValue).toBe("pending");
+    expect(attributes.status.defaultValue).toBe("draft");
     expect(attributes.subtotal.type.toString()).toBe("DECIMAL(12,2)");
     expect(attributes.total.type.toString()).toBe("DECIMAL(12,2)");
     expect(attributes.delivery_address.type.toString()).toBe("VARCHAR(500)");

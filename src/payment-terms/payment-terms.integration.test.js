@@ -274,7 +274,7 @@ describe("PUT and DELETE /payment-terms with a real database", () => {
       customer_id: customer.id,
       user_id: user.id,
       currency_id: currency.id,
-      status: "pending",
+      status: "draft",
       subtotal: 10,
       total: 10,
       delivery_address: "Calle 1",

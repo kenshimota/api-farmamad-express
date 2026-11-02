@@ -47,6 +47,12 @@ async function ensurePaymentTerm(code = "cash") {
     defaults: base,
   });
 
+  if (term.is_active === false) {
+    // Standard terms are shared by every suite; reactivate them so a test that
+    // disables one does not leak an inactive term into the next test.
+    await term.update({ is_active: true });
+  }
+
   return term;
 }
 

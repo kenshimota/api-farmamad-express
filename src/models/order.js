@@ -36,7 +36,7 @@ const Order = sequelize.define(
     status: {
       type: DataTypes.STRING(20),
       allowNull: false,
-      defaultValue: "pending",
+      defaultValue: "draft",
     },
     subtotal: {
       type: DataTypes.DECIMAL(12, 2),

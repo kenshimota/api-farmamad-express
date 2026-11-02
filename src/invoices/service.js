@@ -170,62 +170,73 @@ function createInvoiceService({
      * @returns {Promise<object>} The created invoice with its lines.
      */
     createInvoice(input) {
-      return repository.transaction(async (transaction) => {
-        if (input.order_id !== undefined && input.order_id !== null) {
-          const exists = await repository.hasOrderInvoice(
-            input.order_id,
-            transaction,
-          );
+      return repository.transaction((transaction) =>
+        this.createInvoiceInTransaction(input, transaction),
+      );
+    },
 
-          if (exists) {
-            throw orderAlreadyInvoiced();
-          }
-        }
-
-        const paymentTerm = await resolvePaymentTerm(input, transaction);
-        const items = normalizeItems(input.items ?? []);
-        const subtotal =
-          input.subtotal === undefined
-            ? round2(items.reduce((sum, item) => sum + item.subtotal, 0))
-            : round2(input.subtotal);
-        const total =
-          input.total === undefined ? subtotal : round2(input.total);
-        const issuedAt = input.issued_at ? new Date(input.issued_at) : clock();
-        const number = await repository.nextNumber(transaction);
-        const invoice = await repository.create(
-          buildInvoiceValues(input, {
-            number,
-            issuedAt,
-            subtotal,
-            total,
-            paymentTermDays: Number(readField(paymentTerm, "days")),
-          }),
-          { transaction },
+    /**
+     * Creates the immutable invoice inside an already open transaction. The
+     * orders `generate → invoiced` transition uses it so the invoice, the
+     * status change and the reservation consumption commit together.
+     * @param {object} input - Invoice snapshot copied from the order.
+     * @param {object} transaction - Open transaction.
+     * @returns {Promise<object>} The created invoice with its lines.
+     */
+    async createInvoiceInTransaction(input, transaction) {
+      if (input.order_id !== undefined && input.order_id !== null) {
+        const exists = await repository.hasOrderInvoice(
+          input.order_id,
+          transaction,
         );
 
-        if (items.length > 0) {
-          await repository.createItems(
-            items.map((item) => ({
-              invoice_id: invoice.id,
-              order_item_id: item.order_item_id ?? null,
-              product_id: item.product_id,
-              product_name: item.product_name,
-              product_reference: item.product_reference,
-              item_state_id: item.item_state_id,
-              item_state_name: item.item_state_name,
-              quantity: item.quantity,
-              unit_price: item.unit_price,
-              subtotal: item.subtotal,
-            })),
-            { transaction },
-          );
+        if (exists) {
+          throw orderAlreadyInvoiced();
         }
+      }
 
-        return repository.findById(invoice.id, {
-          includeItems: true,
-          includeInvoicedBy: true,
-          transaction,
-        });
+      const paymentTerm = await resolvePaymentTerm(input, transaction);
+      const items = normalizeItems(input.items ?? []);
+      const subtotal =
+        input.subtotal === undefined
+          ? round2(items.reduce((sum, item) => sum + item.subtotal, 0))
+          : round2(input.subtotal);
+      const total = input.total === undefined ? subtotal : round2(input.total);
+      const issuedAt = input.issued_at ? new Date(input.issued_at) : clock();
+      const number = await repository.nextNumber(transaction);
+      const invoice = await repository.create(
+        buildInvoiceValues(input, {
+          number,
+          issuedAt,
+          subtotal,
+          total,
+          paymentTermDays: Number(readField(paymentTerm, "days")),
+        }),
+        { transaction },
+      );
+
+      if (items.length > 0) {
+        await repository.createItems(
+          items.map((item) => ({
+            invoice_id: invoice.id,
+            order_item_id: item.order_item_id ?? null,
+            product_id: item.product_id,
+            product_name: item.product_name,
+            product_reference: item.product_reference,
+            item_state_id: item.item_state_id,
+            item_state_name: item.item_state_name,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            subtotal: item.subtotal,
+          })),
+          { transaction },
+        );
+      }
+
+      return repository.findById(invoice.id, {
+        includeItems: true,
+        includeInvoicedBy: true,
+        transaction,
       });
     },
   };

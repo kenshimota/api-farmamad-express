@@ -1,25 +1,20 @@
 process.env.JWT_SECRET = process.env.JWT_SECRET || "integration-test-secret";
 
 const sequelize = require("../database");
+const OrderItemLotAllocation = require("../models/order-item-lot-allocation");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 const {
-  createPaymentTerm,
-  ensurePaymentTerm,
-} = require("../../test/helpers/payment-terms");
+  createOrderFixture,
+  assignSeller,
+} = require("../../test/helpers/order-lifecycle");
 const {
   Order,
   OrderHistory,
   OrderItem,
-  OrderItemLotAllocation,
-  Stock,
   as,
-  createCost,
-  createCurrency,
-  createItemState,
-  createLot,
-  createSaleFixture,
-  createStock,
+  createCustomer,
   resetDatabase,
+  sessionFor,
 } = require("../../test/helpers/orders");
 
 beforeAll(async () => {
@@ -37,213 +32,167 @@ afterAll(async () => {
   await sequelize.close();
 });
 
-describe("POST /orders creation with a real database", () => {
-  it("creates the order, snapshots the price and reserves one lot", async () => {
-    const fixture = await createSaleFixture();
-    const lot = await createLot(
-      fixture.product,
-      fixture.itemState,
-      fixture.location,
-      {
-        stock: 10,
-        reserved: 0,
-      },
-    );
-    await createStock(fixture.product, fixture.itemState, 10);
+/**
+ * Builds a request line for a fixture.
+ * @param {object} fixture - Sale fixture.
+ * @param {number} [quantity] - Quantity.
+ * @returns {object} The line.
+ */
+function lineFor(fixture, quantity = 2) {
+  return {
+    product_id: fixture.product.id,
+    item_state_id: fixture.itemState.id,
+    quantity,
+  };
+}
+
+describe("draft orders with a real database", () => {
+  it("creates a customer draft with items without reserving stock", async () => {
+    const fixture = await createOrderFixture();
 
     const response = await as("post", "/orders", fixture.token).send({
-      items: [
-        {
-          product_id: fixture.product.id,
-          item_state_id: fixture.itemState.id,
-          quantity: 2,
-        },
-      ],
-      notes: "  Entregar por la tarde  ",
-      customer_id: 999,
-      user_id: 999,
-      status: "delivered",
-      number: 999,
-      subtotal: 0,
-      total: 0,
-      currency_id: 999,
+      items: [lineFor(fixture)],
+      delivery_address: "Av. Monseñor Rivero 123",
+      notes: "Entregar por la tarde",
     });
 
     expect(response.status).toBe(201);
-    expect(response.body).toEqual({
-      id: expect.any(Number),
-      number: expect.any(Number),
-      status: "pending",
+    expect(response.body).toMatchObject({
+      status: "draft",
       customer_id: fixture.customer.id,
       user_id: fixture.user.id,
-      currency_id: fixture.cost.currency_id,
-      currency: {
-        id: fixture.cost.currency_id,
-        code: "USD_BCV",
-        name: "Dólar BCV",
-        symbol: "$",
-      },
       subtotal: 28.58,
       total: 28.58,
-      payment_term_id: null,
-      delivery_address: fixture.customer.direction,
+      payment_term_id: fixture.paymentTerm.id,
       notes: "Entregar por la tarde",
-      created_at: expect.any(String),
-      customer: {
-        id: fixture.customer.id,
-        fullName: fixture.customer.fullName,
-        email: fixture.customer.email,
-        direction: fixture.customer.direction,
-      },
       items: [
         {
-          id: expect.any(Number),
           product_id: fixture.product.id,
           item_state_id: fixture.itemState.id,
-          item_state: {
-            id: fixture.itemState.id,
-            name: fixture.itemState.name,
-            label: fixture.itemState.label,
-          },
           quantity: 2,
           unit_price: 14.29,
           subtotal: 28.58,
-          product: {
-            id: fixture.product.id,
-            name: fixture.product.name,
-            reference: fixture.product.reference,
-            image_id: fixture.product.image_id,
-          },
         },
       ],
       history: [
         {
           event_type: "created",
           from_status: null,
-          to_status: "pending",
-          created_at: expect.any(String),
+          to_status: "draft",
+          metadata: null,
         },
       ],
     });
-    expect(response.body.items[0]).not.toHaveProperty("allocations");
-    expect(response.body.items[0]).not.toHaveProperty("lot_id");
-    expect(response.body.items[0]).not.toHaveProperty("cost");
 
-    const stored = await Order.findByPk(response.body.id);
-    expect(stored).toMatchObject({
-      number: response.body.number,
-      status: "pending",
-      customer_id: fixture.customer.id,
-      user_id: fixture.user.id,
-      subtotal: "28.58",
-      total: "28.58",
-    });
-    await lot.reload();
-    expect(lot.reserved).toBe(2);
-    expect(lot.stock).toBe(10);
-    const allocation = await OrderItemLotAllocation.findOne({
-      where: { lot_id: lot.id },
-    });
-    expect(allocation).toMatchObject({ quantity: 2, status: "reserved" });
-    const stock = await Stock.findOne({
-      where: {
+    await fixture.lot.reload();
+    expect(fixture.lot.reserved).toBe(0);
+    expect(await OrderItemLotAllocation.count()).toBe(0);
+  });
+
+  it("adds, updates and removes draft lines without touching stock", async () => {
+    const fixture = await createOrderFixture({ stock: 5 });
+
+    const created = await as("post", "/orders", fixture.token).send({});
+    expect(created.status).toBe(201);
+    expect(created.body.items).toEqual([]);
+    expect(created.body.subtotal).toBe(0);
+
+    const added = await as(
+      "post",
+      `/orders/${created.body.id}/items`,
+      fixture.token,
+    ).send(lineFor(fixture, 2));
+
+    expect(added.status).toBe(201);
+    expect(added.body).toMatchObject({ subtotal: 28.58, total: 28.58 });
+    expect(added.body.history.at(-1)).toMatchObject({
+      event_type: "item_added",
+      metadata: {
         product_id: fixture.product.id,
         item_state_id: fixture.itemState.id,
+        quantity: 2,
       },
     });
-    expect(stock.quantity).toBe(10);
-    await expect(OrderHistory.count()).resolves.toBe(1);
+
+    const itemId = added.body.items[0].id;
+    const updated = await as(
+      "put",
+      `/orders/${created.body.id}/items/${itemId}`,
+      fixture.token,
+    ).send({ quantity: 3 });
+    expect(updated.status).toBe(202);
+    expect(updated.body.total).toBe(42.87);
+    expect(updated.body.history.at(-1)).toMatchObject({
+      event_type: "item_updated",
+      metadata: { quantity: 3 },
+    });
+
+    const removed = await as(
+      "delete",
+      `/orders/${created.body.id}/items/${itemId}`,
+      fixture.token,
+    );
+    expect(removed.status).toBe(204);
+
+    const stored = await Order.findByPk(created.body.id);
+    expect(stored.subtotal).toBe("0.00");
+    await fixture.lot.reload();
+    expect(fixture.lot.reserved).toBe(0);
+    expect(await OrderItem.count()).toBe(0);
+    expect(await OrderHistory.count()).toBe(4);
   });
 
-  it("allows two lines of the same product in different item states", async () => {
-    const fixture = await createSaleFixture();
-    const secondState = await createItemState();
-    await createCost(fixture.product, secondState, { cost: "20.00" });
-    await createLot(fixture.product, fixture.itemState, fixture.location, {
-      stock: 5,
-      expiration_date: "2027-01-31",
+  it("creates assisted orders for assigned sellers and any admin", async () => {
+    const fixture = await createOrderFixture();
+    const seller = await sessionFor("seller");
+    const admin = await sessionFor("admin");
+    await assignSeller(fixture.customer, seller.user);
+
+    const sellerResponse = await as("post", "/orders", seller.token).send({
+      customer_id: fixture.customer.id,
+      items: [lineFor(fixture, 1)],
     });
-    await createLot(fixture.product, secondState, fixture.location, {
-      stock: 5,
-      expiration_date: "2027-02-28",
+    expect(sellerResponse.status).toBe(201);
+    expect(sellerResponse.body).toMatchObject({
+      status: "draft",
+      customer_id: fixture.customer.id,
+      user_id: seller.user.id,
     });
 
-    const response = await as("post", "/orders", fixture.token).send({
-      items: [
-        {
-          product_id: fixture.product.id,
-          item_state_id: fixture.itemState.id,
-          quantity: 1,
-        },
-        {
-          product_id: fixture.product.id,
-          item_state_id: secondState.id,
-          quantity: 1,
-        },
-      ],
+    const adminResponse = await as("post", "/orders", admin.token).send({
+      customer_id: fixture.customer.id,
     });
-
-    expect(response.status).toBe(201);
-    expect(response.body.items).toEqual([
-      expect.objectContaining({
-        item_state_id: fixture.itemState.id,
-        unit_price: 14.29,
-        subtotal: 14.29,
-      }),
-      expect.objectContaining({
-        item_state_id: secondState.id,
-        unit_price: 28.57,
-        subtotal: 28.57,
-      }),
-    ]);
-    expect(response.body.subtotal).toBe(42.86);
-    await expect(OrderItem.count()).resolves.toBe(2);
+    expect(adminResponse.status).toBe(201);
+    expect(adminResponse.body.user_id).toBe(admin.user.id);
   });
 
-  it("converts the cost currency into the default transaction currency", async () => {
-    const costCurrency = await createCurrency({ rate: "1779.780000" });
-    const fixture = await createSaleFixture({
-      cost: { cost: "10.00", currency: costCurrency },
-    });
-    await createLot(fixture.product, fixture.itemState, fixture.location, {
-      stock: 5,
-    });
+  it("rejects unassigned sellers, missing customer_id and unlinked customers", async () => {
+    const fixture = await createOrderFixture();
+    const seller = await sessionFor("seller");
 
-    const response = await as("post", "/orders", fixture.token).send({
-      items: [
-        {
-          product_id: fixture.product.id,
-          item_state_id: fixture.itemState.id,
-          quantity: 1,
-        },
-      ],
+    const unassigned = await as("post", "/orders", seller.token).send({
+      customer_id: fixture.customer.id,
+    });
+    expect(unassigned.status).toBe(403);
+    expect(unassigned.body).toEqual({
+      message: "Customer is not assigned to this seller",
     });
 
-    expect(response.status).toBe(201);
-    expect(response.body.currency.code).toBe("USD_BCV");
-    expect(response.body.items[0].unit_price).toBe(28.57);
-  });
+    const missing = await as("post", "/orders", seller.token).send({});
+    expect(missing.status).toBe(400);
+    expect(missing.body).toEqual({ message: "customer_id is required" });
 
-  it("assigns ascending server-side numbers", async () => {
-    const fixture = await createSaleFixture();
-    await createLot(fixture.product, fixture.itemState, fixture.location, {
-      stock: 10,
+    const unlinkedCustomer = await createCustomer({ price_list_id: null });
+    const unlinkedSuffix = Date.now();
+    const unlinked = await sessionFor("customer", {
+      customer_id: unlinkedCustomer.id,
+      username: `unlinked_${unlinkedSuffix}`,
+      email: `unlinked-${unlinkedSuffix}@example.com`,
     });
-    const body = {
-      items: [
-        {
-          product_id: fixture.product.id,
-          item_state_id: fixture.itemState.id,
-          quantity: 1,
-        },
-      ],
-    };
-
-    const first = await as("post", "/orders", fixture.token).send(body);
-    const second = await as("post", "/orders", fixture.token).send(body);
-
-    expect(first.status).toBe(201);
-    expect(second.status).toBe(201);
-    expect(second.body.number).toBe(first.body.number + 1);
+    const response = await as("post", "/orders", unlinked.token).send({});
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      message: "Customer price list is not assigned",
+    });
   });
 });

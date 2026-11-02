@@ -1,34 +1,35 @@
 const {
+  addItemSchema,
   createOrderSchema,
   DELIVERY_ADDRESS_MESSAGE,
   ITEMS_ARRAY_MESSAGE,
   ITEMS_MAX_MESSAGE,
-  ITEMS_MIN_MESSAGE,
   NOTES_MESSAGE,
   QUANTITY_MAX_MESSAGE,
   QUANTITY_MIN_MESSAGE,
+  statusUpdateSchema,
+  updateItemSchema,
 } = require("./validators");
 
 /**
- * Validates a body with the create schema.
+ * Validates a body with a schema.
+ * @param {import("yup").Schema} schema - Schema under test.
  * @param {object} body - Raw request body.
  * @returns {Promise<object>} The validated body.
  */
-function validate(body) {
-  return createOrderSchema.validate(body, {
-    abortEarly: false,
-    stripUnknown: true,
-  });
+function validate(schema, body) {
+  return schema.validate(body, { abortEarly: false, stripUnknown: true });
 }
 
 /**
- * Captures the first validation error message.
+ * Captures field errors by path.
+ * @param {import("yup").Schema} schema - Schema under test.
  * @param {object} body - Raw request body.
- * @returns {Promise<Record<string, string>>} Field errors by path.
+ * @returns {Promise<Record<string, string>>} Errors by path.
  */
-async function errorsOf(body) {
+async function errorsOf(schema, body) {
   try {
-    await validate(body);
+    await validate(schema, body);
   } catch (error) {
     return Object.fromEntries(
       (error.inner ?? [error]).map((issue) => [
@@ -48,10 +49,15 @@ const VALID_BODY = {
 };
 
 describe("createOrderSchema", () => {
-  it("accepts a valid body and trims text fields", async () => {
-    const body = await validate({ ...VALID_BODY, status: "delivered" });
+  it("accepts a valid body, trims text and strips server fields", async () => {
+    const body = await validate(createOrderSchema, {
+      ...VALID_BODY,
+      status: "delivered",
+      customer_id: 8,
+    });
 
     expect(body).toEqual({
+      customer_id: 8,
       items: [{ product_id: 15, item_state_id: 1, quantity: 2 }],
       delivery_address: "Av. Monseñor Rivero 123",
       notes: "Entregar por la tarde",
@@ -59,73 +65,95 @@ describe("createOrderSchema", () => {
     expect(body).not.toHaveProperty("status");
   });
 
-  it("accepts omitted optional delivery_address and notes", async () => {
-    const body = await validate({
-      items: [{ product_id: 15, item_state_id: 1, quantity: 1 }],
+  it("accepts a draft without items or customer_id", async () => {
+    const body = await validate(createOrderSchema, {
+      notes: "Pedido vacío",
     });
 
+    expect(body.items).toBeUndefined();
+    expect(body.customer_id).toBeUndefined();
     expect(body.delivery_address).toBeUndefined();
-    expect(body.notes).toBeUndefined();
   });
 
-  it("rejects an empty items array and more than 50 lines", async () => {
-    expect(await errorsOf({ items: [] })).toEqual({
-      items: ITEMS_MIN_MESSAGE,
-    });
+  it("accepts an empty items array", async () => {
+    const body = await validate(createOrderSchema, { items: [] });
 
+    expect(body.items).toEqual([]);
+  });
+
+  it("rejects more than 50 lines and a non-array items value", async () => {
     const tooMany = Array.from({ length: 51 }, (_, index) => ({
       product_id: index + 1,
       item_state_id: 1,
       quantity: 1,
     }));
 
-    expect(await errorsOf({ items: tooMany })).toEqual({
+    expect(await errorsOf(createOrderSchema, { items: tooMany })).toEqual({
       items: ITEMS_MAX_MESSAGE,
     });
-  });
-
-  it("rejects a non-array items value", async () => {
-    expect(await errorsOf({ items: "nope" })).toEqual({
+    expect(await errorsOf(createOrderSchema, { items: "nope" })).toEqual({
       items: ITEMS_ARRAY_MESSAGE,
     });
   });
 
-  it("rejects quantities outside 1..999 and non-integers", async () => {
+  it("rejects quantities outside 1..999", async () => {
     expect(
-      await errorsOf({
+      await errorsOf(createOrderSchema, {
         items: [{ product_id: 15, item_state_id: 1, quantity: 0 }],
       }),
     ).toEqual({ "items.0.quantity": QUANTITY_MIN_MESSAGE });
 
     expect(
-      await errorsOf({
+      await errorsOf(createOrderSchema, {
         items: [{ product_id: 15, item_state_id: 1, quantity: 1000 }],
       }),
     ).toEqual({ "items.0.quantity": QUANTITY_MAX_MESSAGE });
   });
 
   it("rejects invalid product and item state ids", async () => {
-    const errors = await errorsOf({
-      items: [{ product_id: 0, item_state_id: "x", quantity: 1 }],
+    const errors = await errorsOf(addItemSchema, {
+      product_id: 0,
+      item_state_id: "x",
+      quantity: 1,
     });
 
-    expect(errors["items.0.product_id"]).toBeDefined();
-    expect(errors["items.0.item_state_id"]).toBeDefined();
+    expect(errors.product_id).toBeDefined();
+    expect(errors.item_state_id).toBeDefined();
   });
 
-  it("rejects a blank or too long delivery_address", async () => {
-    expect(await errorsOf({ ...VALID_BODY, delivery_address: "   " })).toEqual({
-      delivery_address: DELIVERY_ADDRESS_MESSAGE,
-    });
+  it("rejects a blank or too long delivery_address and long notes", async () => {
+    expect(
+      await errorsOf(createOrderSchema, { delivery_address: "   " }),
+    ).toEqual({ delivery_address: DELIVERY_ADDRESS_MESSAGE });
 
     expect(
-      await errorsOf({ ...VALID_BODY, delivery_address: "x".repeat(501) }),
+      await errorsOf(createOrderSchema, { delivery_address: "x".repeat(501) }),
     ).toEqual({ delivery_address: DELIVERY_ADDRESS_MESSAGE });
+
+    expect(
+      await errorsOf(createOrderSchema, { notes: "x".repeat(1001) }),
+    ).toEqual({ notes: NOTES_MESSAGE });
+  });
+});
+
+describe("lifecycle body schemas", () => {
+  it("requires only quantity when updating a line", async () => {
+    await expect(
+      validate(updateItemSchema, { quantity: 3, product_id: 15 }),
+    ).resolves.toEqual({ quantity: 3 });
+
+    expect(await errorsOf(updateItemSchema, {})).toEqual({
+      quantity: expect.any(String),
+    });
   });
 
-  it("rejects notes longer than 1000 characters", async () => {
-    expect(await errorsOf({ ...VALID_BODY, notes: "x".repeat(1001) })).toEqual({
-      notes: NOTES_MESSAGE,
+  it("requires a status value", async () => {
+    await expect(
+      validate(statusUpdateSchema, { status: "  request  " }),
+    ).resolves.toEqual({ status: "request" });
+
+    expect(await errorsOf(statusUpdateSchema, { status: "  " })).toEqual({
+      status: "Invalid status",
     });
   });
 });

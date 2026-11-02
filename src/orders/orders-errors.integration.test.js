@@ -3,22 +3,13 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "integration-test-secret";
 const request = require("supertest");
 const app = require("../app");
 const sequelize = require("../database");
-const Currency = require("../models/currency");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
+const { createOrderFixture } = require("../../test/helpers/order-lifecycle");
 const {
-  Order,
-  OrderHistory,
-  OrderItem,
-  OrderItemLotAllocation,
   as,
   createCost,
-  createCurrency,
-  createCustomer,
   createItemState,
-  createLot,
-  createPriceList,
-  createSaleFixture,
-  ensureDefaultTransactionCurrency,
+  createProduct,
   resetDatabase,
   sessionFor,
 } = require("../../test/helpers/orders");
@@ -39,224 +30,169 @@ afterAll(async () => {
 });
 
 /**
- * Builds the request body for one line.
+ * Builds a line for a fixture.
  * @param {object} fixture - Sale fixture.
- * @param {number} [quantity] - Requested quantity.
- * @returns {object} The request body.
+ * @param {number} [quantity] - Quantity.
+ * @returns {object} The line.
  */
-function bodyFor(fixture, quantity = 1) {
+function lineFor(fixture, quantity = 1) {
   return {
-    items: [
-      {
-        product_id: fixture.product.id,
-        item_state_id: fixture.itemState.id,
-        quantity,
-      },
-    ],
+    product_id: fixture.product.id,
+    item_state_id: fixture.itemState.id,
+    quantity,
   };
 }
 
-describe("POST /orders authorization and validation errors", () => {
-  it("responds 401 without a token and 403 for an internal role", async () => {
-    const anonymous = await request(app).post("/orders").send({ items: [] });
+describe("order lifecycle errors with a real database", () => {
+  it("responds 401 without token and 403 for roles outside orders", async () => {
+    const anonymous = await request(app).post("/orders").send({});
     expect(anonymous.status).toBe(401);
-    expect(anonymous.body).toEqual({ message: "Unauthorized" });
 
-    const seller = await sessionFor("seller");
-    const forbidden = await as("post", "/orders", seller.token).send({
-      items: [{ product_id: 1, item_state_id: 1, quantity: 1 }],
-    });
+    const dispatcher = await sessionFor("dispatcher");
+    const forbidden = await as("post", "/orders", dispatcher.token).send({});
     expect(forbidden.status).toBe(403);
     expect(forbidden.body).toEqual({ message: "Forbidden" });
   });
 
-  it("responds 400 when items is missing", async () => {
-    const fixture = await createSaleFixture();
-    const response = await as("post", "/orders", fixture.token).send({
-      notes: "sin líneas",
+  it("rejects an unknown or non-sellable item state with 422", async () => {
+    const fixture = await createOrderFixture();
+    const nonSellable = await createItemState({ is_sellable: false });
+
+    const unknown = await as("post", "/orders", fixture.token).send({
+      items: [{ ...lineFor(fixture), item_state_id: 999999 }],
+    });
+    expect(unknown.status).toBe(422);
+    expect(unknown.body).toEqual({
+      errors: { item_state_id: "Invalid item state" },
     });
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ message: "items is required" });
-  });
-
-  it("responds 403 when the customer profile is not linked", async () => {
-    const session = await sessionFor("customer");
-
-    const response = await as("post", "/orders", session.token).send({
-      items: [{ product_id: 1, item_state_id: 1, quantity: 1 }],
-    });
-
-    expect(response.status).toBe(403);
-    expect(response.body).toEqual({
-      message: "Customer profile is not linked",
-    });
-  });
-
-  it("responds 403 when the customer has no price list", async () => {
-    const customer = await createCustomer({ price_list_id: null });
-    const session = await sessionFor("customer", { customer_id: customer.id });
-
-    const response = await as("post", "/orders", session.token).send({
-      items: [{ product_id: 1, item_state_id: 1, quantity: 1 }],
-    });
-
-    expect(response.status).toBe(403);
-    expect(response.body).toEqual({
-      message: "Customer price list is not assigned",
-    });
-  });
-
-  it("responds 503 without an active default transaction currency", async () => {
-    const priceList = await createPriceList();
-    const customer = await createCustomer({ price_list_id: priceList.id });
-    const session = await sessionFor("customer", { customer_id: customer.id });
-    await Currency.update(
-      { is_default_for_transactions: false },
-      { where: { is_default_for_transactions: true } },
-    );
-
-    const response = await as("post", "/orders", session.token).send({
-      items: [{ product_id: 1, item_state_id: 1, quantity: 1 }],
-    });
-
-    expect(response.status).toBe(503);
-    expect(response.body).toEqual({
-      message: "Default transaction currency is not configured",
-    });
-
-    await ensureDefaultTransactionCurrency();
-  });
-
-  it("responds 422 for an invalid or non-sellable item state", async () => {
-    const fixture = await createSaleFixture();
-    const blocked = await createItemState({ is_sellable: false });
-
-    const missing = await as("post", "/orders", fixture.token).send({
+    const refused = await as("post", "/orders", fixture.token).send({
       items: [
         {
           product_id: fixture.product.id,
-          item_state_id: 999999,
+          item_state_id: nonSellable.id,
           quantity: 1,
         },
       ],
     });
-    expect(missing.status).toBe(422);
-    expect(missing.body).toEqual({
-      errors: { items: "Invalid item state 999999" },
-    });
-
-    const notSellable = await as("post", "/orders", fixture.token).send({
-      items: [
-        {
-          product_id: fixture.product.id,
-          item_state_id: blocked.id,
-          quantity: 1,
-        },
-      ],
-    });
-    expect(notSellable.status).toBe(422);
-    expect(notSellable.body).toEqual({
-      errors: { items: `Invalid item state ${blocked.id}` },
+    expect(refused.status).toBe(422);
+    expect(refused.body).toEqual({
+      errors: { item_state_id: "Invalid item state" },
     });
   });
 
-  it("responds 422 when the product has no cost", async () => {
-    const fixture = await createSaleFixture();
-    const otherState = await createItemState();
+  it("rejects a product without price for the list and item state", async () => {
+    const fixture = await createOrderFixture();
+    const product = await createProduct();
+    const itemState = await createItemState();
 
     const response = await as("post", "/orders", fixture.token).send({
       items: [
-        {
-          product_id: fixture.product.id,
-          item_state_id: otherState.id,
-          quantity: 1,
-        },
+        { product_id: product.id, item_state_id: itemState.id, quantity: 1 },
       ],
     });
 
     expect(response.status).toBe(422);
     expect(response.body).toEqual({
       errors: {
-        items: `Product ${fixture.product.id} is not available for sale`,
+        product_id: "Product has no price for this item state and price list",
       },
     });
   });
 
-  it("responds 422 for duplicated product/state pairs", async () => {
-    const fixture = await createSaleFixture();
-    const line = bodyFor(fixture).items[0];
+  it("allows the same product in different item states with different prices", async () => {
+    const fixture = await createOrderFixture();
+    const secondState = await createItemState();
+    await createCost(fixture.product, secondState, { cost: "20.00" });
 
     const response = await as("post", "/orders", fixture.token).send({
-      items: [line, line],
+      items: [
+        lineFor(fixture, 2),
+        {
+          product_id: fixture.product.id,
+          item_state_id: secondState.id,
+          quantity: 1,
+        },
+      ],
     });
 
-    expect(response.status).toBe(422);
-    expect(response.body).toEqual({
-      errors: {
-        items: `Duplicate product ${fixture.product.id} and item state ${fixture.itemState.id}`,
-      },
-    });
-    await expect(Order.count()).resolves.toBe(0);
+    expect(response.status).toBe(201);
+    expect(response.body.items).toHaveLength(2);
+    expect(response.body.items[0].unit_price).toBe(14.29);
+    expect(response.body.items[1].unit_price).toBe(28.57);
   });
 
-  it("responds 409 without writing anything when stock is insufficient", async () => {
-    const fixture = await createSaleFixture();
-    const lot = await createLot(
-      fixture.product,
-      fixture.itemState,
-      fixture.location,
-      { stock: 1, reserved: 0 },
-    );
+  it("rejects duplicated product and state pairs with 409", async () => {
+    const fixture = await createOrderFixture();
 
-    const response = await as("post", "/orders", fixture.token).send(
-      bodyFor(fixture, 2),
-    );
+    const response = await as("post", "/orders", fixture.token).send({
+      items: [lineFor(fixture), lineFor(fixture)],
+    });
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({
-      message: "Insufficient stock",
-      items: [
-        {
-          product_id: fixture.product.id,
-          item_state_id: fixture.itemState.id,
-        },
-      ],
+      message: "Product and item state already in order",
     });
-    await expect(Order.count()).resolves.toBe(0);
-    await expect(OrderItem.count()).resolves.toBe(0);
-    await expect(OrderHistory.count()).resolves.toBe(0);
-    await expect(OrderItemLotAllocation.count()).resolves.toBe(0);
-    await lot.reload();
-    expect(lot.reserved).toBe(0);
   });
 
-  it("rejects a non-sellable cost currency as unavailable", async () => {
-    const costCurrency = await createCurrency({ rate: "2.000000" });
-    const fixture = await createSaleFixture({
-      cost: { cost: "5.00", currency: costCurrency },
-    });
-    const inactive = await createItemState();
-    await createCost(fixture.product, inactive, {
-      cost: "5.00",
-      currency: costCurrency,
-    });
-    await createLot(fixture.product, inactive, fixture.location, {
-      stock: 10,
-    });
-    await costCurrency.update({ is_active: false });
+  it("hides other customers' orders and blocks item edits after request", async () => {
+    const first = await createOrderFixture();
+    const second = await createOrderFixture();
 
-    const response = await as("post", "/orders", fixture.token).send({
-      items: [
-        {
-          product_id: fixture.product.id,
-          item_state_id: inactive.id,
-          quantity: 1,
-        },
-      ],
+    const created = await as("post", "/orders", first.token).send({
+      items: [lineFor(first)],
     });
 
-    expect(response.status).toBe(422);
-    expect(response.body.errors.items).toContain("is not available for sale");
+    const hidden = await as("get", `/orders/${created.body.id}`, second.token);
+    expect(hidden.status).toBe(404);
+    expect(hidden.body).toEqual({ message: "Order not found" });
+
+    const requested = await as(
+      "put",
+      `/orders/${created.body.id}/status`,
+      first.token,
+    ).send({ status: "request" });
+    expect(requested.status).toBe(202);
+
+    const edit = await as(
+      "post",
+      `/orders/${created.body.id}/items`,
+      first.token,
+    ).send(lineFor(first));
+    expect(edit.status).toBe(422);
+    expect(edit.body).toEqual({
+      errors: { status: "Order is not editable" },
+    });
+  });
+
+  it("forbids customers from generating and hides unassigned seller writes", async () => {
+    const fixture = await createOrderFixture();
+    const admin = await sessionFor("admin");
+    const seller = await sessionFor("seller");
+
+    const created = await as("post", "/orders", fixture.token).send({
+      items: [lineFor(fixture)],
+    });
+
+    const customerGenerate = await as(
+      "put",
+      `/orders/${created.body.id}/status`,
+      fixture.token,
+    ).send({ status: "generate" });
+    expect(customerGenerate.status).toBe(403);
+
+    const sellerEdit = await as(
+      "put",
+      `/orders/${created.body.id}/status`,
+      seller.token,
+    ).send({ status: "generate" });
+    expect(sellerEdit.status).toBe(404);
+
+    const adminEdit = await as(
+      "put",
+      `/orders/${created.body.id}/status`,
+      admin.token,
+    ).send({ status: "cancelled" });
+    expect(adminEdit.status).toBe(202);
   });
 });

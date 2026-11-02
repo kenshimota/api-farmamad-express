@@ -6,62 +6,15 @@ const OrderItemLotAllocation = require("../models/order-item-lot-allocation");
 const OrderHistory = require("../models/order-history");
 const Customer = require("../models/customer");
 const User = require("../models/user");
-const Currency = require("../models/currency");
-const PaymentTerm = require("../models/payment-term");
 const Lot = require("../models/lot");
-const Product = require("../models/product");
-const ItemState = require("../models/item-state");
-const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
-
-const ITEM_ORDER = Object.freeze([["id", "ASC"]]);
-const HISTORY_ORDER = Object.freeze([
-  ["createdAt", "ASC"],
-  ["id", "ASC"],
-]);
-const ITEM_INCLUDE = Object.freeze({
-  model: OrderItem,
-  as: "items",
-  separate: true,
-  order: ITEM_ORDER,
-  include: [
-    {
-      model: Product,
-      as: "product",
-      attributes: ["id", "name", "reference", "image_id"],
-    },
-    {
-      model: ItemState,
-      as: "item_state",
-      attributes: ["id", "name", "label"],
-    },
-  ],
-});
-const HISTORY_INCLUDE = Object.freeze({
-  model: OrderHistory,
-  as: "history",
-  separate: true,
-  order: HISTORY_ORDER,
-});
-const CUSTOMER_INCLUDE = Object.freeze({
-  model: Customer,
-  as: "customer",
-  attributes: ["id", "fullName", "email", "direction"],
-});
-const CURRENCY_INCLUDE = Object.freeze({
-  model: Currency,
-  as: "currency",
-  attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
-});
-const PAYMENT_TERM_INCLUDE = Object.freeze({
-  model: PaymentTerm,
-  as: "payment_term",
-  attributes: ["id", "code", "name", "days"],
-});
+const { buildOrderIncludes } = require("./includes");
+const { createOrderLifecycleRepository } = require("./lifecycle-repository");
+const { createOrderItemRepository } = require("./item-repository");
 
 /**
- * Creates the repository that encapsulates every persistence call of the
- * orders module. The models and the Sequelize instance are injectable so the
- * service and the abstraction stay testable without a real database.
+ * Creates the core repository of the orders module: header, lines, history and
+ * lot reservation primitives. Models and the connection are injectable so the
+ * abstraction stays testable without a database.
  * @param {object} [options] - Injectable dependencies.
  * @param {object} [options.model] - Order model.
  * @param {object} [options.itemModel] - OrderItem model.
@@ -73,7 +26,7 @@ const PAYMENT_TERM_INCLUDE = Object.freeze({
  * @param {object} [options.db] - Shared Sequelize instance.
  * @returns {object} Order repository.
  */
-function createOrderRepository({
+function createBaseOrderRepository({
   model = Order,
   itemModel = OrderItem,
   allocationModel = OrderItemLotAllocation,
@@ -87,18 +40,47 @@ function createOrderRepository({
    * Loads one order with its public relations.
    * @param {number} id - Order id.
    * @param {object} [options] - Query options.
+   * @param {boolean} [options.includeItems] - Nest the lines.
+   * @param {boolean} [options.includeHistory] - Nest the history.
    * @param {object} [options.transaction] - Open transaction.
+   * @param {string} [options.lock] - Row lock mode.
    * @returns {Promise<object|null>} The loaded order or null.
    */
-  function findById(id, { transaction } = {}) {
+  async function findById(
+    id,
+    {
+      includeItems = true,
+      includeHistory = true,
+      includeCustomer = true,
+      includeCurrency = true,
+      includePaymentTerm = true,
+      transaction,
+      lock,
+    } = {},
+  ) {
+    if (lock) {
+      // PostgreSQL rejects `FOR UPDATE` on the nullable side of the outer
+      // joins used by the includes, so the order row is locked on its own and
+      // the relations are loaded in a second query inside the same transaction.
+      const locked = await model.findByPk(id, {
+        attributes: ["id"],
+        lock,
+        transaction,
+      });
+
+      if (!locked) {
+        return null;
+      }
+    }
+
     return model.findByPk(id, {
-      include: [
-        { ...CUSTOMER_INCLUDE },
-        { ...CURRENCY_INCLUDE },
-        { ...PAYMENT_TERM_INCLUDE },
-        { ...ITEM_INCLUDE },
-        { ...HISTORY_INCLUDE },
-      ],
+      include: buildOrderIncludes({
+        includeItems,
+        includeHistory,
+        includeCustomer,
+        includeCurrency,
+        includePaymentTerm,
+      }),
       transaction,
     });
   }
@@ -116,25 +98,27 @@ function createOrderRepository({
     /**
      * Finds the authenticated user by id.
      * @param {number} id - User id.
+     * @param {object} [options] - Sequelize options.
      * @returns {Promise<object|null>} The user or null.
      */
-    findUserById(id) {
-      return userModel.findByPk(id);
+    findUserById(id, options) {
+      return options ? userModel.findByPk(id, options) : userModel.findByPk(id);
     },
 
     /**
-     * Finds the customer linked to the authenticated user.
+     * Finds a customer by id.
      * @param {number} id - Customer id.
+     * @param {object} [options] - Sequelize options.
      * @returns {Promise<object|null>} The customer or null.
      */
-    findCustomerById(id) {
-      return customerModel.findByPk(id);
+    findCustomerById(id, options) {
+      return options
+        ? customerModel.findByPk(id, options)
+        : customerModel.findByPk(id);
     },
 
     /**
      * Reserves the next ascending order number from the PostgreSQL sequence.
-     * `sequelize.query` is used instead of the raw `pg` driver so the call
-     * participates in the current transaction.
      * @param {object} transaction - Open transaction.
      * @returns {Promise<number>} The reserved number.
      */
@@ -148,13 +132,12 @@ function createOrderRepository({
     },
 
     /**
-     * Loads and locks the lots of one product/state pair that still have
-     * available units, ordered FEFO. `FOR UPDATE` serializes concurrent orders
-     * so the last unit can only be reserved once.
+     * Loads and locks the lots of one product/state pair with availability,
+     * ordered FEFO.
      * @param {number} productId - Product id.
      * @param {number} itemStateId - Item state id.
      * @param {object} transaction - Open transaction.
-     * @returns {Promise<object[]>} The locked lots ordered by expiration/id.
+     * @returns {Promise<object[]>} The locked lots.
      */
     findLotsForUpdate(productId, itemStateId, transaction) {
       return lotModel.findAll({
@@ -189,8 +172,7 @@ function createOrderRepository({
     /**
      * Persists the order header.
      * @param {object} values - Order attributes.
-     * @param {object} options - Persistence options.
-     * @param {object} options.transaction - Open transaction.
+     * @param {object} [options] - Persistence options.
      * @returns {Promise<object>} The created order.
      */
     createOrder(values, { transaction } = {}) {
@@ -198,21 +180,30 @@ function createOrderRepository({
     },
 
     /**
-     * Persists the order lines.
+     * Persists order lines.
      * @param {object[]} rows - Line values.
-     * @param {object} options - Persistence options.
-     * @param {object} options.transaction - Open transaction.
-     * @returns {Promise<object[]>} The created lines in input order.
+     * @param {object} [options] - Persistence options.
+     * @returns {Promise<object[]>} The created lines.
      */
     createItems(rows, { transaction } = {}) {
       return itemModel.bulkCreate(rows, { transaction });
     },
 
     /**
-     * Persists the lot allocations of the created lines.
+     * Updates an order instance.
+     * @param {object} order - Loaded order.
+     * @param {object} values - Attributes to update.
+     * @param {object} [options] - Sequelize options.
+     * @returns {Promise<object>} The updated order.
+     */
+    updateOrder(order, values, options = {}) {
+      return order.update(values, options);
+    },
+
+    /**
+     * Persists the lot allocations of the reserved lines.
      * @param {object[]} rows - Allocation values.
-     * @param {object} options - Persistence options.
-     * @param {object} options.transaction - Open transaction.
+     * @param {object} [options] - Persistence options.
      * @returns {Promise<object[]>} The created allocations.
      */
     createAllocations(rows, { transaction } = {}) {
@@ -222,8 +213,7 @@ function createOrderRepository({
     /**
      * Appends one event to the order history.
      * @param {object} values - Event values.
-     * @param {object} options - Persistence options.
-     * @param {object} options.transaction - Open transaction.
+     * @param {object} [options] - Persistence options.
      * @returns {Promise<object>} The created event.
      */
     createHistory(values, { transaction } = {}) {
@@ -231,29 +221,40 @@ function createOrderRepository({
     },
 
     /**
-     * Replaces the payment term snapshot of an editable order.
+     * Replaces the payment term snapshot of an order.
      * @param {object} order - Loaded order.
      * @param {number} paymentTermId - Active payment term id.
+     * @param {object} [options] - Sequelize options.
      * @returns {Promise<object>} The updated order.
      */
-    updatePaymentTerm(order, paymentTermId) {
-      return order.update({ payment_term_id: paymentTermId });
+    updatePaymentTerm(order, paymentTermId, options) {
+      return options
+        ? order.update({ payment_term_id: paymentTermId }, options)
+        : order.update({ payment_term_id: paymentTermId });
     },
 
     findById,
   };
 }
 
+/**
+ * Creates the full orders repository by composing the core persistence methods
+ * with the lifecycle queries.
+ * @param {object} [options] - Injectable dependencies.
+ * @returns {object} The orders repository.
+ */
+function createOrderRepository(options = {}) {
+  return {
+    ...createBaseOrderRepository(options),
+    ...createOrderItemRepository(options),
+    ...createOrderLifecycleRepository(options),
+  };
+}
+
 const orderRepository = createOrderRepository();
 
 module.exports = {
-  CURRENCY_INCLUDE,
-  CUSTOMER_INCLUDE,
-  HISTORY_INCLUDE,
-  HISTORY_ORDER,
-  ITEM_INCLUDE,
-  ITEM_ORDER,
-  PAYMENT_TERM_INCLUDE,
+  createBaseOrderRepository,
   createOrderRepository,
   orderRepository,
 };

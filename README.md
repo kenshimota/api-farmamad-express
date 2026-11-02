@@ -3877,13 +3877,13 @@ curl -X PUT http://localhost:3001/customers/8 \
 ### Pedidos y facturas
 
 - `POST /orders` copia `customers.payment_term_id`; un `customer` no puede
-  enviar otro término. `admin`/`seller` podrán elegirlo al crear pedidos en el
-  flujo de HU-39/#63.
+  enviar otro término. `admin`/`seller` pueden enviarlo o copiar el del cliente
+  al crear un pedido en `draft`.
 - `PUT /orders/:id/payment-term` reemplaza el término de un pedido en `draft` o
   `request`; en `generate`, `invoiced`, `cancelled` o cualquier otro estado
   responde `422` con `{ "errors": { "status": "Order is not editable" } }`.
-- La validación que exige un término activo antes de `draft → request`,
-  `draft → generate` y `request → generate` pertenece a HU-39/#63.
+- Las transiciones `draft → request`, `draft → generate` y `request →
+  generate` exigen un término activo (ver la sección de HU-39).
 - Al emitir la factura se copia `orders.payment_term_id`, se exige un término
   activo y `due_date` se calcula como `issued_at + payment_terms.days`; para
   contado (`days = 0`) es la misma fecha de emisión. Cambiar o desactivar el
@@ -3902,175 +3902,302 @@ curl -X PUT http://localhost:3001/customers/8 \
 | `422`  | Días, id o término inválido/inactivo           | `{ "errors": { "days": "..." } }` o `payment_term_id`         |
 | `500`  | Error interno                                  | `{ "message": "Internal server error" }`                      |
 
-## Pedidos (`orders`, `order_items`, `order_item_lot_allocations`, `order_history`) — HU-34
+## Estados y ciclo de vida de pedidos — HU-39
 
-Un pedido es una compra creada por un cliente autenticado. En esta HU la
-creación es directa y nace en estado `pending`; [HU-39 (#63)](https://github.com/kenshimota/api-farmamad-express/issues/63)
-reemplazará la creación directa por el flujo `request → generate`, pero el
-esquema base, el snapshot de precio y el mecanismo de reserva por lote siguen
-vigentes.
+El ciclo de vida de un pedido es una cadena configurable de estados:
+`draft → request → generate → invoiced`, con `cancelled` disponible desde
+cualquier estado no terminal. Los seis estados anteriores (`pending`,
+`confirmed`, `preparing`, `shipped`, `delivered`, `cancelled`) dejan de ser la
+fuente de verdad; la migración los mapea a los nuevos códigos.
 
-### Tablas y numeración
+### Catálogo `order_statuses`
 
-- `orders`: cabecera con `number` único asignado por `orders_number_seq`,
-  `customer_id`, `user_id`, `currency_id`, `status`
-  (`pending`, `confirmed`, `preparing`, `shipped`, `delivered`, `cancelled`),
-  `payment_term_id` (nullable), `subtotal`, `total`, `delivery_address` y
-  `notes`. `total = subtotal` en esta HU porque no hay impuestos, descuentos ni
-  envío. El término de pago es un snapshot: cambiar el del cliente después no
-  modifica pedidos ya creados.
-- `order_items`: líneas con `quantity`, `unit_price` y `subtotal` como
-  **snapshot inmutable** del momento de la compra, en la moneda del pedido.
-  La combinación `(order_id, product_id, item_state_id)` es única, por lo que
-  el mismo producto puede tener dos líneas si cambia el estado de ítem.
-- `order_item_lot_allocations`: lotes reservados para cada línea y su cantidad.
-  Solo `status = 'reserved'` cuenta como reserva activa. La tabla es interna y
-  nunca se expone en la API.
-- `order_history`: eventos append-only. La creación registra `created`; las
-  ediciones y transiciones de HU-39 agregarán `item_added`, `item_updated`,
-  `item_removed`, `status_changed` e `invoice_issued`. El cliente ve
-  `event_type`, estados, metadata y fecha.
-- `orders_number_seq`: empieza en 1 y avanza de uno en uno. Los huecos por
+| `code`      | `name`       | `sort_order` | `next_status_code` | `is_system` |
+| ----------- | ------------ | ------------ | ------------------ | ----------- |
+| `draft`     | Borrador     | 10           | `request`          | `true`      |
+| `request`   | Solicitado   | 20           | `generate`         | `true`      |
+| `generate`  | Generado     | 30           | `invoiced`         | `true`      |
+| `invoiced`  | Facturado    | 40           | `null`             | `true`      |
+| `cancelled` | Cancelado    | 50           | `null`             | `true`      |
+
+- `code` cumple `^[a-z][a-z0-9_]{1,19}$`, es único e inmutable.
+- `sort_order` solo ordena el listado; no define transiciones.
+- `is_terminal` se calcula como `next_status_code === null` y se expone en las
+  respuestas; no es una columna.
+- `next_status_code` no puede apuntar al mismo estado ni crear ciclos.
+- Si falta alguno de los cinco estados base, las operaciones que dependen de
+  ellos responden `503` con
+  `{ "message": "Order status configuration is incomplete" }`.
+
+La tabla `orders.status`, `order_history.from_status` y
+`order_history.to_status` referencian `order_statuses.code`. La migración es
+reversible y mapea los pedidos e historial anteriores:
+`pending → request`, `confirmed|preparing|shipped → generate`,
+`delivered → invoiced` y `cancelled → cancelled`.
+
+### CRUD `/order-statuses`
+
+Lectura: cualquier `customer`, `admin` o `seller` autenticado. Escritura:
+solo `admin`. El resto de roles recibe `403`.
+
+```bash
+curl http://localhost:3001/order-statuses \
+  -H "Authorization: Bearer <jwt-admin>"
+```
+
+```json
+[
+  {
+    "id": 1,
+    "code": "draft",
+    "name": "Borrador",
+    "description": null,
+    "sort_order": 10,
+    "next_status_code": "request",
+    "is_terminal": false,
+    "is_system": true
+  }
+]
+```
+
+Crear un estado adicional (`is_system` siempre `false`):
+
+```bash
+curl -X POST http://localhost:3001/order-statuses \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"on_hold","name":"En espera","description":"Esperando confirmación","sort_order":25,"next_status_code":"generate"}'
+```
+
+Para intercalarlo entre `request` y `generate`, después se actualiza el estado
+anterior con `PUT /order-statuses/<id de request>` y
+`{"next_status_code":"on_hold"}`.
+
+- `GET /order-statuses`: ordena por `sort_order` e `id` ascendente.
+- `GET /order-statuses/:id`: `422` con id inválido y `404` si no existe.
+- `POST /order-statuses`: requiere `code`, `name` y `sort_order`.
+- `PUT /order-statuses/:id`: actualiza `name`, `description`, `sort_order` y
+  `next_status_code`; `code` e `is_system` son inmutables.
+- `DELETE /order-statuses/:id`: responde `204`; los estados base responden
+  `409 { "message": "System order status cannot be deleted" }` y un estado
+  referenciado por pedidos, historial o como destino responde `409
+  { "message": "Order status is in use" }`.
+- Destino inexistente, igual al actual o que cierre un ciclo responde `422`
+  con `{ "errors": { "next_status_code": "..." } }`.
+
+### Tablas de pedidos
+
+- `orders`: cabecera con `number` asignado por `orders_number_seq`,
+  `customer_id`, `user_id`, `currency_id`, `status` (código de
+  `order_statuses`), `payment_term_id`, `subtotal`, `total`,
+  `delivery_address` y `notes`. `total = subtotal` porque no hay impuestos,
+  descuentos ni envío.
+- `order_items`: líneas con `product_id`, `item_state_id`, `quantity`,
+  `unit_price` y `subtotal`. La combinación
+  `(order_id, product_id, item_state_id)` es única, por lo que el mismo
+  producto puede tener dos líneas con estados distintos.
+- `order_item_lot_allocations`: reserva interna por lote
+  (`reserved`, `released`, `consumed`). Nunca se expone en la API.
+- `order_history`: eventos append-only `created`, `item_added`,
+  `item_updated`, `item_removed`, `status_changed` e `invoice_issued`.
+- `orders_number_seq`: numeración ascendente desde 1. Los huecos por
   transacciones fallidas son aceptables; el cliente nunca envía `number`.
 
 ### Precio y reserva
 
-- El precio se calcula con la lista de precios del cliente y el costo actual
-  del par `(product_id, item_state_id)`:
-  `unit_price = round2(costo ÷ (1 − percentage / 100) × rate_costo ÷ rate_pedido)`.
-  No se consulta `products.sale_price`.
-- La moneda del pedido es la moneda activa con
-  `is_default_for_transactions = true`; si no existe, responde `503`.
-- La disponibilidad de una línea es `SUM(lots.stock - lots.reserved)` para su
-  par producto + estado. La reserva carga y bloquea los lotes con `FOR UPDATE`
-  en orden FEFO (`expiration_date` ascendente e `id` ascendente), incrementa
-  `lots.reserved` y crea una asignación por lote.
-- Reservar **no** cambia `lots.stock` ni `stocks.quantity`; se conserva
-  `stocks.quantity = SUM(lots.stock)`.
-- La creación es atómica: si falla el precio, la existencia o cualquier
-  escritura, no queda pedido, línea, asignación, historial ni incremento de
-  `lots.reserved`.
-- Dos pedidos concurrentes por la última unidad: uno responde `201` y el otro
-  `409`.
+- Precio: `unit_price = round2(costo ÷ (1 − percentage / 100) × rate_costo ÷
+  rate_pedido)`, con la lista del cliente y el `item_state_id` de la línea. No
+  se usa `products.sale_price`.
+- Moneda del pedido: moneda activa con `is_default_for_transactions = true`;
+  si no existe, `503 Default transaction currency is not configured`.
+- En `draft` los precios se recalculan al agregar, editar o quitar líneas, pero
+  **no** se reserva stock.
+- `draft → request` recalcula y congela los precios; tampoco reserva lotes ni
+  modifica `lots.stock` o `stocks.quantity`.
+- `draft → generate` (admin/seller) y `request → generate` reservan los lotes
+  FEFO (`expiration_date`, `id`) con `FOR UPDATE`, incrementan `lots.reserved` y
+  crean asignaciones `reserved`. La disponibilidad de una línea es
+  `SUM(lots.stock - lots.reserved)`.
+- `generate → invoiced` consume la reserva: bajan `lots.reserved`, `lots.stock`
+  y `stocks.quantity`, las asignaciones pasan a `consumed` y se crea la
+  factura con el servicio de HU-40.
+- Cancelar libera las asignaciones `reserved` (pasan a `released`) y baja
+  `lots.reserved`, sin tocar `lots.stock` ni `stocks.quantity`.
+- La generación de contado (`payment_terms.days = 0`) exige saldo de billetera
+  suficiente convertido a la moneda del pedido; si no, responde `409
+  { "message": "Insufficient wallet balance" }`. Los pedidos a crédito no
+  validan saldo.
+- Toda transición y reserva es atómica. Dos generaciones simultáneas por la
+  última unidad: una responde `202` y la otra `409 Insufficient stock`.
 
-### Roles
+### Crear un borrador — `POST /orders`
 
-`POST /orders` requiere JWT válido y rol `customer`. Los roles internos
-(`admin`, `seller`, `dispatcher`, `manager_warehouse`, `support`) reciben `403`
-en la creación de esta HU. El usuario debe tener `users.customer_id`; si no,
-responde `403` con `{ "message": "Customer profile is not linked" }`. El pedido
-se asocia siempre al cliente del usuario autenticado y se descartan
-`customer_id`, `user_id`, `status`, `number`, `subtotal`, `total` y
-`currency_id` enviados por el cliente. El `payment_term_id` enviado por un
-`customer` también se ignora: el pedido copia el término de su perfil.
+Roles: `customer`, `admin` y `seller`.
 
-`PUT /orders/:id/payment-term` permite a `admin` y `seller` reemplazar el
-término mientras el pedido siga en `draft` o `request` (estados de HU-39/#63).
-En esta rama los pedidos nacen en `pending`, por lo que el endpoint responde
-`422 Order is not editable` hasta integrar el ciclo de vida de #63.
-
-### `POST /orders`
+- Un `customer` usa el cliente vinculado en `users.customer_id`, no puede
+  enviar `customer_id` y necesita `customers.price_list_id`.
+- `admin` puede operar con cualquier cliente y debe enviar `customer_id`;
+  `seller` solo con un cliente asignado en `customer_sellers`, si no recibe
+  `403 { "message": "Customer is not assigned to this seller" }`.
+- Cliente inexistente: `404`. Cliente sin lista de precios: `403 Customer price
+  list is not assigned`.
+- `items` es opcional (0 a 50 líneas); `delivery_address` es opcional (máximo
+  500 caracteres) y cae en `customers.direction`; `notes` admite hasta 1000.
+- `payment_term_id` es opcional: el `customer` copia el de su perfil; el
+  `admin`/`seller` puede enviarlo o copiar el del cliente; puede quedar `null`.
+- El pedido nace en `draft`, con `subtotal = 0` y `total = 0` si no hay líneas.
 
 ```bash
 curl -X POST http://localhost:3001/orders \
   -H "Authorization: Bearer <jwt-customer>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "items": [
-      { "product_id": 15, "item_state_id": 1, "quantity": 2 }
-    ],
-    "delivery_address": "Av. Monseñor Rivero 123",
-    "notes": "Entregar por la tarde"
-  }'
+  -d '{"delivery_address":"Av. Monseñor Rivero 123","notes":"Entregar por la tarde"}'
 ```
 
-Reglas del cuerpo:
+Venta asistida:
 
-- `items` es obligatorio, con 1 a 50 líneas.
-- `product_id` e `item_state_id` son enteros positivos; el estado debe existir y
-  tener `is_sellable = true`.
-- `quantity` es un entero entre 1 y 999.
-- No se aceptan pares `(product_id, item_state_id)` duplicados.
-- `delivery_address` es opcional (1–500 caracteres); si se omite se usa
-  `customers.direction`.
-- `notes` es opcional, hasta 1000 caracteres.
-- `payment_term_id` es opcional: el `customer` copia el de su perfil y no puede
-  enviar otro; puede quedar `null` porque el pedido nace en borrador. Un término
-  inactivo o inexistente responde `422` con
-  `{ "errors": { "payment_term_id": "Invalid payment term" } }`.
-
-Respuesta `201`:
-
-```json
-{
-  "id": 10,
-  "number": 1,
-  "status": "pending",
-  "customer_id": 8,
-  "user_id": 12,
-  "currency_id": 3,
-  "currency": { "id": 3, "code": "USD_BCV", "name": "Dólar BCV", "symbol": "$" },
-  "payment_term_id": 2,
-  "payment_term": { "id": 2, "code": "credit_10", "name": "Crédito 10 días", "days": 10 },
-  "subtotal": 25.0,
-  "total": 25.0,
-  "delivery_address": "Av. Monseñor Rivero 123",
-  "notes": "Entregar por la tarde",
-  "created_at": "2026-10-30T15:00:00.000Z",
-  "customer": {
-    "id": 8,
-    "fullName": "Cliente Demo",
-    "email": "cliente@example.com",
-    "direction": "Av. Monseñor Rivero 123"
-  },
-  "items": [
-    {
-      "id": 20,
-      "product_id": 15,
-      "item_state_id": 1,
-      "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
-      "quantity": 2,
-      "unit_price": 12.5,
-      "subtotal": 25.0,
-      "product": {
-        "id": 15,
-        "name": "Ibuprofeno 400 mg",
-        "reference": "IBU-400",
-        "image_id": 7
-      }
-    }
-  ],
-  "history": [
-    {
-      "event_type": "created",
-      "from_status": null,
-      "to_status": "pending",
-      "created_at": "2026-10-30T15:00:00.000Z"
-    }
-  ]
-}
+```bash
+curl -X POST http://localhost:3001/orders \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id":8,"items":[{"product_id":15,"item_state_id":1,"quantity":2}]}'
 ```
 
-La respuesta no expone asignaciones por lote, `lot_id`, `lots.stock`,
-`lots.reserved`, costos, bodegas, estantes ni proveedores.
+Respuesta `201` con `status: "draft"`, `items`, `history` y los snapshots de
+moneda y término de pago.
 
-### Errores del módulo
+### Editar el borrador
 
-| Código | Cuerpo                                                                 |
-| ------ | ---------------------------------------------------------------------- |
-| `400`  | `{ "message": "items is required" }`                                   |
-| `401`  | `{ "message": "Unauthorized" }`                                        |
-| `403`  | `{ "message": "Forbidden" }`                                           |
-| `403`  | `{ "message": "Customer profile is not linked" }`                      |
-| `403`  | `{ "message": "Customer price list is not assigned" }`                 |
-| `409`  | `{ "message": "Insufficient stock", "items": [{ "product_id": 15, "item_state_id": 1 }] }` |
-| `422`  | `{ "errors": { "items": "Invalid item state 1" } }`                    |
-| `422`  | `{ "errors": { "items": "Product 15 is not available for sale" } }`    |
-| `422`  | `{ "errors": { "items": "Duplicate product 15 and item state 1" } }`   |
-| `422`  | `{ "errors": { "payment_term_id": "Invalid payment term" } }`          |
-| `422`  | `{ "errors": { "status": "Order is not editable" } }`                  |
-| `503`  | `{ "message": "Default transaction currency is not configured" }`      |
-| `500`  | `{ "message": "Internal server error" }`                               |
+| Endpoint                            | Acceso                                         | Respuesta |
+| ----------------------------------- | ---------------------------------------------- | --------- |
+| `PUT /orders/:id`                   | Dueño, admin o seller asignado, solo `draft`   | `202`     |
+| `POST /orders/:id/items`            | Dueño, admin o seller asignado, solo `draft`   | `201`     |
+| `PUT /orders/:id/items/:item_id`    | Solo cambia `quantity`                         | `202`     |
+| `DELETE /orders/:id/items/:item_id` | Elimina la línea                               | `204`     |
+| `PUT /orders/:id/payment-term`      | Admin o seller asignado, en `draft`/`request`   | `202`     |
+
+```bash
+curl -X POST http://localhost:3001/orders/10/items \
+  -H "Authorization: Bearer <jwt-customer>" \
+  -H "Content-Type: application/json" \
+  -d '{"product_id":15,"item_state_id":1,"quantity":2}'
+```
+
+Errores del borrador:
+
+- `item_state_id` inexistente o no vendible:
+  `422 { "errors": { "item_state_id": "Invalid item state" } }`.
+- Par `(product_id, item_state_id)` duplicado:
+  `409 { "message": "Product and item state already in order" }`.
+- Sin precio para la lista y estado:
+  `422 { "errors": { "product_id": "Product has no price for this item state
+  and price list" } }`.
+- Pedido que no está en `draft`:
+  `422 { "errors": { "status": "Order is not editable" } }`.
+- Pedido ajeno o de un cliente no asignado: `404 Order not found`.
+- Más de 50 líneas: `422`; `quantity` entre 1 y 999.
+
+Cada alta, edición o borrado agrega `item_added`, `item_updated` o
+`item_removed` con `metadata: { order_item_id, product_id, item_state_id,
+quantity }`.
+
+### Transiciones — `PUT /orders/:id/status`
+
+Cuerpo: `{ "status": "<code>" }`. Responde `202` con el pedido actualizado.
+
+| Estado actual | Destinos                                                        |
+| ------------- | --------------------------------------------------------------- |
+| `draft`       | `request` (solo cliente dueño), `generate` (admin/seller), `cancelled` |
+| `request`     | `generate` (admin/seller), `cancelled`                          |
+| `generate`    | `invoiced` (admin/seller), `cancelled`                          |
+| `invoiced`    | ninguno                                                         |
+| `cancelled`   | ninguno                                                         |
+
+- Enviar el mismo estado o un salto fuera de la cadena responde `422`.
+- Un cliente que intenta `generate`, `invoiced` o cualquier acción interna
+  recibe `403`; `request` desde un estado distinto de `draft` responde `422`.
+- `draft → request` exige al menos una línea, moneda por defecto activa, lista
+  de precios y término activo. Sin término:
+  `422 { "errors": { "payment_term_id": "Payment term is required" } }`; con
+  término inactivo: `422 Invalid payment term`.
+- `draft → generate` y `request → generate` exigen término activo, validan la
+  billetera en contado y reservan lotes FEFO. Sin existencia:
+  `409 { "message": "Insufficient stock", "items": [{ "product_id": 15,
+  "item_state_id": 1 }] }` y el pedido conserva su estado anterior.
+- `generate → invoiced` crea la factura, consume la reserva y agrega
+  `status_changed` + `invoice_issued` con
+  `metadata: { invoice_id, invoice_number }`.
+- `invoiced` no se cancela: `422`.
+
+```bash
+curl -X PUT http://localhost:3001/orders/10/status \
+  -H "Authorization: Bearer <jwt-customer>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"request"}'
+```
+
+```bash
+curl -X PUT http://localhost:3001/orders/10/status \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"generate"}'
+```
+
+```bash
+curl -X PUT http://localhost:3001/orders/10/status \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"invoiced"}'
+```
+
+### Consultas
+
+- `GET /orders`: un `customer` solo ve sus pedidos; `admin` y `seller` ven
+  todos. Cada fila agrega `items_count`. Incluye el resumen de cabecera,
+  `currency`, `customer` y `payment_term`.
+- `GET /orders/:id`: dueño, admin o seller. Un cliente no recibe `actor` en el
+  historial; admin y seller reciben `actor: { id, username, email }` o `null`.
+  Un pedido ajeno responde `404`.
+- `GET /orders/:id/invoice`: dueño, admin o seller; devuelve la factura emitida
+  con sus líneas.
+
+El detalle incluye `id`, `number`, `status`, `customer_id`, `user_id`,
+`payment_term_id`, `payment_term`, `currency_id`, `currency`, `subtotal`,
+`total`, `delivery_address`, `notes`, `created_at`, `items` y `history`. No
+expone asignaciones por lote, `lot_id`, `lots.stock`, `lots.reserved`, costos,
+bodegas ni datos de otros clientes.
+
+### Roles de pedidos
+
+| Acción                                | `customer` | `admin` | `seller`                 | Otros roles |
+| ------------------------------------- | ---------- | ------- | ------------------------ | ----------- |
+| `POST /orders`                        | Propio     | Cualquiera | Cliente asignado      | `403`       |
+| `GET /orders` y `GET /orders/:id`     | Propios    | Todos   | Todos                    | `403`       |
+| Ítems en `draft`                      | Propios    | Cualquiera | Cliente asignado      | `403`       |
+| `draft → request`                     | Propio     | `403`   | `403`                    | `403`       |
+| `draft → generate`, `request → generate` | `403`   | Sí      | Cliente asignado         | `403`       |
+| `generate → invoiced`                 | `403`      | Sí      | Sí                       | `403`       |
+| Cancelar                              | Propios en `draft`/`request` | Cualquiera no terminal | Cliente asignado no terminal | `403` |
+| `PUT /orders/:id/payment-term`        | `403`      | En `draft`/`request` | Cliente asignado en `draft`/`request` | `403` |
+| CRUD `/order-statuses` lectura        | Sí         | Sí      | Sí                       | `403`       |
+| CRUD `/order-statuses` escritura      | `403`      | Sí      | `403`                    | `403`       |
+
+Sin token o con token inválido/expirado: `401 Unauthorized`. Usuario bloqueado:
+`403 User is blocked`. `customer` sin vínculo: `403 Customer profile is not
+linked`. `customer` sin lista: `403 Customer price list is not assigned`.
+
+### Errores del ciclo de vida
+
+| Código | Situación                                            | Cuerpo esperado |
+| ------ | ---------------------------------------------------- | --------------- |
+| `400`  | Falta `status`, `product_id`, `item_state_id`, `quantity` o `customer_id` interno | `{ "message": "<campo> is required" }` |
+| `401`  | Token ausente, inválido o expirado                   | `{ "message": "Unauthorized" }` |
+| `403`  | Rol sin permiso, cliente no vinculado/sin lista o seller no asignado | `Forbidden` o mensaje específico |
+| `404`  | Pedido, ítem, estado o cliente inexistente/oculto    | `... not found` |
+| `409`  | Stock o saldo de billetera insuficiente, par duplicado, estado en uso | Mensaje específico |
+| `422`  | Transición inválida, término faltante/inactivo, estado no vendible, pedido no editable, id inválido | `{ "errors": { ... } }` |
+| `503`  | Sin moneda por defecto o faltan estados base         | Mensaje específico |
+| `500`  | Error interno                                        | `{ "message": "Internal server error" }` |
 
 ## Vendedores por cliente (customer_sellers)
 
@@ -4795,14 +4922,12 @@ endpoints de escritura: una factura no se puede crear, editar ni eliminar por
 API. La creación ocurre dentro de la transición `generate → invoiced` de
 pedidos (HU-39).
 
-> **Dependencias pendientes (#63).** El ciclo de vida `draft/request/generate/
-> invoiced` y la columna `users.customer_id` todavía no están en esta rama. La
-> emisión desde un pedido, la transición de estado, el consumo de reservas y
-> `GET /orders/:id/invoice` quedan bloqueados hasta integrar HU-39. El servicio
-> `invoiceService.createInvoice` ya implementa la creación atómica de la
-> cabecera y sus líneas, exige un término de pago activo y calcula `due_date`,
-> para que la transición de pedidos lo invoque. `invoices.payment_term_id` ya
-> es obligatorio y tiene FK a `payment_terms` (HU-41); `order_id` e
+> **Integración con pedidos (HU-39/#63).** La transición `generate → invoiced`
+> crea la factura, consume la reserva de lotes y agrega los eventos
+> `status_changed` e `invoice_issued`. La factura se puede consultar con
+> `GET /invoices/:id` o `GET /orders/:id/invoice`. El servicio exige un término
+> de pago activo y calcula `due_date`. `invoices.payment_term_id` es
+> obligatorio y tiene FK a `payment_terms` (HU-41); `order_id` e
 > `invoice_items.order_item_id` siguen nullable y sin FK.
 
 ### Tablas y numeración
@@ -4964,21 +5089,19 @@ Respuesta `200`:
 No se exponen costos, márgenes, lotes, ubicaciones, datos de otros clientes ni
 columnas de auditoría.
 
-### Pendiente por dependencias
+### Integración con el ciclo de vida de pedidos
 
-- `POST /orders` y la transición `generate → invoiced` (HU-34/#58 y HU-39/#63):
-  bloquean la emisión real desde un pedido, el bloqueo `FOR UPDATE`, la
-  validación de estado, el consumo de reservas, el descuento de `lots.stock` y
-  `stocks.quantity`, y los eventos `status_changed`/`invoice_issued`.
-- `GET /orders/:id/invoice` (HU-39/#63): el servicio
-  `invoiceService.getInvoiceByOrder` ya aplica la regla de propiedad; falta
-  montar la ruta en el módulo de pedidos.
-- Propiedad de facturas para `customer` (HU-39/#63): requiere
-  `users.customer_id`; hoy todos los clientes reciben
-  `403 Customer profile is not linked`.
+- La transición `generate → invoiced` de HU-39 ejecuta la emisión en la misma
+  transacción que el cambio de estado y el consumo de reservas, con bloqueo
+  `FOR UPDATE`, descuento de `lots.stock` y `stocks.quantity`, y los eventos
+  `status_changed` e `invoice_issued`.
+- `GET /orders/:id/invoice` (HU-39/#63) aplica primero la visibilidad del
+  pedido y luego la propiedad de la factura.
+- Un `customer` ve solo las facturas de su `users.customer_id`; un pedido,
+  factura o cliente ajeno responde `404` para no revelar su existencia.
 - Las FK `invoices.order_id → orders.id` e
-  `invoice_items.order_item_id → order_items.id` deben agregarse en una
-  migración posterior cuando existan esas tablas.
+  `invoice_items.order_item_id → order_items.id` siguen pendientes de una
+  migración posterior.
 
 ### Errores del módulo
 
@@ -5322,17 +5445,14 @@ curl "http://localhost:3001/invoices?payment_status=partial" \
 | `422`  | Monto inválido, cliente distinto o monto mayor al saldo de la factura | `{ "errors": { ... } }`                                                     |
 | `500`  | Error interno manejado por el handler global                          | `{ "message": "Internal server error" }`                                    |
 
-### Pendiente por dependencia de pedidos (HU-43/RF-04)
+### Saldo de billetera en pedidos de contado (HU-43/RF-04)
 
-La regla de exigir saldo de billetera al pasar un pedido de contado
-(`payment_terms.days = 0`) no se implementa todavía porque `orders`,
-`order_items` y `payment_terms` (HU-34/#58, HU-39/#63 y HU-41/#65) aún no
-existen en esta rama. Cuando se integren, `generate` deberá calcular
-`available = SUM(wallet.balance × walletCurrency.rate ÷ orderCurrency.rate)` y
-responder `409 { "message": "Insufficient wallet balance" }` sin reservar lotes
-ni generar el pedido cuando `available < orders.total`. La validación es solo de
-saldo disponible: no debita ni bloquea la billetera; el débito ocurre al aplicar
-el pago con `POST /invoices/:id/payments`.
+La transición `draft → generate` y `request → generate` calcula
+`available = SUM(wallet.balance × walletCurrency.rate ÷ orderCurrency.rate)`
+para pedidos de contado (`payment_terms.days = 0`). Si
+`available < orders.total`, responde
+`409 { "message": "Insufficient wallet balance" }` sin reservar lotes ni
+cambiar el estado del pedido. Los pedidos a crédito no validan saldo.
 
 ## Tienda (catálogo del cliente) — HU-33
 
