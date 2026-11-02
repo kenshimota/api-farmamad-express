@@ -105,6 +105,8 @@ jobs:
             -t "$IMAGE:${{ github.ref_name }}" \
             -t "$IMAGE:latest" .
           docker run --rm --env-file "$RUNNER_TEMP/farmamad.env" --network "$NETWORK" \
+            "$IMAGE:${{ github.ref_name }}" npm run db:create:if-missing
+          docker run --rm --env-file "$RUNNER_TEMP/farmamad.env" --network "$NETWORK" \
             "$IMAGE:${{ github.ref_name }}" npm run db:migrate
           docker run --rm --env-file "$RUNNER_TEMP/farmamad.env" --network "$NETWORK" \
             "$IMAGE:${{ github.ref_name }}" npx sequelize-cli db:seed:all
