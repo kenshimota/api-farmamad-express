@@ -64,6 +64,9 @@ const ITEM = {
   unit_cost: "20.00",
   subtotal: "800.00",
   tax_amount: "128.00",
+  lot_number: "LOTE-1",
+  expiration_date: "2027-03-31",
+  received_lot_id: null,
 };
 const SUPPLIER = {
   id: 2,

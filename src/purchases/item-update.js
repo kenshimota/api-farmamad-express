@@ -20,10 +20,11 @@ const router = Router();
  *   put:
  *     summary: Updates a line of a draft purchase
  *     description: >
- *       Accepts any of `product_id`, `item_state_id`, `quantity`, `unit_cost`
- *       and `tax_amount`; when `tax_amount` is omitted the current value is
- *       kept. Recalculates the purchase and responds 202 with the updated
- *       purchase and its lines.
+ *       Accepts any of `product_id`, `item_state_id`, `quantity`, `unit_cost`,
+ *       `tax_amount`, `lot_number` and `expiration_date`; when `tax_amount` is
+ *       omitted the current value is kept. The resulting line must keep both
+ *       lot fields, otherwise it answers 400. Recalculates the purchase and
+ *       responds 202 with the updated purchase and its lines.
  *     tags: [Purchases]
  *     security:
  *       - bearerAuth: []

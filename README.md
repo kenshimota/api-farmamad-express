@@ -2774,7 +2774,10 @@ curl http://localhost:3001/stocks/product/15 \
 
 Protegido para `admin`, `seller` y `manager_warehouse`. Requiere
 `?product_id=` y devuelve solo las filas con `quantity > 0` cuyo estado tiene
-`is_sellable = true`, ordenadas por `item_state.name`. Cada fila incluye el
+`is_sellable = true`, ordenadas por `item_state.name`. `quantity` sigue siendo
+el total físico; `located_quantity` suma únicamente `lots.stock` de los lotes
+con `location_status = 'located'` y es **la única cantidad vendible**. El stock
+`pending` o `in_progress` nunca se cuenta como disponible. Cada fila incluye el
 costo vigente de `costs` para la misma combinación o `cost: null` si no existe;
 también incluye `currency_id` y `currency` del costo, o ambos en `null` cuando
 no hay costo. La fila **no se oculta** para que el faltante sea visible. La
@@ -2877,13 +2880,13 @@ Protegido para `admin` y `seller`. `supplier_id` es obligatorio; `currency_id`,
 `notes` e `items` son opcionales. `currency_id` toma la moneda por defecto
 (`USD_BCV`) cuando se omite, debe existir y estar activa si se envía, y todos
 los montos de la compra y de sus líneas quedan expresados en ella. Cada línea
-requiere `product_id`, `item_state_id`, `quantity`, `unit_cost` y un
-`tax_amount` absoluto (`>= 0`, máximo 2 decimales y 10 dígitos enteros); si
-falta el impuesto responde `422` con
-`{ "errors": { "items.0.tax_amount": "tax_amount is required" } }`. Las líneas
-se validan contra `products` e `item_states` y no se repite
-`(product_id, item_state_id)` en una misma compra (`409`). Responde `201` con la
-compra, su moneda y sus líneas.
+requiere `product_id`, `item_state_id`, `quantity`, `unit_cost`, un
+`tax_amount` absoluto (`>= 0`, máximo 2 decimales y 10 dígitos enteros),
+`lot_number` (1–100 caracteres) y `expiration_date` (`YYYY-MM-DD`). Las líneas
+se validan contra `products` e `item_states` y el mismo producto puede repetirse
+con lotes distintos; repetir `(product_id, LOWER(lot_number))` responde `409`.
+Responde `201` con la compra, su moneda y sus líneas, incluyendo
+`lot_number`, `expiration_date` y `received_lot_id` (null hasta confirmar).
 
 ```bash
 curl -X POST http://localhost:3001/purchases \
@@ -2898,14 +2901,18 @@ curl -X POST http://localhost:3001/purchases \
         "item_state_id": 1,
         "quantity": 40,
         "unit_cost": 20.0,
-        "tax_amount": 128.0
+        "tax_amount": 128.0,
+        "lot_number": "LOTE-1",
+        "expiration_date": "2027-03-31"
       },
       {
         "product_id": 15,
         "item_state_id": 2,
         "quantity": 3,
         "unit_cost": 12.5,
-        "tax_amount": 6.0
+        "tax_amount": 6.0,
+        "lot_number": "LOTE-2",
+        "expiration_date": "2027-06-30"
       }
     ]
   }'
@@ -2939,7 +2946,10 @@ Respuesta `201`:
       "unit_cost": 20,
       "subtotal": 800,
       "tax_amount": 128,
-      "total": 928
+      "total": 928,
+      "lot_number": "LOTE-1",
+      "expiration_date": "2027-03-31",
+      "received_lot_id": null
     },
     {
       "id": 2,
@@ -2949,7 +2959,10 @@ Respuesta `201`:
       "unit_cost": 12.5,
       "subtotal": 37.5,
       "tax_amount": 6,
-      "total": 43.5
+      "total": 43.5,
+      "lot_number": "LOTE-2",
+      "expiration_date": "2027-06-30",
+      "received_lot_id": null
     }
   ]
 }
@@ -2971,7 +2984,9 @@ curl -X POST http://localhost:3001/purchases \
         "item_state_id": 1,
         "quantity": 40,
         "unit_cost": 20.0,
-        "tax_amount": 128.0
+        "tax_amount": 128.0,
+        "lot_number": "LOTE-USD",
+        "expiration_date": "2027-03-31"
       }
     ]
   }'
@@ -3021,12 +3036,13 @@ curl -X POST http://localhost:3001/purchases/1/cancel \
 
 - `GET /purchases/:id/items` lista las líneas de un borrador.
 - `POST /purchases/:id/items` agrega una línea (`product_id`,
-  `item_state_id`, `quantity`, `unit_cost` y `tax_amount`) y responde `201`.
-  Sin `tax_amount` responde `400` con
-  `{ "message": "product_id, item_state_id, quantity, unit_cost and tax_amount are required" }`.
+  `item_state_id`, `quantity`, `unit_cost`, `tax_amount`, `lot_number` y
+  `expiration_date`) y responde `201`. Sin los campos obligatorios responde
+  `400` con la lista de campos faltantes.
 - `PUT /purchases/:purchase_id/items/:item_id` actualiza cualquier combinación
-  de esos cinco campos y responde `202`; si omite `tax_amount` conserva el
-  valor actual.
+  de esos campos y responde `202`; si omite `tax_amount` conserva el valor
+  actual y siempre exige que la línea quede con `lot_number` y
+  `expiration_date`.
 - `DELETE /purchases/:purchase_id/items/:item_id` elimina la línea y responde
   `204`.
 
@@ -3034,9 +3050,10 @@ Las líneas **no** llevan `currency_id`: todos sus montos se expresan en la
 moneda de la compra padre. Si el cliente envía `currency_id` dentro de una línea,
 se ignora. Cada alta, edición o baja recalcula la cabecera; al borrar la última
 línea los totales quedan en `0`. Solo se permiten sobre borradores. Si la línea no
-pertenece a la compra responde `404` con `{ "message": "Item not found" }` y un
-producto/estado repetido responde `409` con
-`{ "message": "Item already exists" }`.
+pertenece a la compra responde `404` con `{ "message": "Item not found" }`. El
+mismo producto puede repetirse con lotes distintos, pero repetir
+`(product_id, lot_number)` en la misma compra responde `409` con
+`{ "message": "Item already exists" }` aunque cambie `item_state_id`.
 
 ```bash
 curl -X POST http://localhost:3001/purchases/1/items \
@@ -3055,13 +3072,20 @@ curl -X DELETE http://localhost:3001/purchases/1/items/1 \
 
 ### `POST /purchases/:id/confirm`
 
-Protegido para `admin` y `seller`. En **una sola transacción** recalcula los
-totales sumando subtotales e impuestos de las líneas, hace _upsert_ en `costs`
+Protegido para `admin` y `seller`. En **una sola transacción** valida que
+todas las líneas tengan `lot_number` y `expiration_date`, busca o crea el lote
+por `(product_id, LOWER(lot_number))` con `FOR UPDATE`, guarda
+`received_lot_id` en la línea, recalcula los totales, hace _upsert_ en `costs`
 por `(product_id, item_state_id)` usando `unit_cost` sin impuesto (la última
 compra confirmada gana), incrementa `stocks.quantity` con
 `stockRepository.applyPurchaseItems(items, { transaction })` y marca
-`status = confirmed` con `confirmed_at`. Si cualquier paso falla se revierte
-todo: ni costos ni stocks cambian. El _upsert_ de `costs` hereda
+`status = confirmed` con `confirmed_at`. Los lotes nuevos nacen
+`location_status = 'pending'` con `stock = quantity` y `reserved = 0`; un lote
+existente solo se reutiliza si coinciden estado de ítem y vencimiento, si no
+responde `409 Lot already exists with different data`. Si cualquier paso falla
+se revierte todo: ni lotes, ni costos, ni stocks cambian. Sin datos de lote
+responde `422` con
+`{ "errors": { "items": "Every item requires lot_number and expiration_date" } }`. El _upsert_ de `costs` hereda
 `currency_id` de la compra; si la moneda fue desactivada después de crear la
 compra, la confirmación se permite porque la referencia es histórica. Sin líneas
 responde `422` con `{ "message": "Purchase has no items" }`; si ya estaba
@@ -3606,8 +3630,14 @@ Reglas de negocio:
   ya vencida porque el lote sigue existiendo en inventario.
 - `stock` y `reserved` son enteros entre `0` y `1 000 000 000`, con `0` por
   defecto al crear. La base de datos impone `stock >= 0`, `reserved >= 0` y
-  `reserved <= stock`.
-- `available = stock - reserved` se calcula al serializar y nunca se almacena.
+  `reserved <= stock`. **`reserved` es de solo lectura**: `POST /lots` y
+  `PUT /lots/:id` lo ignoran y conservan el valor actual (en la creación nace
+  en `0`); solo el ciclo de pedidos confirmados lo modifica.
+- `available = stock - reserved` cuando el lote está `located`; vale `0`
+  mientras está `pending` o `in_progress` y nunca se almacena.
+- `location_status` sigue el ciclo `pending → in_progress → located`. Las tres
+  columnas de ubicación (`warehouse_id`, `shelf_id`, `section_id`) son
+  opcionales como bloque: o las tres son nulas o las tres están presentes.
 - El estante debe pertenecer a la bodega y la sección al estante; si no, la API
   responde `422`. Estas comprobaciones y la escritura ocurren en una
   transacción.
@@ -3631,15 +3661,16 @@ Roles:
 ### `POST /lots`
 
 Requiere `number`, `product_id`, `expiration_date`, `item_state_id`,
-`warehouse_id`, `shelf_id` y `section_id`; `stock` y `reserved` son opcionales
-y valen `0` por defecto. Todas las referencias deben existir y la ubicación debe
-ser coherente.
+`warehouse_id`, `shelf_id` y `section_id`; `stock` es opcional y vale `0` por
+defecto. `reserved` se ignora y el lote nace con `reserved = 0` y
+`location_status = 'located'`. Todas las referencias deben existir y la
+ubicación debe ser coherente.
 
 ```bash
 curl -X POST http://localhost:3001/lots \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":120,"reserved":15,"warehouse_id":1,"shelf_id":1,"section_id":2}'
+  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":120,"warehouse_id":1,"shelf_id":1,"section_id":2}'
 ```
 
 Respuesta `201`:
@@ -3652,11 +3683,14 @@ Respuesta `201`:
   "expiration_date": "2027-03-31",
   "item_state_id": 1,
   "stock": 120,
-  "reserved": 15,
-  "available": 105,
+  "reserved": 0,
+  "available": 120,
   "warehouse_id": 1,
   "shelf_id": 1,
   "section_id": 2,
+  "location_status": "located",
+  "location_started_at": null,
+  "located_at": "2026-11-02T15:10:00.000Z",
   "product": { "id": 15, "name": "Ibuprofeno 800 mg", "reference": "IBU-800" },
   "item_state": {
     "id": 1,
@@ -3686,6 +3720,7 @@ Filtros opcionales:
 | `shelf_id`        | Estante exacto.                                                  |
 | `section_id`      | Sección exacta.                                                  |
 | `number`          | Número de lote exacto, sin distinguir mayúsculas/minúsculas.     |
+| `location_status` | `pending`, `in_progress` o `located`.                            |
 | `expired`         | `true` para `expiration_date < CURRENT_DATE`; `false` para `>=`. |
 | `expiring_before` | Fecha máxima inclusive `YYYY-MM-DD`.                             |
 
@@ -3708,6 +3743,9 @@ curl "http://localhost:3001/lots?product_id=15&warehouse_id=1&expired=false&expi
     "warehouse_id": 1,
     "shelf_id": 1,
     "section_id": 2,
+    "location_status": "located",
+    "location_started_at": null,
+    "located_at": "2026-11-02T15:10:00.000Z",
     "product": {
       "id": 15,
       "name": "Ibuprofeno 800 mg",
@@ -3739,24 +3777,119 @@ curl http://localhost:3001/lots/1 -H "Authorization: Bearer <jwt>"
 
 Reemplaza todos los campos editables y responde `202` con el lote actualizado.
 Exige `number`, `product_id`, `expiration_date`, `item_state_id`, `stock`,
-`reserved`, `warehouse_id`, `shelf_id` y `section_id`. Vuelve a validar las
-referencias y la coherencia de ubicación, y rechaza `reserved > stock` con
-`422`. Los campos `id`, `available`, `createdAt` y `updatedAt` se ignoran.
+`warehouse_id`, `shelf_id` y `section_id`. `reserved` se ignora y conserva su
+valor actual; si el nuevo `stock` queda por debajo de la reserva responde
+`422`. Vuelve a validar las referencias y la coherencia de ubicación. Los
+campos `id`, `available`, `createdAt` y `updatedAt` se ignoran.
 
 ```bash
 curl -X PUT http://localhost:3001/lots/1 \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":100,"reserved":10,"warehouse_id":1,"shelf_id":1,"section_id":2}'
+  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":100,"warehouse_id":1,"shelf_id":1,"section_id":2}'
 ```
 
-Respuesta `202` con `"available": 90`.
+Respuesta `202` con el `reserved` conservado y `available = stock - reserved`.
 
 ### `DELETE /lots/:id`
 
 Elimina un lote y responde `204` sin cuerpo. Solo se permite cuando
 `stock = 0` y `reserved = 0`; en caso contrario responde `409 Lot has stock or
 reservations` y no borra nada.
+
+## Bandeja de almacén (warehouse-inbox)
+
+Los lotes creados al confirmar una compra nacen `pending` y no se pueden vender
+ni reservar hasta que un responsable de almacén les asigne bodega, estante y
+sección. Este módulo expone el flujo `pending → in_progress → located`.
+
+Roles:
+
+| Endpoint                                        | `admin` | `seller` | `manager_warehouse` | `dispatcher` | `support` | `customer` |
+| ----------------------------------------------- | ------- | -------- | ------------------- | ------------ | --------- | ---------- |
+| `GET /warehouse-inbox/lots`                     | ✅      | ✅       | ✅                  | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+| `GET /warehouse-inbox/products/:product_id/lots`| ✅      | ✅       | ✅                  | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+| `POST /warehouse-inbox/lots/:id/start`          | ✅      | ❌ `403` | ✅                  | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+| `PUT /warehouse-inbox/lots/:id/location`        | ✅      | ❌ `403` | ✅                  | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+
+### `GET /warehouse-inbox/lots`
+
+Lista los lotes `pending` e `in_progress` ordenados por `createdAt` e `id`
+ascendente. Sin `status` aplica ese filtro por defecto. Filtros opcionales:
+`product_id`, `purchase_id`, `lot_number`, `status`
+(`pending|in_progress|located|all`) y `expiring_before=YYYY-MM-DD`. Cada fila
+incluye producto, estado de ítem, compra, `purchase_item_id`, `stock`,
+`reserved`, `available` (`0` si no está ubicado) y los usuarios de auditoría.
+`GET /warehouse-inbox/products/:product_id/lots` es el alias filtrado por
+producto.
+
+```bash
+curl "http://localhost:3001/warehouse-inbox/lots?product_id=15" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 40,
+    "number": "LOTE-1",
+    "product_id": 15,
+    "expiration_date": "2027-03-31",
+    "item_state_id": 1,
+    "stock": 100,
+    "reserved": 0,
+    "available": 0,
+    "warehouse_id": null,
+    "shelf_id": null,
+    "section_id": null,
+    "location_status": "pending",
+    "location_started_at": null,
+    "located_at": null,
+    "created_at": "2026-11-02T15:00:00.000Z",
+    "product": { "id": 15, "name": "Ibuprofeno 400 mg", "reference": "IBU-400" },
+    "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
+    "purchase": { "id": 1, "number": 1, "supplier_id": 1 },
+    "purchase_item_id": 1,
+    "started_by": null,
+    "located_by": null
+  }
+]
+```
+
+### `POST /warehouse-inbox/lots/:id/start`
+
+Solo `admin` y `manager_warehouse`. Bloquea el lote con `FOR UPDATE` y pasa
+`pending → in_progress`, guardando `location_started_at` y
+`location_started_by`. Repetirlo con el mismo usuario responde `200` sin
+cambios; otro usuario recibe `409 Lot is being located by another user` y un
+lote ya ubicado `409 Lot is already located`.
+
+```bash
+curl -X POST http://localhost:3001/warehouse-inbox/lots/40/start \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /warehouse-inbox/lots/:id/location`
+
+Solo `admin` y `manager_warehouse`. Exige
+`{ "warehouse_id": 1, "shelf_id": 2, "section_id": 3 }`, valida que las tres
+referencias existan y que el estante pertenezca a la bodega y la sección al
+estante. Deja el lote `located`, guarda `located_at` y `located_by`, conserva
+`location_started_at`/`location_started_by` y responde `202` con
+`available = stock - reserved`. Una ubicación incoherente responde `422`; un
+lote ya ubicado o reclamado por otro usuario responde `409`.
+
+```bash
+curl -X PUT http://localhost:3001/warehouse-inbox/lots/40/location \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"warehouse_id":1,"shelf_id":2,"section_id":3}'
+```
+
+Errores propios: `400` cuando faltan los tres ids, `404 Lot not found`, `409`
+para lote ya ubicado o reclamado y `422` para referencias inexistentes o
+incoherentes. La reserva de pedidos y el catálogo de tienda solo consideran
+lotes `located`; `lots.reserved` sigue siendo inmutable desde esta bandeja.
 
 ```bash
 curl -X DELETE http://localhost:3001/lots/1 \

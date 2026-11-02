@@ -4,12 +4,14 @@ jest.mock("../models/stock", () => ({
 }));
 jest.mock("../models/item-state", () => ({}));
 jest.mock("../models/cost", () => ({}));
+jest.mock("../models/lot", () => ({ findAll: jest.fn() }));
 
 const { Op } = require("sequelize");
 const Stock = require("../models/stock");
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
 const Currency = require("../models/currency");
+const Lot = require("../models/lot");
 const {
   ITEM_STATE_ATTRIBUTES,
   LIST_ORDER,
@@ -23,6 +25,8 @@ const repository = createStockRepository(
   ItemState,
   Cost,
   purchaseService,
+  Currency,
+  Lot,
 );
 
 const ITEM_STATE_INCLUDE = {
@@ -34,6 +38,7 @@ const ITEM_STATE_INCLUDE = {
 beforeEach(() => {
   Stock.findAll.mockReset();
   Stock.findByPk.mockReset();
+  Lot.findAll.mockReset();
   purchaseService.applyPurchaseItems.mockReset();
 });
 

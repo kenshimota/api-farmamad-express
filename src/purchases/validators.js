@@ -1,5 +1,10 @@
 const yup = require("yup");
 const { MAX_MONEY, hasAtMostTwoDecimals } = require("./money");
+const {
+  DATE_PATTERN,
+  MAX_NUMBER_LENGTH,
+  isCalendarDate,
+} = require("../lots/parsers");
 
 const REQUIRED_PURCHASE_FIELDS = ["supplier_id"];
 const EDITABLE_PURCHASE_FIELDS = ["supplier_id", "currency_id", "notes"];
@@ -9,6 +14,8 @@ const REQUIRED_PURCHASE_ITEM_FIELDS = [
   "quantity",
   "unit_cost",
   "tax_amount",
+  "lot_number",
+  "expiration_date",
 ];
 const EDITABLE_PURCHASE_ITEM_FIELDS = [...REQUIRED_PURCHASE_ITEM_FIELDS];
 const MAX_NOTES_LENGTH = 1000;
@@ -29,6 +36,10 @@ const TAX_AMOUNT_DECIMALS_MESSAGE = "tax_amount must have at most 2 decimals";
 const TAX_AMOUNT_MAX_MESSAGE = "tax_amount must have at most 10 integer digits";
 const TAX_AMOUNT_REQUIRED_MESSAGE = "tax_amount is required";
 const NOTES_MESSAGE = "notes must have at most 1000 characters";
+const LOT_NUMBER_MESSAGE = `lot_number must have between 1 and ${MAX_NUMBER_LENGTH} characters`;
+const EXPIRATION_DATE_MESSAGE =
+  "expiration_date must be a valid date (YYYY-MM-DD)";
+const LOT_PAIR_MESSAGE = "lot_number and expiration_date are required";
 const ITEMS_MESSAGE = "items must be an array";
 
 /**
@@ -170,12 +181,50 @@ function taxAmountField(required = true) {
   return required ? schema.required(TAX_AMOUNT_REQUIRED_MESSAGE) : schema;
 }
 
+/**
+ * Builds the trimmed lot number schema.
+ * @param {boolean} [required] - Whether the field is mandatory.
+ * @returns {import("yup").StringSchema} The lot number schema.
+ */
+function lotNumberField(required = false) {
+  const schema = yup
+    .string()
+    .trim()
+    .typeError(LOT_NUMBER_MESSAGE)
+    .min(1, LOT_NUMBER_MESSAGE)
+    .max(MAX_NUMBER_LENGTH, LOT_NUMBER_MESSAGE);
+
+  return required ? schema.required(LOT_NUMBER_MESSAGE) : schema;
+}
+
+/**
+ * Builds a date-only schema that rejects impossible calendar dates.
+ * @param {boolean} [required] - Whether the field is mandatory.
+ * @returns {import("yup").StringSchema} The date schema.
+ */
+function expirationDateField(required = false) {
+  const schema = yup
+    .string()
+    .transform((value) => (typeof value === "string" ? value.trim() : value))
+    .typeError(EXPIRATION_DATE_MESSAGE)
+    .matches(DATE_PATTERN, EXPIRATION_DATE_MESSAGE)
+    .test(
+      "calendar-date",
+      EXPIRATION_DATE_MESSAGE,
+      (value) => value === undefined || isCalendarDate(value),
+    );
+
+  return required ? schema.required(EXPIRATION_DATE_MESSAGE) : schema;
+}
+
 const purchaseItemSchema = yup.object({
   product_id: positiveInteger(PRODUCT_ID_MESSAGE),
   item_state_id: positiveInteger(ITEM_STATE_ID_MESSAGE),
   quantity: quantityField(),
   unit_cost: unitCostField(),
   tax_amount: taxAmountField(),
+  lot_number: lotNumberField(true),
+  expiration_date: expirationDateField(true),
 });
 
 const createPurchaseSchema = yup.object({
@@ -203,14 +252,19 @@ const updatePurchaseItemSchema = yup.object({
   quantity: quantityField().notRequired(),
   unit_cost: unitCostField().notRequired(),
   tax_amount: taxAmountField(false),
+  lot_number: lotNumberField(),
+  expiration_date: expirationDateField(),
 });
 
 module.exports = {
   CURRENCY_ID_MESSAGE,
   EDITABLE_PURCHASE_FIELDS,
   EDITABLE_PURCHASE_ITEM_FIELDS,
+  EXPIRATION_DATE_MESSAGE,
   ITEMS_MESSAGE,
   ITEM_STATE_ID_MESSAGE,
+  LOT_NUMBER_MESSAGE,
+  LOT_PAIR_MESSAGE,
   MAX_MONEY,
   MAX_NOTES_LENGTH,
   MAX_QUANTITY,

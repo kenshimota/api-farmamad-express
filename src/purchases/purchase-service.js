@@ -9,6 +9,7 @@ const { createPurchaseItemOperations } = require("./purchase-item-service");
 const {
   createPurchaseConfirmOperations,
 } = require("./purchase-confirm-service");
+const { createPurchaseLotService } = require("./purchase-lot-service");
 
 /**
  * Creates the purchases service. Every business rule lives here so the routers
@@ -18,6 +19,7 @@ const {
  * @param {object} [dependencies.repository] - Purchase repository.
  * @param {object} [dependencies.itemRepository] - Purchase item repository.
  * @param {object} [dependencies.stocks] - Stock purchase service.
+ * @param {object} [dependencies.lots] - Lot receiving service.
  * @param {function(): Date} [dependencies.clock] - Clock used for confirmed_at.
  * @returns {object} The purchases service.
  */
@@ -25,6 +27,7 @@ function createPurchaseService({
   repository = purchaseRepository,
   itemRepository = purchaseItemRepository,
   stocks = stockRepository,
+  lots = createPurchaseLotService(),
   clock = () => new Date(),
 } = {}) {
   const support = createServiceSupport({ repository, itemRepository });
@@ -39,6 +42,7 @@ function createPurchaseService({
       repository,
       itemRepository,
       stocks,
+      lots,
       support,
       clock,
     }),
@@ -107,6 +111,8 @@ function createPurchaseService({
               product_id: line.product_id,
               item_state_id: line.item_state_id,
               quantity: line.quantity,
+              lot_number: line.lot_number ?? null,
+              expiration_date: line.expiration_date ?? null,
               ...toLineAmounts(line),
             })),
             { transaction },

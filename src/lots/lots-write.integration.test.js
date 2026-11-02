@@ -57,38 +57,44 @@ describe("PUT /lots/:id with a real database", () => {
         number: "L-UPDATE-1",
         expiration_date: "2028-01-31",
         stock: 100,
-        reserved: 10,
-        available: 90,
+        reserved: 15,
+        available: 85,
       }),
     );
 
     const stored = await Lot.findByPk(lot.id);
     expect(stored.stock).toBe(100);
-    expect(stored.reserved).toBe(10);
+    expect(stored.reserved).toBe(15);
   });
 
   it("responds 400 when a required field is missing", async () => {
     const references = await createReferences();
     const lot = await createLot(references);
     const token = await tokenFor("admin");
-    const { reserved, ...body } = lotBody(references);
+    const { stock, ...body } = lotBody(references);
 
     const response = await as("put", `/lots/${lot.id}`, token).send(body);
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
       message:
-        "number, product_id, expiration_date, item_state_id, stock, reserved, warehouse_id, shelf_id and section_id are required",
+        "number, product_id, expiration_date, item_state_id, stock, warehouse_id, shelf_id and section_id are required",
     });
   });
 
-  it("responds 422 when reserved exceeds stock", async () => {
+  it("ignores reserved and rejects a stock below the current reservation", async () => {
     const references = await createReferences();
-    const lot = await createLot(references);
+    const lot = await createLot(references, { stock: 10, reserved: 4 });
     const token = await tokenFor("admin");
 
+    const ignored = await as("put", `/lots/${lot.id}`, token).send(
+      lotBody(references, { stock: 20, reserved: 1 }),
+    );
+    expect(ignored.status).toBe(202);
+    expect(ignored.body.reserved).toBe(4);
+
     const response = await as("put", `/lots/${lot.id}`, token).send(
-      lotBody(references, { stock: 5, reserved: 6 }),
+      lotBody(references, { stock: 3, reserved: 0 }),
     );
 
     expect(response.status).toBe(422);

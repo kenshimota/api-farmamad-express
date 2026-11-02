@@ -12,6 +12,7 @@ const State = require("../../src/models/state");
 const Product = require("../../src/models/product");
 const ItemState = require("../../src/models/item-state");
 const Cost = require("../../src/models/cost");
+const Lot = require("../../src/models/lot");
 const Stock = require("../../src/models/stock");
 const Category = require("../../src/models/category");
 const Image = require("../../src/models/image");
@@ -163,7 +164,15 @@ async function createPurchase(overrides = {}) {
  * @returns {Promise<object>} The created Sequelize instance.
  */
 async function createPurchaseItem(overrides = {}) {
-  const values = { quantity: 5, unit_cost: 20, tax_amount: 0, ...overrides };
+  const suffix = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const values = {
+    quantity: 5,
+    unit_cost: 20,
+    tax_amount: 0,
+    lot_number: `LOT-${suffix}`,
+    expiration_date: "2027-03-31",
+    ...overrides,
+  };
 
   if (values.purchase_id === undefined) {
     const purchase = await createPurchase();
@@ -230,79 +239,33 @@ function as(method, path, token) {
  * @returns {Promise<void>} Resolves once the tables are empty.
  */
 async function resetDatabase() {
-  await PurchaseItem.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Purchase.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
+  const models = [
+    PurchaseItem,
+    Purchase,
+    Lot,
+    Stock,
+    Cost,
+    Product,
+    Category,
+    Image,
+    ItemState,
+    Supplier,
+    City,
+    State,
+    User,
+  ];
+
   await sequelize.query("ALTER SEQUENCE purchases_number_seq RESTART WITH 1");
-  await Stock.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Cost.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Product.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Category.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Image.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await ItemState.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Supplier.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await City.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await State.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await User.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
+
+  for (const model of models) {
+    await model.destroy({
+      where: {},
+      truncate: true,
+      cascade: true,
+      restartIdentity: true,
+    });
+  }
+
   await ensureDefaultTransactionCurrency();
 }
 

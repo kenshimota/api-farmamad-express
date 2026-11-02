@@ -1,3 +1,5 @@
+const { createHttpError } = require("../shared/http-error");
+
 /**
  * Builds an error that carries the HTTP status and body a router must send.
  * The service layer throws these errors and stays free of Express objects.
@@ -6,12 +8,7 @@
  * @returns {Error & { status: number, body: object }} The HTTP error.
  */
 function httpError(status, body) {
-  const error = new Error(body.message ?? "Purchase error");
-
-  error.status = status;
-  error.body = body;
-
-  return error;
+  return createHttpError(status, body, "Purchase error");
 }
 
 /**
@@ -54,10 +51,31 @@ function purchaseHasNoItems() {
   return httpError(422, { message: "Purchase has no items" });
 }
 
+/**
+ * 422 response used when a line lacks its lot data on confirmation.
+ * @returns {Error} The HTTP error.
+ */
+function missingLotData() {
+  return httpError(422, {
+    errors: { items: "Every item requires lot_number and expiration_date" },
+  });
+}
+
+/**
+ * 409 response used when the same product already has a lot number with a
+ * different item state or expiration date.
+ * @returns {Error} The HTTP error.
+ */
+function incompatibleLot() {
+  return httpError(409, { message: "Lot already exists with different data" });
+}
+
 module.exports = {
   httpError,
   itemAlreadyExists,
+  incompatibleLot,
   itemNotFound,
+  missingLotData,
   notEditable,
   purchaseHasNoItems,
   purchaseNotFound,

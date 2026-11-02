@@ -48,6 +48,9 @@ describe("lot serializer", () => {
       warehouse_id: 1,
       shelf_id: 1,
       section_id: 2,
+      location_status: "located",
+      location_started_at: null,
+      located_at: null,
       product: { id: 15, name: "Ibuprofeno", reference: "IBU" },
       item_state: {
         id: 1,
@@ -59,6 +62,20 @@ describe("lot serializer", () => {
       shelf: { id: 1, code: "A1", name: "Estante" },
       section: { id: 2, code: "A1-02", name: "Nivel" },
     });
+  });
+
+  it("reports zero availability while the lot is not located", () => {
+    const result = toPublicLot(
+      lotFixture({
+        location_status: "pending",
+        warehouse_id: null,
+        shelf_id: null,
+        section_id: null,
+      }),
+    );
+
+    expect(result.available).toBe(0);
+    expect(result.location_status).toBe("pending");
   });
 
   it("returns null for missing relations and zero for missing quantities", () => {

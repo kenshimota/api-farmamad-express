@@ -60,12 +60,28 @@ const schemas = {
       reserved: { type: "integer", minimum: 0, example: 15 },
       available: {
         type: "integer",
-        description: "Calculated as stock - reserved, never stored",
+        description:
+          "Calculated as stock - reserved when located, 0 while pending or in_progress",
         example: 105,
       },
-      warehouse_id: { type: "integer", example: 1 },
-      shelf_id: { type: "integer", example: 1 },
-      section_id: { type: "integer", example: 2 },
+      warehouse_id: { type: "integer", nullable: true, example: 1 },
+      shelf_id: { type: "integer", nullable: true, example: 1 },
+      section_id: { type: "integer", nullable: true, example: 2 },
+      location_status: {
+        type: "string",
+        enum: ["pending", "in_progress", "located"],
+        example: "located",
+      },
+      location_started_at: {
+        type: "string",
+        format: "date-time",
+        nullable: true,
+      },
+      located_at: {
+        type: "string",
+        format: "date-time",
+        nullable: true,
+      },
       product: { $ref: "#/components/schemas/LotProduct" },
       item_state: { $ref: "#/components/schemas/LotItemState" },
       warehouse: { $ref: "#/components/schemas/LotWarehouse" },

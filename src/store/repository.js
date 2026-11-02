@@ -200,6 +200,7 @@ function createStoreRepository({
         where: {
           product_id: { [Op.in]: productIds },
           item_state_id: { [Op.in]: itemStateIds },
+          location_status: "located",
         },
         group: ["product_id", "item_state_id"],
         raw: true,

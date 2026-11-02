@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+const { Op, Sequelize } = require("sequelize");
 const PurchaseItem = require("../models/purchase-item");
 
 const ITEM_ORDER = Object.freeze([["id", "ASC"]]);
@@ -87,6 +87,40 @@ function createPurchaseItemRepository({ itemModel = PurchaseItem } = {}) {
         purchase_id: purchaseId,
         product_id: productId,
         item_state_id: itemStateId,
+      };
+
+      if (excludeId !== undefined) {
+        where.id = { [Op.ne]: excludeId };
+      }
+
+      return itemModel.findOne({ where, transaction });
+    },
+
+    /**
+     * Finds a line by its product and case-insensitive lot number inside a
+     * purchase, optionally excluding the line being updated. This is the
+     * uniqueness rule that replaced the old product/item state combination.
+     * @param {number} purchaseId - Purchase id.
+     * @param {number} productId - Product id.
+     * @param {string} lotNumber - Lot number.
+     * @param {object} [options] - Query options.
+     * @param {number} [options.excludeId] - Line id to ignore.
+     * @param {object} [options.transaction] - Open transaction.
+     * @returns {Promise<object|null>} The instance or null.
+     */
+    findByLotNumber(
+      purchaseId,
+      productId,
+      lotNumber,
+      { excludeId, transaction } = {},
+    ) {
+      const where = {
+        purchase_id: purchaseId,
+        product_id: productId,
+        [Op.and]: Sequelize.where(
+          Sequelize.fn("LOWER", Sequelize.col("lot_number")),
+          String(lotNumber).toLowerCase(),
+        ),
       };
 
       if (excludeId !== undefined) {

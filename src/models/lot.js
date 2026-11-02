@@ -5,6 +5,7 @@ const ItemState = require("./item-state");
 const Warehouse = require("./warehouse");
 const Shelf = require("./shelf");
 const ShelfSection = require("./shelf-section");
+const User = require("./user");
 
 /**
  * Sequelize model that represents a physical lot of a product: its lot number,
@@ -44,19 +45,50 @@ const Lot = sequelize.define(
     },
     warehouse_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     shelf_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     section_id: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    location_status: {
+      type: DataTypes.STRING(20),
       allowNull: false,
+      defaultValue: "located",
+    },
+    location_started_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    location_started_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    located_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    located_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {
     tableName: "lots",
+    hooks: {
+      beforeValidate(lot) {
+        if (
+          lot.location_status === "located" &&
+          (lot.located_at === null || lot.located_at === undefined)
+        ) {
+          lot.located_at = new Date();
+        }
+      },
+    },
   },
 );
 
@@ -74,5 +106,8 @@ for (const { model, as, foreignKey } of ASSOCIATIONS) {
   Lot.belongsTo(model, { foreignKey, as });
   model.hasMany(Lot, { foreignKey, as: "lots" });
 }
+
+Lot.belongsTo(User, { foreignKey: "location_started_by", as: "started_by" });
+Lot.belongsTo(User, { foreignKey: "located_by", as: "located_by_user" });
 
 module.exports = Lot;

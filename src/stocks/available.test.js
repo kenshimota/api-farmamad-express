@@ -6,12 +6,14 @@ jest.mock("../models/stock", () => ({
 }));
 jest.mock("../models/item-state", () => ({}));
 jest.mock("../models/cost", () => ({}));
+jest.mock("../models/lot", () => ({ findAll: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");
 const request = require("supertest");
 const jwt = require("jsonwebtoken");
 const Stock = require("../models/stock");
+const Lot = require("../models/lot");
 const User = require("../models/user");
 const availableRouter = require("./available");
 
@@ -84,6 +86,8 @@ function get(path, token = tokenFor()) {
 
 beforeEach(() => {
   Stock.findAll.mockReset();
+  Lot.findAll.mockReset();
+  Lot.findAll.mockResolvedValue([]);
   User.findByPk.mockReset();
   User.findByPk.mockResolvedValue(AUTH_USER);
 });
@@ -105,6 +109,7 @@ describe("GET /stocks/available", () => {
           product_id: 15,
           item_state_id: 1,
           quantity: 40,
+          located_quantity: 0,
           cost: 20,
           currency_id: 3,
           currency: {
