@@ -2,7 +2,14 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
+    tags:
+      - "*"
   pull_request:
+    branches:
+      - main
+      - dev
   workflow_dispatch:
 
 permissions:
@@ -10,6 +17,7 @@ permissions:
 
 jobs:
   test:
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     runs-on: contabo
     services:
       postgres:
