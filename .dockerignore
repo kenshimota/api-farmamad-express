@@ -9,3 +9,4 @@ coverage
 docker-compose.yml
 Dockerfile
 .dockerignore
+uploads

@@ -18,8 +18,12 @@ La documentación interactiva (Swagger UI) está disponible en
 
 Variables de entorno relevantes: `PORT`, `NODE_ENV`, `LOG_LEVEL`, `NO_COLOR`,
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`,
-`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME`
-y `APP_URL` (ver `.env.example`).
+`JWT_EXPIRES_IN`, `CORS_ORIGIN`, `GMAIL_USERNAME`, `GMAIL_TOKEN`, `APP_NAME`,
+`APP_URL`, `UPLOAD_DIR` y `PUBLIC_BASE_URL` (ver `.env.example`).
+
+`UPLOAD_DIR` es la carpeta raíz de los archivos subidos (por defecto
+`<repo>/uploads`) y `PUBLIC_BASE_URL` es la base usada para construir las URLs
+públicas de las imágenes (por defecto `http://localhost:${PORT || 3001}`).
 
 `APP_NAME` es el nombre del producto que aparece en los correos (por defecto
 `Farmamed`) y `APP_URL` es el link de ingreso incluido en el correo de
@@ -1400,12 +1404,14 @@ Errores:
 
 Los productos viven en la tabla `products` (modelo `Product`). `name` admite
 hasta 150 caracteres, `description` es texto libre obligatorio y `reference` es
-obligatoria, única y de hasta 100 caracteres. `category_id` e `image_id` son
-obligatorios y referencian `categories.id` e `images.id`; ambas FKs usan
+obligatoria, única y de hasta 100 caracteres. `category_id` referencia
+`categories.id` e `image_id` referencia `images.id`; ambas FKs usan
 `ON DELETE RESTRICT`, así que no se puede borrar una categoría o una imagen que
-tenga productos asociados. Los textos se recortan antes de guardarse. Ninguna
-respuesta incluye `createdAt` ni `updatedAt`: solo se exponen `id`, `name`,
-`description`, `reference`, `category_id` e `image_id`.
+tenga productos asociados. Al crear o editar se debe enviar un archivo `image`
+(`multipart/form-data`) o un `image_id` ya registrado, nunca ambos. Con archivo,
+la API crea la fila de `images` automáticamente. Los textos se recortan antes de
+guardarse. Ninguna respuesta incluye `createdAt` ni `updatedAt`: solo se exponen
+`id`, `name`, `description`, `reference`, `category_id` e `image_id`.
 
 Permisos por endpoint:
 
@@ -1423,12 +1429,39 @@ todos los endpoints, y sin token (o con token inválido/expirado) la respuesta e
 
 ### `POST /products`
 
-Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos:
-`name`, `description`, `reference`, `category_id` e `image_id`. Los campos
-desconocidos y de auditoría se descartan. Antes de insertar se verifica que la
-categoría y la imagen existan; si alguna no existe responde `422` con el error
-de su campo. La restricción única de `reference` y las FKs de Postgres actúan
-como salvaguarda ante peticiones concurrentes.
+Protegido: requiere un JWT con rol `admin` o `seller`. Acepta JSON o
+`multipart/form-data`; los campos requeridos son `name`, `description`,
+`reference` y `category_id`, y además debe enviarse `image` (archivo) o
+`image_id` (imagen ya registrada), nunca ambos. Los campos desconocidos y de
+auditoría se descartan. Antes de insertar se verifica que la categoría exista y,
+cuando no hay archivo, que la imagen exista. La restricción única de `reference`
+y las FKs de Postgres actúan como salvaguarda ante peticiones concurrentes.
+
+Con `multipart/form-data` el campo de archivo se llama `image`. Se aceptan
+JPEG, PNG y WebP reales de hasta 5 MB, 6000 × 6000 px y 25 megapíxeles; el tipo
+se detecta con el contenido, no con el `Content-Type` ni con el nombre enviado.
+El original y la miniatura WebP (máximo 320 × 320 px, sin ampliar) se guardan en
+`${UPLOAD_DIR}/products/` con nombres UUID. La fila de `images` se crea dentro de
+una transacción junto con el producto; si la inserción falla se revierte la
+transacción y se eliminan los archivos escritos.
+
+```bash
+curl -X POST http://localhost:3001/products \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -F "name=Ibuprofeno 400 mg" \
+  -F "description=Analgésico y antiinflamatorio" \
+  -F "reference=IBU-400" \
+  -F "category_id=1" \
+  -F "image=@./ibuprofeno.png"
+```
+
+La fila de `images` generada contiene `reference` `product-<uuid>`, `pathname`
+`/uploads/products/<uuid>.<ext>`, `url`
+`${PUBLIC_BASE_URL}/uploads/products/<uuid>.<ext>` y `thumbnail`
+`${PUBLIC_BASE_URL}/uploads/products/<uuid>-thumb.webp`. Los archivos públicos se
+sirven en `/uploads` sin listado de directorios.
+
+El flujo JSON con `image_id` sigue disponible:
 
 ```bash
 curl -X POST http://localhost:3001/products \
@@ -1446,20 +1479,26 @@ Respuesta `201`:
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 7
 }
 ```
 
 Errores:
 
-| Código | Cuerpo                                                                                 |
-| ------ | -------------------------------------------------------------------------------------- |
-| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }` |
-| `401`  | `{ "message": "Unauthorized" }`                                                        |
-| `403`  | `{ "message": "Forbidden" }`                                                           |
-| `409`  | `{ "message": "Product already exists" }`                                              |
-| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                               |
-| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                     |
+| Código | Cuerpo                                                                 |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | `{ "message": "image or image_id is required" }`                       |
+| `400`  | `{ "message": "Unexpected field" }`                                    |
+| `401`  | `{ "message": "Unauthorized" }`                                        |
+| `403`  | `{ "message": "Forbidden" }`                                           |
+| `409`  | `{ "message": "Product already exists" }`                              |
+| `413`  | `{ "message": "Image too large" }`                                     |
+| `422`  | `{ "errors": { "image_id": "image_id cannot be combined with image" } }` |
+| `422`  | `{ "errors": { "image": "Invalid image" } }`                           |
+| `422`  | `{ "errors": { "image": "Invalid image dimensions" } }`                |
+| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`               |
+| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                     |
+| `500`  | `{ "message": "Internal server error" }`                               |
 
 ### `GET /products`
 
@@ -1525,9 +1564,25 @@ Errores:
 
 ### `PUT /products/:id`
 
-Protegido: requiere un JWT con rol `admin` o `seller`. Reemplaza el recurso y
-exige los cinco campos, con las mismas validaciones, el `409` por `reference`
-duplicada y la verificación de `category_id`/`image_id` que la creación.
+Protegido: requiere un JWT con rol `admin` o `seller`. Reemplaza el recurso,
+acepta JSON o `multipart/form-data` y exige `name`, `description`, `reference` y
+`category_id`, más `image` o `image_id`. Con archivo se crea una nueva fila de
+`images` y se reemplaza `products.image_id`; la imagen anterior y sus archivos no
+se eliminan porque pueden estar compartidos. Con `image_id` se conserva el flujo
+JSON. Los campos numéricos enviados como texto en multipart se convierten antes
+de validar.
+
+```bash
+curl -X PUT http://localhost:3001/products/1 \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -F "name=Ibuprofeno 800 mg" \
+  -F "description=Analgésico y antiinflamatorio" \
+  -F "reference=IBU-800" \
+  -F "category_id=1" \
+  -F "image=@./ibuprofeno-800.png"
+```
+
+También sigue funcionando con `image_id`:
 
 ```bash
 curl -X PUT http://localhost:3001/products/1 \
@@ -1545,22 +1600,28 @@ Respuesta `202`:
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-800",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 7
 }
 ```
 
 Errores:
 
-| Código | Cuerpo                                                                                 |
-| ------ | -------------------------------------------------------------------------------------- |
-| `400`  | `{ "message": "name, description, reference, category_id and image_id are required" }` |
-| `401`  | `{ "message": "Unauthorized" }`                                                        |
-| `403`  | `{ "message": "Forbidden" }`                                                           |
-| `404`  | `{ "message": "Product not found" }`                                                   |
-| `409`  | `{ "message": "Product already exists" }`                                              |
-| `422`  | `{ "errors": { "id": "Invalid product id" } }`                                         |
-| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`                               |
-| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                                     |
+| Código | Cuerpo                                                                 |
+| ------ | ---------------------------------------------------------------------- |
+| `400`  | `{ "message": "image or image_id is required" }`                       |
+| `400`  | `{ "message": "Unexpected field" }`                                    |
+| `401`  | `{ "message": "Unauthorized" }`                                        |
+| `403`  | `{ "message": "Forbidden" }`                                           |
+| `404`  | `{ "message": "Product not found" }`                                   |
+| `409`  | `{ "message": "Product already exists" }`                              |
+| `413`  | `{ "message": "Image too large" }`                                     |
+| `422`  | `{ "errors": { "id": "Invalid product id" } }`                         |
+| `422`  | `{ "errors": { "image_id": "image_id cannot be combined with image" } }` |
+| `422`  | `{ "errors": { "image": "Invalid image" } }`                           |
+| `422`  | `{ "errors": { "image": "Invalid image dimensions" } }`                |
+| `422`  | `{ "errors": { "category_id": "Invalid category id" } }`               |
+| `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                     |
+| `500`  | `{ "message": "Internal server error" }`                               |
 
 ### `DELETE /products/:id`
 

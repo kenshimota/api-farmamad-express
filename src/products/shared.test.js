@@ -9,6 +9,10 @@ const {
 const Product = require("../models/product");
 const Category = require("../models/category");
 const Image = require("../models/image");
+const {
+  InvalidImageDimensionsError,
+  InvalidImageError,
+} = require("./image-errors");
 const { ensureReferences, handleWriteError, loadProduct } = require("./shared");
 
 /**
@@ -122,9 +126,44 @@ describe("ensureReferences", () => {
     expect(res.body).toEqual({ errors: { image_id: "Invalid image id" } });
     expect(next).not.toHaveBeenCalled();
   });
+
+  it("skips the image check when a new file will be stored", async () => {
+    const req = {
+      validated: { category_id: 1 },
+      file: { buffer: Buffer.from("x") },
+    };
+    const res = response();
+    const next = jest.fn();
+
+    await ensureReferences(req, res, next);
+
+    expect(Category.findByPk).toHaveBeenCalledWith(1);
+    expect(Image.findByPk).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("handleWriteError", () => {
+  it("answers 422 when the uploaded file is not a valid image", () => {
+    const res = response();
+
+    handleWriteError(new InvalidImageError(), res);
+
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.body).toEqual({ errors: { image: "Invalid image" } });
+  });
+
+  it("answers 422 when the uploaded image dimensions are invalid", () => {
+    const res = response();
+
+    handleWriteError(new InvalidImageDimensionsError(), res);
+
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.body).toEqual({
+      errors: { image: "Invalid image dimensions" },
+    });
+  });
+
   it("answers 409 when the reference already exists", () => {
     const res = response();
 

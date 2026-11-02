@@ -1,3 +1,4 @@
+const sequelize = require("../database");
 const Product = require("../models/product");
 const Category = require("../models/category");
 const Image = require("../models/image");
@@ -11,12 +12,14 @@ const LIST_ORDER = Object.freeze([["id", "ASC"]]);
  * @param {object} [model] - Product model used for the queries.
  * @param {object} [categoryModel] - Category model used for the checks.
  * @param {object} [imageModel] - Image model used for the checks.
+ * @param {Function} [transactionRunner] - Runs a callback in one transaction.
  * @returns {object} Product repository.
  */
 function createProductRepository(
   model = Product,
   categoryModel = Category,
   imageModel = Image,
+  transactionRunner = (work) => sequelize.transaction(work),
 ) {
   return {
     /**
@@ -26,6 +29,21 @@ function createProductRepository(
      */
     create(values) {
       return model.create(values);
+    },
+
+    /**
+     * Creates the image row and the product in one transaction, so a failed
+     * product insert also rolls back the image.
+     * @param {object} imageValues - Image attributes to persist.
+     * @param {object} values - Validated product attributes.
+     * @returns {Promise<object>} The created product instance.
+     */
+    createWithImage(imageValues, values) {
+      return transactionRunner(async (transaction) => {
+        const image = await imageModel.create(imageValues, { transaction });
+
+        return model.create({ ...values, image_id: image.id }, { transaction });
+      });
     },
 
     /**
@@ -53,6 +71,26 @@ function createProductRepository(
      */
     update(product, values) {
       return product.update(values);
+    },
+
+    /**
+     * Creates a new image row and replaces `image_id` in one transaction. The
+     * previous image and its files are left untouched because they may be
+     * shared by other products.
+     * @param {object} product - Loaded product instance.
+     * @param {object} imageValues - Image attributes to persist.
+     * @param {object} values - Validated product attributes.
+     * @returns {Promise<object>} The updated product instance.
+     */
+    updateWithImage(product, imageValues, values) {
+      return transactionRunner(async (transaction) => {
+        const image = await imageModel.create(imageValues, { transaction });
+
+        return product.update(
+          { ...values, image_id: image.id },
+          { transaction },
+        );
+      });
     },
 
     /**
