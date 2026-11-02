@@ -12,11 +12,13 @@ function readField(product, field) {
 
 /**
  * Builds the public representation of a product: only `id`, `name`,
- * `description`, `reference`, `category_id` and `image_id`, with no audit
- * columns or internal fields.
+ * `description`, `reference`, `category_id`, `image_id` and `tax_id`, with no
+ * audit columns or internal fields. The tax entity is not nested; clients can
+ * read it through `GET /taxes/:id`.
  * @param {object} product - Product instance or plain object.
  * @returns {{ id: number, name: string, description: string,
- *   reference: string, category_id: number, image_id: number }} Public data.
+ *   reference: string, category_id: number, image_id: number,
+ *   tax_id: number }} Public data.
  */
 function toPublicProduct(product) {
   return {
@@ -26,6 +28,7 @@ function toPublicProduct(product) {
     reference: readField(product, "reference"),
     category_id: readField(product, "category_id"),
     image_id: readField(product, "image_id"),
+    tax_id: readField(product, "tax_id"),
   };
 }
 

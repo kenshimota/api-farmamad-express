@@ -8,6 +8,7 @@ const Product = require("../../src/models/product");
 const Category = require("../../src/models/category");
 const Image = require("../../src/models/image");
 const ItemState = require("../../src/models/item-state");
+const { ensureDefaultTax } = require("./products");
 const { ensureDefaultTransactionCurrency } = require("./currency-default");
 
 const PASSWORD = "secret123";
@@ -130,6 +131,10 @@ async function createProduct(overrides = {}) {
   if (values.image_id === undefined) {
     const image = await createImage();
     values.image_id = image.id;
+  }
+
+  if (values.tax_id === undefined) {
+    values.tax_id = (await ensureDefaultTax()).id;
   }
 
   return Product.create(values);

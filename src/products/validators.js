@@ -5,8 +5,13 @@ const REQUIRED_PRODUCT_FIELDS = [
   "description",
   "reference",
   "category_id",
+  "tax_id",
 ];
-const NUMERIC_PRODUCT_FIELDS = Object.freeze(["category_id", "image_id"]);
+const NUMERIC_PRODUCT_FIELDS = Object.freeze([
+  "category_id",
+  "image_id",
+  "tax_id",
+]);
 const MAX_NAME_LENGTH = 150;
 const MAX_REFERENCE_LENGTH = 100;
 const POSITIVE_INTEGER_PATTERN = /^\d+$/;
@@ -16,6 +21,7 @@ const DESCRIPTION_MESSAGE = "Descripción inválida";
 const REFERENCE_MESSAGE = "Referencia inválida";
 const CATEGORY_ID_MESSAGE = "Invalid category id";
 const IMAGE_ID_MESSAGE = "Invalid image id";
+const TAX_ID_MESSAGE = "Invalid tax id";
 const IMAGE_REQUIRED_MESSAGE = "image or image_id is required";
 const IMAGE_ID_EXCLUSIVE_MESSAGE = "image_id cannot be combined with image";
 
@@ -60,6 +66,7 @@ const productSchema = yup.object({
   reference: trimmedString(REFERENCE_MESSAGE, MAX_REFERENCE_LENGTH),
   category_id: positiveInteger(CATEGORY_ID_MESSAGE),
   image_id: positiveInteger(IMAGE_ID_MESSAGE).optional(),
+  tax_id: positiveInteger(TAX_ID_MESSAGE),
 });
 
 /**
@@ -120,6 +127,7 @@ module.exports = {
   IMAGE_REQUIRED_MESSAGE,
   MAX_NAME_LENGTH,
   MAX_REFERENCE_LENGTH,
+  TAX_ID_MESSAGE,
   normalizeProductBody,
   parseProductId,
   productSchema,

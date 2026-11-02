@@ -13,9 +13,10 @@ const router = Router();
  *     summary: Deletes a tax; only administrators can do it
  *     description: >
  *       Permanently deletes the tax and responds 204 without body. When a
- *       future order or any other table still references the tax, the foreign
- *       key RESTRICT blocks the deletion and the API answers 409. To stop
- *       using a tax without deleting it, update it with `is_active = false`.
+ *       product or any other table still references the tax, the foreign key
+ *       RESTRICT blocks the deletion and the API answers 409. To stop using a
+ *       tax without deleting it, update it with `is_active = false`; products
+ *       that already reference it keep working unchanged.
  *     tags:
  *       - Taxes
  *     security:

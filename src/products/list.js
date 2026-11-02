@@ -13,7 +13,8 @@ const router = Router();
  *     summary: Lists every product; any authenticated user can do it
  *     description: >
  *       Returns every product ordered by id ascending with its public fields
- *       only. When there are no products it responds 200 with an empty array.
+ *       only, including `tax_id`. When there are no products it responds 200
+ *       with an empty array.
  *     tags:
  *       - Products
  *     security:

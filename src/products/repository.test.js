@@ -5,10 +5,12 @@ jest.mock("../models/product", () => ({
 }));
 jest.mock("../models/category", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/image", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/tax", () => ({ findByPk: jest.fn() }));
 
 const Product = require("../models/product");
 const Category = require("../models/category");
 const Image = require("../models/image");
+const Tax = require("../models/tax");
 const { createProductRepository, LIST_ORDER } = require("./repository");
 
 const repository = createProductRepository();
@@ -18,6 +20,7 @@ const VALUES = {
   reference: "IBU-400",
   category_id: 1,
   image_id: 2,
+  tax_id: 3,
 };
 
 beforeEach(() => {
@@ -26,6 +29,7 @@ beforeEach(() => {
   Product.findByPk.mockReset();
   Category.findByPk.mockReset();
   Image.findByPk.mockReset();
+  Tax.findByPk.mockReset();
 });
 
 describe("productRepository", () => {
@@ -88,6 +92,16 @@ describe("productRepository", () => {
     expect(Image.findByPk).toHaveBeenCalledWith(999);
   });
 
+  it("checks whether a tax exists", async () => {
+    Tax.findByPk.mockResolvedValueOnce({ id: 3 });
+    Tax.findByPk.mockResolvedValueOnce(null);
+
+    await expect(repository.taxExists(3)).resolves.toBe(true);
+    await expect(repository.taxExists(999)).resolves.toBe(false);
+    expect(Tax.findByPk).toHaveBeenCalledWith(3);
+    expect(Tax.findByPk).toHaveBeenCalledWith(999);
+  });
+
   it("creates the image and the product inside one transaction", async () => {
     const product = { id: 1, ...VALUES, image_id: 7 };
     const model = { create: jest.fn().mockResolvedValue(product) };
@@ -147,19 +161,28 @@ describe("productRepository", () => {
     };
     const categoryModel = { findByPk: jest.fn().mockResolvedValue(null) };
     const imageModel = { findByPk: jest.fn().mockResolvedValue(null) };
-    const injected = createProductRepository(model, categoryModel, imageModel);
+    const taxModel = { findByPk: jest.fn().mockResolvedValue(null) };
+    const injected = createProductRepository(
+      model,
+      categoryModel,
+      imageModel,
+      undefined,
+      taxModel,
+    );
 
     await injected.create(VALUES);
     await injected.list();
     await injected.findById(1);
     await injected.categoryExists(1);
     await injected.imageExists(2);
+    await injected.taxExists(3);
 
     expect(model.create).toHaveBeenCalledWith(VALUES);
     expect(model.findAll).toHaveBeenCalledWith({ order: [["id", "ASC"]] });
     expect(model.findByPk).toHaveBeenCalledWith(1);
     expect(categoryModel.findByPk).toHaveBeenCalledWith(1);
     expect(imageModel.findByPk).toHaveBeenCalledWith(2);
+    expect(taxModel.findByPk).toHaveBeenCalledWith(3);
     expect(Product.create).not.toHaveBeenCalled();
   });
 });

@@ -38,6 +38,7 @@ const storedProducts = [
     reference: "IBU-400",
     category_id: 1,
     image_id: 1,
+    tax_id: 1,
     createdAt: new Date("2026-09-01T00:00:00.000Z"),
     updatedAt: new Date("2026-09-01T00:00:00.000Z"),
   },
@@ -48,6 +49,7 @@ const storedProducts = [
     reference: "PAR-500",
     category_id: 2,
     image_id: 2,
+    tax_id: 2,
     createdAt: new Date("2026-09-02T00:00:00.000Z"),
     updatedAt: new Date("2026-09-02T00:00:00.000Z"),
   },
@@ -101,6 +103,7 @@ describe("GET /products", () => {
           reference: "IBU-400",
           category_id: 1,
           image_id: 1,
+          tax_id: 1,
         },
         {
           id: 2,
@@ -109,6 +112,7 @@ describe("GET /products", () => {
           reference: "PAR-500",
           category_id: 2,
           image_id: 2,
+          tax_id: 2,
         },
       ]);
       expect(response.body[0]).not.toHaveProperty("createdAt");
@@ -163,6 +167,7 @@ describe("GET /products/:id", () => {
         reference: "IBU-400",
         category_id: 1,
         image_id: 1,
+        tax_id: 1,
       });
       expect(Product.findByPk).toHaveBeenCalledWith(1);
     },

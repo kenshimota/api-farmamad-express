@@ -15,6 +15,7 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/products");
+const { createTax } = require("../../test/helpers/taxes");
 
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
@@ -30,16 +31,18 @@ afterAll(async () => {
   await sequelize.close();
 });
 /**
- * Creates the category and image referenced by the request body.
- * @returns {Promise<{ category_id: number, image_id: number }>} Foreign keys.
+ * Creates the category, image and tax referenced by the request body.
+ * @returns {Promise<{ category_id: number, image_id: number,
+ *   tax_id: number }>} Foreign keys.
  */
 async function referenceIds() {
-  const [category, image] = await Promise.all([
+  const [category, image, tax] = await Promise.all([
     createCategory(),
     createImage(),
+    createTax(),
   ]);
 
-  return { category_id: category.id, image_id: image.id };
+  return { category_id: category.id, image_id: image.id, tax_id: tax.id };
 }
 
 describe("POST /products with a real database", () => {
@@ -121,11 +124,13 @@ describe("POST /products with a real database", () => {
   it("responds 422 when the category does not exist", async () => {
     const token = await tokenFor("admin");
     const image = await createImage();
+    const tax = await createTax();
 
     const response = await as("post", "/products", token).send({
       ...BODY,
       category_id: 99999,
       image_id: image.id,
+      tax_id: tax.id,
     });
 
     expect(response.status).toBe(422);
@@ -137,17 +142,36 @@ describe("POST /products with a real database", () => {
   it("responds 422 when the image does not exist", async () => {
     const token = await tokenFor("admin");
     const category = await createCategory();
+    const tax = await createTax();
 
     const response = await as("post", "/products", token).send({
       ...BODY,
       category_id: category.id,
       image_id: 99999,
+      tax_id: tax.id,
     });
 
     expect(response.status).toBe(422);
     expect(response.body).toEqual({
       errors: { image_id: "Invalid image id" },
     });
+  });
+
+  it("responds 422 when the tax does not exist", async () => {
+    const token = await tokenFor("admin");
+    const ids = await referenceIds();
+
+    const response = await as("post", "/products", token).send({
+      ...BODY,
+      ...ids,
+      tax_id: 99999,
+    });
+
+    expect(response.status).toBe(422);
+    expect(response.body).toEqual({
+      errors: { tax_id: "Invalid tax id" },
+    });
+    await expect(Product.count()).resolves.toBe(0);
   });
 
   it("responds 401 without a token", async () => {
@@ -198,6 +222,17 @@ describe("POST /products with a real database", () => {
     expect(invalid.status).toBe(422);
     expect(invalid.body).toEqual({
       errors: { reference: "Referencia inválida" },
+    });
+
+    const missingTax = await as("post", "/products", token).send({
+      ...BODY,
+      category_id: ids.category_id,
+      image_id: ids.image_id,
+    });
+    expect(missingTax.status).toBe(400);
+    expect(missingTax.body).toEqual({
+      message:
+        "name, description, reference, category_id and tax_id are required",
     });
   });
 

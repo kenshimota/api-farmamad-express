@@ -9,6 +9,7 @@ const Lot = require("../../src/models/lot");
 const Warehouse = require("../../src/models/warehouse");
 const Shelf = require("../../src/models/shelf");
 const ShelfSection = require("../../src/models/shelf-section");
+const { ensureDefaultTax } = require("./products");
 const { ensureDefaultTransactionCurrency } = require("./currency-default");
 
 /**
@@ -50,6 +51,7 @@ async function createProduct(overrides = {}) {
     reference: `image-${suffix}`,
     thumbnail: `https://cdn.farmamad.com/products/${suffix}-thumb.png`,
   });
+  const tax = await ensureDefaultTax();
 
   return Product.create({
     name: `Ibuprofeno ${suffix}`,
@@ -57,6 +59,7 @@ async function createProduct(overrides = {}) {
     reference: `REF-${suffix}`,
     category_id: category.id,
     image_id: image.id,
+    tax_id: tax.id,
     ...overrides,
   });
 }

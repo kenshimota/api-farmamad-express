@@ -1,9 +1,13 @@
 const { Router } = require("express");
 const { toPublicProduct } = require("./serializer");
-const { normalizeProductBody, productSchema } = require("./validators");
+const { productSchema } = require("./validators");
 const { validatedBody, writeAccess } = require("./guards");
 const { productRepository } = require("./repository");
-const { ensureReferences, handleWriteError } = require("./shared");
+const {
+  ensureReferences,
+  handleWriteError,
+  normalizeBody,
+} = require("./shared");
 const { processUploadedImage, removeFiles } = require("./image-service");
 const { requireImageSource, uploadSingleImage } = require("./upload");
 const listRouter = require("./list");
@@ -18,10 +22,10 @@ const router = Router();
  *   post:
  *     summary: Creates a product; only administrators and sellers can do it
  *     description: >
- *       Persists a catalog product linked to an existing category and image.
- *       `name`, `description` and `reference` are stored trimmed; `reference`
- *       is unique. Both foreign keys are verified before inserting and keep
- *       their referential integrity at the database level.
+ *       Persists a catalog product linked to an existing category, image and
+ *       tax. `name`, `description` and `reference` are stored trimmed;
+ *       `reference` is unique. Every foreign key is verified before inserting
+ *       and keeps its referential integrity at the database level.
  *     tags:
  *       - Products
  *     security:
@@ -37,6 +41,7 @@ const router = Router();
  *               - description
  *               - reference
  *               - category_id
+ *               - tax_id
  *             properties:
  *               name:
  *                 type: string
@@ -59,6 +64,11 @@ const router = Router();
  *                 minimum: 1
  *                 description: Existing image id; it cannot be combined with `image`
  *                 example: 1
+ *               tax_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Existing tax id from the catalog
+ *                 example: 1
  *         multipart/form-data:
  *           schema:
  *             type: object
@@ -67,6 +77,7 @@ const router = Router();
  *               - description
  *               - reference
  *               - category_id
+ *               - tax_id
  *             properties:
  *               name:
  *                 type: string
@@ -87,6 +98,11 @@ const router = Router();
  *                 type: integer
  *                 minimum: 1
  *                 description: Existing image id; it cannot be combined with `image`
+ *                 example: 1
+ *               tax_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Existing tax id from the catalog
  *                 example: 1
  *               image:
  *                 type: string
@@ -142,31 +158,17 @@ const router = Router();
  *             example:
  *               message: Image too large
  *       422:
- *         description: Invalid fields, category/image or uploaded image content
+ *         description: Invalid fields, category/image/tax or uploaded image content
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationErrors'
  *             example:
  *               errors:
- *                 category_id: Invalid category id
+ *                 tax_id: Invalid tax id
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-/**
- * Normalises the numeric fields that arrive as text in multipart requests
- * before yup validates them.
- * @param {import("express").Request} req - Express request.
- * @param {import("express").Response} res - Express response.
- * @param {import("express").NextFunction} next - Next middleware.
- * @returns {void}
- */
-function normalizeBody(req, res, next) {
-  req.body = normalizeProductBody(req.body ?? {});
-
-  return next();
-}
-
 /**
  * Creates the product. With an uploaded file it stores the original and the
  * thumbnail, creates the image row and links the product in one transaction;

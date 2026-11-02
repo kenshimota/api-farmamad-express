@@ -38,6 +38,7 @@ function publicProduct(product) {
     reference: product.reference,
     category_id: product.category_id,
     image_id: product.image_id,
+    tax_id: product.tax_id,
   };
 }
 

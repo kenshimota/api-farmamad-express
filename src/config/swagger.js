@@ -31,7 +31,7 @@ const swaggerSpec = swaggerJsdoc({
       {
         name: "Products",
         description:
-          "Catalog products linked to a category and an image: creation, listing, lookup, update and deletion.",
+          "Catalog products linked to a category, an image and a tax: creation, listing, lookup, update and deletion.",
       },
       {
         name: "States",
@@ -91,7 +91,7 @@ const swaggerSpec = swaggerJsdoc({
       {
         name: "Taxes",
         description:
-          "Tax catalog (IVA, IGTF, etc.) with a unique code, a percentage rate and an active flag, reserved for future orders.",
+          "Tax catalog (IVA, IGTF, etc.) with a unique code, a percentage rate and an active flag, seeded with IVA and SIN_IVA and linked from products.",
       },
       {
         name: "Method payment types",
