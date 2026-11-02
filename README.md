@@ -30,6 +30,101 @@ públicas de las imágenes (por defecto `http://localhost:${PORT || 3001}`).
 bienvenida (por defecto `https://farmamed.strixcryptoapp.site/app`). Si cualquiera
 de las dos no está definida o está vacía se usa su valor por defecto.
 
+## Catálogo demo (HU-45)
+
+La semilla demo es **opcional y separada** de `npm run db:seed`. Sirve para
+probar el catálogo, los costos, el stock, los lotes y el ciclo de pedidos con
+productos e imágenes parecidos a los reales. No crea usuarios, clientes,
+pedidos, pagos ni facturas.
+
+> Requiere las semillas base de roles, estados, ciudades, monedas, estados de
+> ítem e impuestos (`IVA` y `SIN_IVA` de HU-44). Si falta alguna, el comando
+> falla indicando cuál ejecutar primero.
+
+### Origen de los datos
+
+- El fixture se genera leyendo páginas públicas de producto de
+  `https://www.farmatodo.com.ve/`, sin iniciar sesión ni enviar credenciales.
+- Solo se guardan nombre, descripción, categoría principal, referencia, precio
+  visible, URL de origen y fecha de captura (`source_url`, `fetched_at`). No se
+  recolectan datos personales, precios privados ni stock por tienda.
+- El script revisa `robots.txt` antes de cada página, usa un `User-Agent`
+  identificable, espera al menos un segundo entre peticiones y reintenta con
+  espera exponencial solo ante `429`/`5xx`. Si el sitio bloquea o prohíbe el
+  acceso, se detiene sin evadir protecciones y conserva el fixture anterior.
+- El fixture versionado contiene **120 productos** y **240 archivos WebP**
+  (`seeders/data/demo-products.json` y
+  `seeders/assets/demo/products/`), con un tamaño aproximado de **2.8 MB**
+  (fixture + imágenes).
+- Los precios visibles en bolívares se convierten a la moneda por defecto de
+  transacciones (`USD_BCV`) usando la tasa fija documentada en el script
+  (`VES_PER_USD = 889.89`) y redondeando a dos decimales. La semilla **no**
+  convierte montos al cargar.
+- Estos datos se usan **exclusivamente para demostración**. No son una fuente
+  oficial de precios ni deben reutilizarse en producción.
+
+### Regenerar el fixture
+
+```bash
+npm run seed:scrape
+```
+
+El comando descarga las páginas y valida cada imagen con `sharp` (sin confiar
+en la extensión ni en el MIME), la convierte a WebP y genera una miniatura de
+320 px. Las descargas se cachean localmente en `scripts/.cache/` (ignorado por
+Git). Opciones disponibles:
+
+```bash
+npm run seed:scrape -- --limit=120 --delay=1000 --out=seeders/data/demo-products.json
+```
+
+- `--limit` debe ser **como mínimo 100** (por defecto 120).
+- `--delay` debe ser **como mínimo 1000 ms**.
+- El fixture se escribe de forma atómica y solo si se alcanza el mínimo de
+  productos válidos; si la estructura de la página cambia, el comando falla y
+  no reemplaza el fixture anterior.
+
+### Cargar la demo
+
+Después de migrar y ejecutar las semillas base:
+
+```bash
+npm run db:migrate
+npm run db:seed
+npm run seed:demo
+```
+
+Salida esperada:
+
+```text
+Demo catalog seeded: 120 products, 120 images, 6 categories, 120 lots.
+```
+
+La semilla es idempotente: reejecutarla no duplica categorías, imágenes,
+productos, proveedor, bodega, estantes, secciones, costos, lotes ni stock. Los
+lotes se crean con el modelo `Lot` (para ejecutar sus hooks) y con ubicación
+completa; `stocks.quantity` se reconcilia con `SUM(lots.stock)`. Las imágenes se
+copian desde el fixture a `UPLOAD_DIR/products/demo/` y **la semilla nunca
+descarga archivos de red**. `npm run db:seed` no carga este catálogo demo: solo
+se ejecuta con `npm run seed:demo`.
+
+Los productos quedan disponibles en `GET /products`, `GET /products/:id`,
+`GET /stocks/available` y `GET /lots`.
+
+### Deshacer la demo
+
+```bash
+npm run seed:demo:undo
+```
+
+El `down` de `seeders/20260910000008-demo-catalog.js` elimina solo los datos
+demo en orden inverso a sus dependencias (lotes, stocks, costos, productos,
+imágenes, proveedor y bodega/estantes/secciones). Se detiene si alguna fila demo
+está referenciada por datos reales y no elimina categorías compartidas con
+productos que no sean de la demo. El proyecto no configura el almacenamiento de
+seeders de `sequelize-cli`, por eso el deshacer se expone con un script propio
+en lugar de `db:seed:undo`.
+
 ## Autenticación
 
 Los endpoints protegidos esperan el header `Authorization: Bearer <jwt>`. El
