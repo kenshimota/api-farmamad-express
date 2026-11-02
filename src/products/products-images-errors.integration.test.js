@@ -25,16 +25,20 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/products");
+const { createTax } = require("../../test/helpers/taxes");
 
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
   await sequelize.authenticate();
 });
 
+let tax;
+
 beforeEach(async () => {
   assertTestDatabase(sequelize.config.database);
   await resetDatabase();
   await resetUploads();
+  tax = await createTax();
 });
 
 afterAll(async () => {
@@ -50,7 +54,7 @@ describe("POST /products upload errors", () => {
     const response = await postImage(
       app,
       token,
-      imageFields(category.id),
+      imageFields(category.id, { tax_id: tax.id }),
       null,
       { attach: false },
     );
@@ -66,7 +70,7 @@ describe("POST /products upload errors", () => {
     const category = await createCategory();
 
     const response = await postImage(app, token, {
-      ...imageFields(category.id),
+      ...imageFields(category.id, { tax_id: tax.id }),
       image_id: 1,
     });
 
@@ -84,7 +88,7 @@ describe("POST /products upload errors", () => {
     const corrupt = await postImage(
       app,
       token,
-      imageFields(category.id),
+      imageFields(category.id, { tax_id: tax.id }),
       Buffer.from("not-an-image"),
     );
     expect(corrupt.status).toBe(422);
@@ -93,7 +97,7 @@ describe("POST /products upload errors", () => {
     const gif = await postImage(
       app,
       token,
-      imageFields(category.id),
+      imageFields(category.id, { tax_id: tax.id }),
       Buffer.from("GIF89a"),
     );
     expect(gif.status).toBe(422);
@@ -108,7 +112,7 @@ describe("POST /products upload errors", () => {
     const response = await postImage(
       app,
       token,
-      imageFields(category.id),
+      imageFields(category.id, { tax_id: tax.id }),
       await pngBuffer(6001, 1),
     );
 
@@ -126,7 +130,7 @@ describe("POST /products upload errors", () => {
     const response = await postImage(
       app,
       token,
-      imageFields(category.id),
+      imageFields(category.id, { tax_id: tax.id }),
       Buffer.alloc(5 * 1024 * 1024 + 1),
     );
 
@@ -141,7 +145,7 @@ describe("POST /products upload errors", () => {
     const response = await postImage(
       app,
       token,
-      imageFields(category.id),
+      imageFields(category.id, { tax_id: tax.id }),
       await pngBuffer(),
       { field: "file" },
     );
@@ -155,7 +159,7 @@ describe("POST /products upload errors", () => {
     const unauthenticated = await postImage(
       app,
       "not-a-jwt",
-      imageFields(category.id),
+      imageFields(category.id, { tax_id: tax.id }),
     );
     expect(unauthenticated.status).toBe(401);
     expect(unauthenticated.body).toEqual({ message: "Unauthorized" });
@@ -164,7 +168,7 @@ describe("POST /products upload errors", () => {
     const forbidden = await postImage(
       app,
       dispatcher,
-      imageFields(category.id),
+      imageFields(category.id, { tax_id: tax.id }),
     );
     expect(forbidden.status).toBe(403);
     expect(forbidden.body).toEqual({ message: "Forbidden" });
@@ -177,12 +181,13 @@ describe("POST /products upload errors", () => {
     await createProduct({
       reference: BODY.reference,
       category_id: category.id,
+      tax_id: tax.id,
     });
 
     const response = await postImage(
       app,
       token,
-      imageFields(category.id, { reference: BODY.reference }),
+      imageFields(category.id, { reference: BODY.reference, tax_id: tax.id }),
     );
 
     expect(response.status).toBe(409);

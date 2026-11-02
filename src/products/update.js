@@ -1,7 +1,12 @@
 const { Router } = require("express");
 const { toPublicProduct } = require("./serializer");
-const { normalizeProductBody, productSchema } = require("./validators");
-const { ensureReferences, handleWriteError, loadProduct } = require("./shared");
+const { productSchema } = require("./validators");
+const {
+  ensureReferences,
+  handleWriteError,
+  loadProduct,
+  normalizeBody,
+} = require("./shared");
 const { validatedBody, writeAccess } = require("./guards");
 const { productRepository } = require("./repository");
 const { processUploadedImage, removeFiles } = require("./image-service");
@@ -17,7 +22,9 @@ const router = Router();
  *     description: >
  *       Replaces the resource and requires the five fields. As with every PUT
  *       endpoint, a successful update responds 202 Accepted with the updated
- *       resource in the body. The category and image must exist.
+ *       resource in the body. The category, image and tax must exist. Changing
+ *       the tax only affects future reads; historical orders and invoices are
+ *       not recalculated.
  *     tags:
  *       - Products
  *     security:
@@ -41,6 +48,7 @@ const router = Router();
  *               - description
  *               - reference
  *               - category_id
+ *               - tax_id
  *             properties:
  *               name:
  *                 type: string
@@ -62,6 +70,11 @@ const router = Router();
  *                 minimum: 1
  *                 description: Existing image id; it cannot be combined with `image`
  *                 example: 1
+ *               tax_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Existing tax id from the catalog
+ *                 example: 2
  *         multipart/form-data:
  *           schema:
  *             type: object
@@ -70,6 +83,7 @@ const router = Router();
  *               - description
  *               - reference
  *               - category_id
+ *               - tax_id
  *             properties:
  *               name:
  *                 type: string
@@ -91,6 +105,11 @@ const router = Router();
  *                 minimum: 1
  *                 description: Existing image id; it cannot be combined with `image`
  *                 example: 1
+ *               tax_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Existing tax id from the catalog
+ *                 example: 2
  *               image:
  *                 type: string
  *                 format: binary
@@ -158,24 +177,10 @@ const router = Router();
  *               $ref: '#/components/schemas/ValidationErrors'
  *             example:
  *               errors:
- *                 image_id: Invalid image id
+ *                 tax_id: Invalid tax id
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-/**
- * Normalises the numeric fields that arrive as text in multipart requests
- * before yup validates them.
- * @param {import("express").Request} req - Express request.
- * @param {import("express").Response} res - Express response.
- * @param {import("express").NextFunction} next - Next middleware.
- * @returns {void}
- */
-function normalizeBody(req, res, next) {
-  req.body = normalizeProductBody(req.body ?? {});
-
-  return next();
-}
-
 /**
  * Updates the product. With an uploaded file it stores the new image and
  * replaces `image_id` in one transaction without deleting the previous row or

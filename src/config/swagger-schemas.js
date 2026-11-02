@@ -16,6 +16,7 @@ const customerSchemas = require("./swagger-customer-schemas");
 const priceListSchemas = require("./swagger-price-list-schemas");
 const storeSchemas = require("./swagger-store-schemas");
 const paymentTermSchemas = require("./swagger-payment-term-schemas");
+const productSchemas = require("./swagger-product-schemas");
 const CURRENCY_SUMMARY = { $ref: "#/components/schemas/CurrencySummary" };
 const schemas = {
   ...authSchemas,
@@ -36,6 +37,7 @@ const schemas = {
   ...orderSchemas,
   ...orderStatusSchemas,
   ...paymentTermSchemas,
+  ...productSchemas,
   Warehouse: {
     type: "object",
     properties: {
@@ -50,49 +52,6 @@ const schemas = {
         type: "string",
         example: "Av. Monseñor Rivero 123",
       },
-    },
-  },
-  Category: {
-    type: "object",
-    properties: {
-      id: { type: "integer", example: 1 },
-      name: { type: "string", example: "Analgésicos" },
-    },
-  },
-  Image: {
-    type: "object",
-    properties: {
-      id: { type: "integer", example: 1 },
-      url: {
-        type: "string",
-        format: "uri",
-        example: "https://cdn.farmamad.com/products/ibuprofeno.png",
-      },
-      pathname: {
-        type: "string",
-        nullable: true,
-        example: "/uploads/products/ibuprofeno.png",
-      },
-      reference: { type: "string", example: "ibuprofeno-400" },
-      thumbnail: {
-        type: "string",
-        format: "uri",
-        example: "https://cdn.farmamad.com/products/ibuprofeno-thumb.png",
-      },
-    },
-  },
-  Product: {
-    type: "object",
-    properties: {
-      id: { type: "integer", example: 1 },
-      name: { type: "string", example: "Ibuprofeno 400 mg" },
-      description: {
-        type: "string",
-        example: "Analgésico y antiinflamatorio",
-      },
-      reference: { type: "string", example: "IBU-400" },
-      category_id: { type: "integer", example: 1 },
-      image_id: { type: "integer", example: 1 },
     },
   },
   State: {

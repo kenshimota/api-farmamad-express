@@ -7,11 +7,9 @@ jest.mock("../models/product", () => ({
 }));
 jest.mock("../models/category", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/image", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/tax", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
-const express = require("express");
-const request = require("supertest");
-const jwt = require("jsonwebtoken");
 const {
   ForeignKeyConstraintError,
   UniqueConstraintError,
@@ -19,65 +17,15 @@ const {
 const Product = require("../models/product");
 const Category = require("../models/category");
 const Image = require("../models/image");
+const Tax = require("../models/tax");
 const User = require("../models/user");
-const productsRouter = require("./index");
-
-const app = express();
-app.use(express.json());
-app.use("/products", productsRouter);
-app.use((error, req, res, next) => {
-  res.status(500).json({ message: "Server error" });
-});
-
-const SECRET = "test-secret";
-const AUTH_USER = { id: 1, username: "admin", isBlocked: false };
-const validBody = {
-  name: "Ibuprofeno 400 mg",
-  description: "Analgésico y antiinflamatorio",
-  reference: "IBU-400",
-  category_id: 1,
-  image_id: 2,
-};
-
-/**
- * Signs a JWT for the given role.
- * @param {string} [role] - Role name to embed in the token.
- * @returns {string} Signed JWT.
- */
-function tokenFor(role = "admin") {
-  return jwt.sign({ sub: 1, username: "admin", role }, SECRET, {
-    expiresIn: "1h",
-  });
-}
-
-/**
- * Builds a stored product double as returned by Sequelize.
- * @param {object} [overrides] - Attribute overrides.
- * @returns {object} The product double.
- */
-function storedProduct(overrides = {}) {
-  return {
-    id: 1,
-    ...validBody,
-    createdAt: new Date("2026-09-01T00:00:00.000Z"),
-    updatedAt: new Date("2026-09-01T00:00:00.000Z"),
-    ...overrides,
-  };
-}
-
-/**
- * Sends a POST /products request.
- * @param {object} body - Request body.
- * @param {string|null} [token] - Bearer token, null to omit the header.
- * @returns {Promise<import("supertest").Response>} HTTP response.
- */
-function post(body, token = tokenFor()) {
-  const req = request(app).post("/products");
-
-  return token
-    ? req.set("Authorization", `Bearer ${token}`).send(body)
-    : req.send(body);
-}
+const {
+  AUTH_USER,
+  post,
+  storedProduct,
+  tokenFor,
+  validBody,
+} = require("./products.test-helpers");
 
 beforeEach(() => {
   Product.create.mockReset();
@@ -85,9 +33,11 @@ beforeEach(() => {
   Product.findByPk.mockReset();
   Category.findByPk.mockReset();
   Image.findByPk.mockReset();
+  Tax.findByPk.mockReset();
   User.findByPk.mockReset();
   Category.findByPk.mockResolvedValue({ id: 1 });
   Image.findByPk.mockResolvedValue({ id: 2 });
+  Tax.findByPk.mockResolvedValue({ id: 3 });
   User.findByPk.mockResolvedValue(AUTH_USER);
 });
 
@@ -172,6 +122,18 @@ describe("POST /products", () => {
     expect(Product.create).not.toHaveBeenCalled();
   });
 
+  it("responds 422 when the tax does not exist", async () => {
+    Tax.findByPk.mockResolvedValue(null);
+
+    const response = await post(validBody);
+
+    expect(response.status).toBe(422);
+    expect(response.body).toEqual({
+      errors: { tax_id: "Invalid tax id" },
+    });
+    expect(Product.create).not.toHaveBeenCalled();
+  });
+
   it("maps a race-condition foreign key error to 422", async () => {
     Product.create.mockRejectedValue(
       new ForeignKeyConstraintError({
@@ -185,6 +147,22 @@ describe("POST /products", () => {
     expect(response.status).toBe(422);
     expect(response.body).toEqual({
       errors: { category_id: "Invalid category id" },
+    });
+  });
+
+  it("maps a tax foreign key error to 422", async () => {
+    Product.create.mockRejectedValue(
+      new ForeignKeyConstraintError({
+        message: "foreign key",
+        fields: ["tax_id"],
+      }),
+    );
+
+    const response = await post(validBody);
+
+    expect(response.status).toBe(422);
+    expect(response.body).toEqual({
+      errors: { tax_id: "Invalid tax id" },
     });
   });
 
@@ -228,19 +206,23 @@ describe("POST /products", () => {
     [{ ...validBody, image_id: null }, "image or image_id is required"],
     [
       { ...validBody, name: undefined },
-      "name, description, reference and category_id are required",
+      "name, description, reference, category_id and tax_id are required",
     ],
     [
       { ...validBody, description: "" },
-      "name, description, reference and category_id are required",
+      "name, description, reference, category_id and tax_id are required",
     ],
     [
       { ...validBody, reference: null },
-      "name, description, reference and category_id are required",
+      "name, description, reference, category_id and tax_id are required",
     ],
     [
       { ...validBody, category_id: undefined },
-      "name, description, reference and category_id are required",
+      "name, description, reference, category_id and tax_id are required",
+    ],
+    [
+      { ...validBody, tax_id: undefined },
+      "name, description, reference, category_id and tax_id are required",
     ],
   ])(
     "responds 400 when a required field is missing in %p",
@@ -260,6 +242,8 @@ describe("POST /products", () => {
     ["reference is too long", { reference: "a".repeat(101) }],
     ["category_id is zero", { category_id: 0 }],
     ["image_id is not numeric", { image_id: "abc" }],
+    ["tax_id is zero", { tax_id: 0 }],
+    ["tax_id is not numeric", { tax_id: "abc" }],
   ])("responds 422 when %s", async (_case, overrides) => {
     const response = await post({ ...validBody, ...overrides });
 

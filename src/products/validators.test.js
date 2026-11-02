@@ -16,6 +16,7 @@ const VALID = {
   reference: "IBU-400",
   category_id: 1,
   image_id: 2,
+  tax_id: 3,
 };
 
 /**
@@ -133,15 +134,25 @@ describe("productSchema", () => {
       });
     },
   );
+
+  it.each([undefined, 0, -1, 1.5, "abc", null])(
+    "rejects an invalid tax_id (%p)",
+    async (value) => {
+      await expect(errorsFor({ ...VALID, tax_id: value })).resolves.toEqual({
+        tax_id: "Invalid tax id",
+      });
+    },
+  );
 });
 
 describe("REQUIRED_PRODUCT_FIELDS", () => {
-  it("lists the four required text and category fields in contract order", () => {
+  it("lists the five required fields in contract order", () => {
     expect(REQUIRED_PRODUCT_FIELDS).toEqual([
       "name",
       "description",
       "reference",
       "category_id",
+      "tax_id",
     ]);
   });
 });
@@ -162,24 +173,37 @@ describe("normalizeProductBody", () => {
         name: "Ibuprofeno",
         category_id: "12",
         image_id: "7",
+        tax_id: "4",
       }),
-    ).toEqual({ name: "Ibuprofeno", category_id: 12, image_id: 7 });
+    ).toEqual({ name: "Ibuprofeno", category_id: 12, image_id: 7, tax_id: 4 });
   });
 
   it("leaves invalid, decimal, negative and empty values for yup to reject", () => {
     expect(
-      normalizeProductBody({ category_id: "abc", image_id: "1.5" }),
-    ).toEqual({ category_id: "abc", image_id: "1.5" });
-    expect(normalizeProductBody({ category_id: "-1", image_id: "" })).toEqual({
-      category_id: "-1",
-      image_id: "",
-    });
+      normalizeProductBody({
+        category_id: "abc",
+        image_id: "1.5",
+        tax_id: "0",
+      }),
+    ).toEqual({ category_id: "abc", image_id: "1.5", tax_id: 0 });
+    expect(
+      normalizeProductBody({
+        category_id: "-1",
+        image_id: "",
+        tax_id: "-2",
+      }),
+    ).toEqual({ category_id: "-1", image_id: "", tax_id: "-2" });
   });
 
   it("does not change already numeric values or unknown fields", () => {
     expect(
-      normalizeProductBody({ category_id: 1, image_id: 2, extra: "keep" }),
-    ).toEqual({ category_id: 1, image_id: 2, extra: "keep" });
+      normalizeProductBody({
+        category_id: 1,
+        image_id: 2,
+        tax_id: 3,
+        extra: "keep",
+      }),
+    ).toEqual({ category_id: 1, image_id: 2, tax_id: 3, extra: "keep" });
   });
 
   it("returns an empty object for a missing body", () => {

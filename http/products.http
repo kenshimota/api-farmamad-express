@@ -3,10 +3,10 @@
 #                       PUT /products/:id, DELETE /products/:id
 # Protegido: lectura para cualquier usuario autenticado; escritura requiere admin o seller.
 # Ejecuta antes "POST /auth/login" en auth.http para tener {{token}}.
-# Crea primero una categoría y una imagen y usa sus ids en category_id e image_id.
+# Crea primero una categoría, una imagen y un impuesto (o ejecuta la semilla) y usa sus ids en category_id, image_id y tax_id.
 
 ### POST /products — crea un producto (201)
-# name (máx 150), description, reference (única, máx 100), category_id e image_id son obligatorios.
+# name (máx 150), description, reference (única, máx 100), category_id, image_id y tax_id son obligatorios.
 POST {{baseUrl}}/products
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -16,7 +16,8 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 
 ### POST /products — sin token (401 Unauthorized)
@@ -28,7 +29,8 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 
 ### POST /products — faltan campos (400)
@@ -49,7 +51,8 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "   ",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 
 ### POST /products — categoría inexistente (422)
@@ -62,7 +65,8 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 99999,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 
 ### POST /products — imagen inexistente (422)
@@ -75,7 +79,22 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 99999
+  "image_id": 99999,
+  "tax_id": 1
+}
+
+### POST /products — impuesto inexistente (422)
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Ibuprofeno 400 mg",
+  "description": "Analgésico y antiinflamatorio",
+  "reference": "IBU-400",
+  "category_id": 1,
+  "image_id": 1,
+  "tax_id": 99999
 }
 
 ### POST /products — reference duplicada (409)
@@ -89,11 +108,12 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 
 ### GET /products — lista los productos (200)
-# Devuelve id, name, description, reference, category_id e image_id ordenados por id ascendente; [] si no hay.
+# Devuelve id, name, description, reference, category_id, image_id y tax_id ordenados por id ascendente; [] si no hay.
 GET {{baseUrl}}/products
 Authorization: Bearer {{token}}
 
@@ -114,7 +134,7 @@ GET {{baseUrl}}/products/abc
 Authorization: Bearer {{token}}
 
 ### PUT /products/:id — actualiza un producto (202)
-# Reemplaza el recurso: los cinco campos son obligatorios.
+# Reemplaza el recurso: los cinco campos y tax_id son obligatorios.
 PUT {{baseUrl}}/products/1
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -124,7 +144,8 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-800",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 
 ### PUT /products/:id — faltan campos (400)
@@ -145,7 +166,8 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 
 ### PUT /products/:id — id inexistente (404)
@@ -158,7 +180,8 @@ Content-Type: application/json
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-800",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 
 ### DELETE /products/:id — elimina un producto (204, sin cuerpo)

@@ -1,10 +1,12 @@
 const request = require("supertest");
+const { Op } = require("sequelize");
 const app = require("../../src/app");
 const User = require("../../src/models/user");
 const Role = require("../../src/models/role");
 const Product = require("../../src/models/product");
 const Category = require("../../src/models/category");
 const Image = require("../../src/models/image");
+const Tax = require("../../src/models/tax");
 
 const PASSWORD = "secret123";
 const CATEGORY_BODY = { name: "Analgésicos" };
@@ -97,8 +99,30 @@ function createImage(overrides = {}) {
 }
 
 /**
+ * Resolves the seeded SIN_IVA tax, creating it when the catalog is empty.
+ * @returns {Promise<object>} The default tax instance.
+ */
+async function ensureDefaultTax() {
+  const existing = await Tax.findOne({
+    where: { code: { [Op.iLike]: "SIN_IVA" } },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  return Tax.create({
+    code: "SIN_IVA",
+    name: "Sin IVA",
+    rate: "0.00",
+    description: "Producto exento o no gravado",
+    is_active: true,
+  });
+}
+
+/**
  * Creates a product directly in the database. When the foreign keys are not
- * supplied it creates a category and an image first.
+ * supplied it creates a category, an image and a tax first.
  * @param {object} [overrides] - Attribute overrides.
  * @returns {Promise<object>} The created Sequelize instance.
  */
@@ -118,6 +142,10 @@ async function createProduct(overrides = {}) {
       reference: `image-${suffix}`.slice(0, 100),
     });
     values.image_id = image.id;
+  }
+
+  if (values.tax_id === undefined) {
+    values.tax_id = (await ensureDefaultTax()).id;
   }
 
   return Product.create(values);
@@ -176,6 +204,7 @@ module.exports = {
   createCategory,
   createImage,
   createProduct,
+  ensureDefaultTax,
   resetDatabase,
   tokenFor,
 };

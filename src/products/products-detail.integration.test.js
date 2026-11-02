@@ -14,6 +14,7 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/products");
+const { createTax } = require("../../test/helpers/taxes");
 
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
@@ -41,6 +42,7 @@ describe("PUT /products/:id with a real database", () => {
         reference: "IBU-800",
         category_id: product.category_id,
         image_id: product.image_id,
+        tax_id: product.tax_id,
       };
 
       const response = await as("put", `/products/${product.id}`, token).send(
@@ -66,6 +68,7 @@ describe("PUT /products/:id with a real database", () => {
       reference: `  ${BODY.reference}  `,
       category_id: product.category_id,
       image_id: product.image_id,
+      tax_id: product.tax_id,
     });
 
     expect(response.status).toBe(202);
@@ -83,6 +86,7 @@ describe("PUT /products/:id with a real database", () => {
       reference: BODY.reference,
       category_id: other.category_id,
       image_id: other.image_id,
+      tax_id: other.tax_id,
     });
 
     expect(response.status).toBe(409);
@@ -105,6 +109,7 @@ describe("PUT /products/:id with a real database", () => {
       ...base,
       category_id: 99999,
       image_id: product.image_id,
+      tax_id: product.tax_id,
     });
     expect(missingCategory.status).toBe(422);
     expect(missingCategory.body).toEqual({
@@ -116,6 +121,7 @@ describe("PUT /products/:id with a real database", () => {
         ...base,
         category_id: product.category_id,
         image_id: 99999,
+        tax_id: product.tax_id,
       },
     );
     expect(missingImage.status).toBe(422);
@@ -124,11 +130,35 @@ describe("PUT /products/:id with a real database", () => {
     });
   });
 
+  it("responds 422 when the tax does not exist", async () => {
+    const product = await createProduct();
+    const token = await tokenFor("admin");
+
+    const response = await as("put", `/products/${product.id}`, token).send({
+      ...BODY,
+      reference: "IBU-901",
+      category_id: product.category_id,
+      image_id: product.image_id,
+      tax_id: 99999,
+    });
+
+    expect(response.status).toBe(422);
+    expect(response.body).toEqual({
+      errors: { tax_id: "Invalid tax id" },
+    });
+  });
+
   it("responds 404 and 422 for unknown and invalid ids", async () => {
     const token = await tokenFor("admin");
     const category = await createCategory();
     const image = await createImage();
-    const body = { ...BODY, category_id: category.id, image_id: image.id };
+    const tax = await createTax();
+    const body = {
+      ...BODY,
+      category_id: category.id,
+      image_id: image.id,
+      tax_id: tax.id,
+    };
 
     const missing = await as("put", "/products/99999", token).send(body);
     expect(missing.status).toBe(404);
@@ -153,6 +183,7 @@ describe("PUT /products/:id with a real database", () => {
       ...BODY,
       category_id: product.category_id,
       image_id: product.image_id,
+      tax_id: product.tax_id,
       name: "a".repeat(151),
     });
     expect(invalid.status).toBe(422);
@@ -169,6 +200,7 @@ describe("PUT /products/:id with a real database", () => {
       ...BODY,
       category_id: product.category_id,
       image_id: product.image_id,
+      tax_id: product.tax_id,
     });
 
     expect(response.status).toBe(403);

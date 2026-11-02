@@ -33,6 +33,7 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/products");
+const { createTax } = require("../../test/helpers/taxes");
 
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
@@ -54,7 +55,8 @@ describe("POST /products with multipart/form-data", () => {
   it("stores the original, the thumbnail, the image row and serves /uploads", async () => {
     const token = await tokenFor("admin");
     const category = await createCategory();
-    const fields = imageFields(category.id);
+    const tax = await createTax();
+    const fields = imageFields(category.id, { tax_id: tax.id });
 
     const response = await postImage(app, token, fields, pngBuffer(640, 480));
 
@@ -103,7 +105,8 @@ describe("POST /products with multipart/form-data", () => {
   it("keeps the previous image row and files when a product is updated", async () => {
     const token = await tokenFor("seller");
     const category = await createCategory();
-    const fields = imageFields(category.id);
+    const tax = await createTax();
+    const fields = imageFields(category.id, { tax_id: tax.id });
     const created = await postImage(app, token, fields, await pngBuffer());
     const previous = await Image.findByPk(created.body.image_id);
     const previousFiles = storedFiles(previous);
@@ -132,10 +135,12 @@ describe("POST /products with multipart/form-data", () => {
     const token = await tokenFor("admin");
     const category = await createCategory();
     const image = await createImage();
+    const tax = await createTax();
     const created = await as("post", "/products", token).send({
       ...BODY,
       category_id: category.id,
       image_id: image.id,
+      tax_id: tax.id,
     });
 
     expect(created.status).toBe(201);
@@ -148,6 +153,7 @@ describe("POST /products with multipart/form-data", () => {
         reference: "IBU-800",
         category_id: category.id,
         image_id: image.id,
+        tax_id: tax.id,
       },
     );
 
@@ -158,16 +164,21 @@ describe("POST /products with multipart/form-data", () => {
   it("rolls back the image and removes the files when the product insert fails", async () => {
     const token = await tokenFor("admin");
     const category = await createCategory();
+    const tax = await createTax();
     await createProduct({
       reference: BODY.reference,
       category_id: category.id,
+      tax_id: tax.id,
     });
     const imagesBefore = await Image.count();
 
     const response = await postImage(
       app,
       token,
-      imageFields(category.id, { reference: BODY.reference }),
+      imageFields(category.id, {
+        reference: BODY.reference,
+        tax_id: tax.id,
+      }),
     );
 
     expect(response.status).toBe(409);

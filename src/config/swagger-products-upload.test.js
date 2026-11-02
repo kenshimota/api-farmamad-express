@@ -24,6 +24,11 @@ describe("Swagger product uploads", () => {
       format: "binary",
     });
     expect(content.schema.properties.image_id).toBeDefined();
+    expect(content.schema.properties.tax_id).toMatchObject({
+      type: "integer",
+      minimum: 1,
+    });
+    expect(content.schema.required).toContain("tax_id");
     expect(content.schema.required).not.toContain("image");
     expect(content.schema.required).not.toContain("image_id");
   });

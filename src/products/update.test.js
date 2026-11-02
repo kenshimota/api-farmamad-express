@@ -7,11 +7,9 @@ jest.mock("../models/product", () => ({
 }));
 jest.mock("../models/category", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/image", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/tax", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
-const express = require("express");
-const request = require("supertest");
-const jwt = require("jsonwebtoken");
 const {
   ForeignKeyConstraintError,
   UniqueConstraintError,
@@ -19,80 +17,25 @@ const {
 const Product = require("../models/product");
 const Category = require("../models/category");
 const Image = require("../models/image");
+const Tax = require("../models/tax");
 const User = require("../models/user");
-const updateRouter = require("./update");
-
-const app = express();
-app.use(express.json());
-app.use("/products", updateRouter);
-app.use((error, req, res, next) => {
-  res.status(500).json({ message: "Server error" });
-});
-
-const SECRET = "test-secret";
-const AUTH_USER = { id: 1, username: "admin", isBlocked: false };
-const validBody = {
-  name: "Ibuprofeno 800 mg",
-  description: "Analgésico y antiinflamatorio",
-  reference: "IBU-800",
-  category_id: 1,
-  image_id: 2,
-};
-
-/**
- * Signs a JWT for the given role.
- * @param {string} [role] - Role name to embed in the token.
- * @returns {string} Signed JWT.
- */
-function tokenFor(role = "admin") {
-  return jwt.sign({ sub: 1, username: "admin", role }, SECRET, {
-    expiresIn: "1h",
-  });
-}
-
-/**
- * Builds a stored product double with a working update method.
- * @param {object} [overrides] - Attribute overrides.
- * @returns {object} The product double.
- */
-function target(overrides = {}) {
-  return {
-    id: 1,
-    name: "Ibuprofeno 400 mg",
-    description: "Analgésico y antiinflamatorio",
-    reference: "IBU-400",
-    category_id: 1,
-    image_id: 2,
-    update: jest.fn(function update(values) {
-      Object.assign(this, values);
-      return Promise.resolve(this);
-    }),
-    ...overrides,
-  };
-}
-
-/**
- * Sends a PUT /products/:id request.
- * @param {string} id - Route parameter.
- * @param {object} body - Request body.
- * @param {string|null} [token] - Bearer token, null to omit the header.
- * @returns {Promise<import("supertest").Response>} HTTP response.
- */
-function put(id, body, token = tokenFor()) {
-  const req = request(app).put(`/products/${id}`);
-
-  return token
-    ? req.set("Authorization", `Bearer ${token}`).send(body)
-    : req.send(body);
-}
+const {
+  AUTH_USER,
+  put,
+  target,
+  tokenFor,
+  validBody,
+} = require("./update.test-helpers");
 
 beforeEach(() => {
   Product.findByPk.mockReset();
   Category.findByPk.mockReset();
   Image.findByPk.mockReset();
+  Tax.findByPk.mockReset();
   User.findByPk.mockReset();
   Category.findByPk.mockResolvedValue({ id: 1 });
   Image.findByPk.mockResolvedValue({ id: 2 });
+  Tax.findByPk.mockResolvedValue({ id: 3 });
   User.findByPk.mockResolvedValue(AUTH_USER);
 });
 
@@ -180,6 +123,29 @@ describe("PUT /products/:id", () => {
     });
   });
 
+  it("responds 422 when the tax does not exist", async () => {
+    Product.findByPk.mockResolvedValue(target());
+    Tax.findByPk.mockResolvedValue(null);
+
+    const response = await put("1", validBody);
+
+    expect(response.status).toBe(422);
+    expect(response.body).toEqual({
+      errors: { tax_id: "Invalid tax id" },
+    });
+  });
+
+  it("allows changing the tax of an existing product", async () => {
+    const product = target();
+    Product.findByPk.mockResolvedValue(product);
+
+    const response = await put("1", { ...validBody, tax_id: 9 });
+
+    expect(response.status).toBe(202);
+    expect(response.body.tax_id).toBe(9);
+    expect(product.update).toHaveBeenCalledWith({ ...validBody, tax_id: 9 });
+  });
+
   it("maps a race-condition foreign key error to 422", async () => {
     const product = target();
     product.update.mockRejectedValue(
@@ -226,11 +192,15 @@ describe("PUT /products/:id", () => {
     [{ ...validBody, image_id: null }, "image or image_id is required"],
     [
       { ...validBody, name: undefined },
-      "name, description, reference and category_id are required",
+      "name, description, reference, category_id and tax_id are required",
     ],
     [
       { ...validBody, category_id: undefined },
-      "name, description, reference and category_id are required",
+      "name, description, reference, category_id and tax_id are required",
+    ],
+    [
+      { ...validBody, tax_id: undefined },
+      "name, description, reference, category_id and tax_id are required",
     ],
   ])(
     "responds 400 when a required field is missing in %p",

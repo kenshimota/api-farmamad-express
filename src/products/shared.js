@@ -10,10 +10,42 @@ const { productRepository } = require("./repository");
 const {
   CATEGORY_ID_MESSAGE,
   IMAGE_ID_MESSAGE,
+  TAX_ID_MESSAGE,
+  normalizeProductBody,
   parseProductId,
 } = require("./validators");
 
-const FOREIGN_KEY_FIELDS = Object.freeze(["category_id", "image_id"]);
+/**
+ * Maps every product foreign key to the message returned when it is missing.
+ * Both the pre-insert check and the constraint-error translation read from this
+ * single registry, so adding a reference only requires one new entry.
+ */
+const FOREIGN_KEY_MESSAGES = Object.freeze({
+  category_id: CATEGORY_ID_MESSAGE,
+  image_id: IMAGE_ID_MESSAGE,
+  tax_id: TAX_ID_MESSAGE,
+});
+
+const FOREIGN_KEY_FIELDS = Object.freeze(Object.keys(FOREIGN_KEY_MESSAGES));
+
+/**
+ * Ordered existence checks for the product references. The image is checked
+ * last and skipped when a new file will be stored, as in the original flow.
+ */
+const REFERENCE_CHECKS = Object.freeze([
+  {
+    field: "category_id",
+    exists: (id) => productRepository.categoryExists(id),
+  },
+  {
+    field: "tax_id",
+    exists: (id) => productRepository.taxExists(id),
+  },
+  {
+    field: "image_id",
+    exists: (id) => productRepository.imageExists(id),
+  },
+]);
 
 /**
  * Express middleware for the routes that address a single product. It parses
@@ -55,21 +87,31 @@ async function loadProduct(req, res, next) {
  * @returns {Promise<void>} Resolves after calling next or answering an error.
  */
 async function ensureReferences(req, res, next) {
-  const { category_id, image_id } = req.validated;
+  for (const { field, exists } of REFERENCE_CHECKS) {
+    if (field === "image_id" && req.file) {
+      continue;
+    }
 
-  if (!(await productRepository.categoryExists(category_id))) {
-    return res
-      .status(422)
-      .json({ errors: { category_id: CATEGORY_ID_MESSAGE } });
+    if (!(await exists(req.validated[field]))) {
+      return res
+        .status(422)
+        .json({ errors: { [field]: FOREIGN_KEY_MESSAGES[field] } });
+    }
   }
 
-  if (req.file) {
-    return next();
-  }
+  return next();
+}
 
-  if (!(await productRepository.imageExists(image_id))) {
-    return res.status(422).json({ errors: { image_id: IMAGE_ID_MESSAGE } });
-  }
+/**
+ * Express middleware that normalises the numeric fields sent as text in
+ * multipart requests before yup validates them.
+ * @param {import("express").Request} req - Express request.
+ * @param {import("express").Response} res - Express response.
+ * @param {import("express").NextFunction} next - Next middleware.
+ * @returns {void}
+ */
+function normalizeBody(req, res, next) {
+  req.body = normalizeProductBody(req.body ?? {});
 
   return next();
 }
@@ -125,15 +167,10 @@ function handleWriteError(error, res) {
 
   if (error instanceof ForeignKeyConstraintError) {
     const field = foreignKeyField(error);
+    const message = FOREIGN_KEY_MESSAGES[field];
 
-    if (field === "category_id") {
-      return res
-        .status(422)
-        .json({ errors: { category_id: CATEGORY_ID_MESSAGE } });
-    }
-
-    if (field === "image_id") {
-      return res.status(422).json({ errors: { image_id: IMAGE_ID_MESSAGE } });
+    if (message) {
+      return res.status(422).json({ errors: { [field]: message } });
     }
   }
 
@@ -162,4 +199,5 @@ module.exports = {
   handleDeleteError,
   handleWriteError,
   loadProduct,
+  normalizeBody,
 };

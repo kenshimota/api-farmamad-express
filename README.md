@@ -1614,13 +1614,16 @@ Errores:
 Los productos viven en la tabla `products` (modelo `Product`). `name` admite
 hasta 150 caracteres, `description` es texto libre obligatorio y `reference` es
 obligatoria, única y de hasta 100 caracteres. `category_id` referencia
-`categories.id` e `image_id` referencia `images.id`; ambas FKs usan
-`ON DELETE RESTRICT`, así que no se puede borrar una categoría o una imagen que
-tenga productos asociados. Al crear o editar se debe enviar un archivo `image`
-(`multipart/form-data`) o un `image_id` ya registrado, nunca ambos. Con archivo,
-la API crea la fila de `images` automáticamente. Los textos se recortan antes de
-guardarse. Ninguna respuesta incluye `createdAt` ni `updatedAt`: solo se exponen
-`id`, `name`, `description`, `reference`, `category_id` e `image_id`.
+`categories.id`, `image_id` referencia `images.id` y `tax_id` referencia
+`taxes.id`; las tres FKs usan `ON DELETE RESTRICT`, así que no se puede borrar
+una categoría, una imagen o un impuesto que tenga productos asociados. Al crear
+o editar se debe enviar un archivo `image` (`multipart/form-data`) o un
+`image_id` ya registrado, nunca ambos, además de un `tax_id` existente. Con
+archivo, la API crea la fila de `images` automáticamente. Los textos se recortan
+antes de guardarse. La migración de HU-44 asigna `SIN_IVA` a los productos que
+ya existían antes de hacer `tax_id` obligatorio. Ninguna respuesta incluye
+`createdAt` ni `updatedAt`: solo se exponen `id`, `name`, `description`,
+`reference`, `category_id`, `image_id` y `tax_id`; el objeto `tax` no se anida.
 
 Permisos por endpoint:
 
@@ -1640,11 +1643,11 @@ todos los endpoints, y sin token (o con token inválido/expirado) la respuesta e
 
 Protegido: requiere un JWT con rol `admin` o `seller`. Acepta JSON o
 `multipart/form-data`; los campos requeridos son `name`, `description`,
-`reference` y `category_id`, y además debe enviarse `image` (archivo) o
-`image_id` (imagen ya registrada), nunca ambos. Los campos desconocidos y de
-auditoría se descartan. Antes de insertar se verifica que la categoría exista y,
-cuando no hay archivo, que la imagen exista. La restricción única de `reference`
-y las FKs de Postgres actúan como salvaguarda ante peticiones concurrentes.
+`reference`, `category_id` y `tax_id`, y además debe enviarse `image` (archivo)
+o `image_id` (imagen ya registrada), nunca ambos. Los campos desconocidos y de
+auditoría se descartan. Antes de insertar se verifica que la categoría, la
+imagen y el impuesto existan. La restricción única de `reference` y las FKs de
+Postgres actúan como salvaguarda ante peticiones concurrentes.
 
 Con `multipart/form-data` el campo de archivo se llama `image`. Se aceptan
 JPEG, PNG y WebP reales de hasta 5 MB, 6000 × 6000 px y 25 megapíxeles; el tipo
@@ -1661,6 +1664,7 @@ curl -X POST http://localhost:3001/products \
   -F "description=Analgésico y antiinflamatorio" \
   -F "reference=IBU-400" \
   -F "category_id=1" \
+  -F "tax_id=1" \
   -F "image=@./ibuprofeno.png"
 ```
 
@@ -1676,7 +1680,7 @@ El flujo JSON con `image_id` sigue disponible:
 curl -X POST http://localhost:3001/products \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Ibuprofeno 400 mg","description":"Analgésico y antiinflamatorio","reference":"IBU-400","category_id":1,"image_id":1}'
+  -d '{"name":"Ibuprofeno 400 mg","description":"Analgésico y antiinflamatorio","reference":"IBU-400","category_id":1,"image_id":1,"tax_id":1}'
 ```
 
 Respuesta `201`:
@@ -1688,15 +1692,23 @@ Respuesta `201`:
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 7
+  "image_id": 7,
+  "tax_id": 1
 }
 ```
+
+`tax_id` debe ser un entero positivo que exista en `taxes`. Si falta, la
+respuesta es `400` con
+`{ "message": "name, description, reference, category_id and tax_id are required" }`;
+si no es válido o no existe, es `422` con
+`{ "errors": { "tax_id": "Invalid tax id" } }`.
 
 Errores:
 
 | Código | Cuerpo                                                                 |
 | ------ | ---------------------------------------------------------------------- |
 | `400`  | `{ "message": "image or image_id is required" }`                       |
+| `400`  | `{ "message": "name, description, reference, category_id and tax_id are required" }` |
 | `400`  | `{ "message": "Unexpected field" }`                                    |
 | `401`  | `{ "message": "Unauthorized" }`                                        |
 | `403`  | `{ "message": "Forbidden" }`                                           |
@@ -1707,6 +1719,7 @@ Errores:
 | `422`  | `{ "errors": { "image": "Invalid image dimensions" } }`                |
 | `422`  | `{ "errors": { "category_id": "Invalid category id" } }`               |
 | `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                     |
+| `422`  | `{ "errors": { "tax_id": "Invalid tax id" } }`                         |
 | `500`  | `{ "message": "Internal server error" }`                               |
 
 ### `GET /products`
@@ -1729,7 +1742,8 @@ Respuesta `200`:
     "description": "Analgésico y antiinflamatorio",
     "reference": "IBU-400",
     "category_id": 1,
-    "image_id": 1
+    "image_id": 1,
+    "tax_id": 1
   }
 ]
 ```
@@ -1758,7 +1772,8 @@ Respuesta `200`:
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-400",
   "category_id": 1,
-  "image_id": 1
+  "image_id": 1,
+  "tax_id": 1
 }
 ```
 
@@ -1774,12 +1789,13 @@ Errores:
 ### `PUT /products/:id`
 
 Protegido: requiere un JWT con rol `admin` o `seller`. Reemplaza el recurso,
-acepta JSON o `multipart/form-data` y exige `name`, `description`, `reference` y
-`category_id`, más `image` o `image_id`. Con archivo se crea una nueva fila de
-`images` y se reemplaza `products.image_id`; la imagen anterior y sus archivos no
-se eliminan porque pueden estar compartidos. Con `image_id` se conserva el flujo
-JSON. Los campos numéricos enviados como texto en multipart se convierten antes
-de validar.
+acepta JSON o `multipart/form-data` y exige `name`, `description`, `reference`,
+`category_id` y `tax_id`, más `image` o `image_id`. Con archivo se crea una nueva
+fila de `images` y se reemplaza `products.image_id`; la imagen anterior y sus
+archivos no se eliminan porque pueden estar compartidos. Con `image_id` se
+conserva el flujo JSON. Los campos numéricos enviados como texto en multipart se
+convierten antes de validar. Cambiar `tax_id` solo afecta lecturas futuras del
+producto: no se recalculan pedidos ni facturas históricas.
 
 ```bash
 curl -X PUT http://localhost:3001/products/1 \
@@ -1788,6 +1804,7 @@ curl -X PUT http://localhost:3001/products/1 \
   -F "description=Analgésico y antiinflamatorio" \
   -F "reference=IBU-800" \
   -F "category_id=1" \
+  -F "tax_id=2" \
   -F "image=@./ibuprofeno-800.png"
 ```
 
@@ -1797,7 +1814,7 @@ También sigue funcionando con `image_id`:
 curl -X PUT http://localhost:3001/products/1 \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Ibuprofeno 800 mg","description":"Analgésico y antiinflamatorio","reference":"IBU-800","category_id":1,"image_id":1}'
+  -d '{"name":"Ibuprofeno 800 mg","description":"Analgésico y antiinflamatorio","reference":"IBU-800","category_id":1,"image_id":1,"tax_id":2}'
 ```
 
 Respuesta `202`:
@@ -1809,7 +1826,8 @@ Respuesta `202`:
   "description": "Analgésico y antiinflamatorio",
   "reference": "IBU-800",
   "category_id": 1,
-  "image_id": 7
+  "image_id": 7,
+  "tax_id": 2
 }
 ```
 
@@ -1818,6 +1836,7 @@ Errores:
 | Código | Cuerpo                                                                 |
 | ------ | ---------------------------------------------------------------------- |
 | `400`  | `{ "message": "image or image_id is required" }`                       |
+| `400`  | `{ "message": "name, description, reference, category_id and tax_id are required" }` |
 | `400`  | `{ "message": "Unexpected field" }`                                    |
 | `401`  | `{ "message": "Unauthorized" }`                                        |
 | `403`  | `{ "message": "Forbidden" }`                                           |
@@ -1830,6 +1849,7 @@ Errores:
 | `422`  | `{ "errors": { "image": "Invalid image dimensions" } }`                |
 | `422`  | `{ "errors": { "category_id": "Invalid category id" } }`               |
 | `422`  | `{ "errors": { "image_id": "Invalid image id" } }`                     |
+| `422`  | `{ "errors": { "tax_id": "Invalid tax id" } }`                         |
 | `500`  | `{ "message": "Internal server error" }`                               |
 
 ### `DELETE /products/:id`
@@ -4364,12 +4384,29 @@ curl -X DELETE http://localhost:3001/customer-sellers/1 \
 
 ## Impuestos (taxes)
 
-Catálogo de impuestos para los pedidos futuros (HU-27). Cada fila de la tabla
-`taxes` (modelo `Tax`) tiene un `code` único ignorando mayúsculas, un `name`,
-una `rate` porcentual, una `description` opcional y `is_active`. `rate` se
-guarda como `DECIMAL(5,2)` y la base de datos exige `0 <= rate <= 100`; por
-ejemplo `16.00` significa `16 %`, no un monto. No hay datos iniciales: el
-catálogo arranca vacío.
+Catálogo de impuestos que cada producto referencia mediante `products.tax_id`
+(HU-27 y HU-44). Cada fila de la tabla `taxes` (modelo `Tax`) tiene un `code`
+único ignorando mayúsculas, un `name`, una `rate` porcentual, una `description`
+opcional y `is_active`. `rate` se guarda como `DECIMAL(5,2)` y la base de datos
+exige `0 <= rate <= 100`; por ejemplo `16.00` significa `16 %`, no un monto.
+
+La semilla `seeders/20260910000007-taxes.js` crea de forma idempotente los
+impuestos base:
+
+| `code`    | `name`                     | `rate`  | `description`                | `is_active` |
+| --------- | -------------------------- | ------- | ---------------------------- | ----------- |
+| `IVA`     | Impuesto al Valor Agregado | `16.00` | IVA general de Venezuela     | `true`      |
+| `SIN_IVA` | Sin IVA                    | `0.00`  | Producto exento o no gravado | `true`      |
+
+- La semilla se ejecuta con `npm run db:seed` y se puede reejecutar sin duplicar
+  filas. Si un impuesto con el mismo código ya existe (sin distinguir
+  mayúsculas/minúsculas), **no** se sobrescriben su nombre, tasa ni estado.
+- El catálogo sigue admitiendo otros impuestos creados por API, por ejemplo
+  `IGTF`.
+- La migración de HU-44 agrega `products.tax_id` obligatorio y asigna `SIN_IVA`
+  a los productos existentes antes de hacer la columna `NOT NULL`. Por eso
+  `IVA` y `SIN_IVA` deben estar disponibles antes de migrar una base con
+  productos.
 
 Reglas de negocio:
 
@@ -4379,14 +4416,20 @@ Reglas de negocio:
 - `name` no es único y mide entre 2 y 100 caracteres. `description` admite hasta
   255 caracteres y se devuelve como `null` cuando no se envía o llega vacía.
 - `is_active` es booleano y vale `true` por defecto. Desactivar un impuesto con
-  `PUT` no lo borra.
-- `DELETE` es físico. Si una tabla futura lo referencia, la FK `RESTRICT` impide
-  el borrado y la API responde `409`.
+  `PUT` no lo borra ni modifica los productos que ya lo referencian.
+- `DELETE` es físico. Si un producto u otra tabla lo referencia, la FK
+  `RESTRICT` impide el borrado y la API responde `409` con
+  `{ "message": "Tax is in use" }`.
+- Cambiar `rate` con `PUT` afecta a todos los productos que referencian ese
+  impuesto, porque el producto guarda solo `tax_id`; no hay copia histórica de
+  la tasa en `products`. Los pedidos, facturas y compras existentes no se
+  recalculan.
 - Los timestamps `createdAt` y `updatedAt` nunca se exponen.
 - Las respuestas se serializan con `id`, `code`, `name`, `rate`, `description`
   e `is_active`.
-- Este catálogo **no** se usa en compras: `purchases` y `purchase_items` no
-  cambian en esta historia (el impuesto por línea de compra es HU-30).
+- Este catálogo **no** se usa para calcular impuestos en compras, pedidos ni
+  facturas: la HU-44 solo asigna el impuesto al producto. El impuesto por línea
+  de compra sigue siendo un monto absoluto de HU-30.
 
 Roles:
 
@@ -4430,7 +4473,8 @@ Respuesta `201`:
 
 Lista todos los impuestos ordenados por `code` ascendente, incluidos los
 inactivos. El filtro exacto opcional `?is_active=true|false` limita el
-resultado.
+resultado. Después de `npm run db:seed` el catálogo incluye, como mínimo, `IVA`
+y `SIN_IVA`.
 
 ```bash
 curl "http://localhost:3001/taxes?is_active=true" \
@@ -4441,18 +4485,18 @@ curl "http://localhost:3001/taxes?is_active=true" \
 [
   {
     "id": 1,
-    "code": "IGTF",
-    "name": "Impuesto a las Grandes Transacciones Financieras",
-    "rate": 3,
-    "description": "IGTF",
+    "code": "IVA",
+    "name": "Impuesto al Valor Agregado",
+    "rate": 16,
+    "description": "IVA general de Venezuela",
     "is_active": true
   },
   {
     "id": 2,
-    "code": "IVA",
-    "name": "Impuesto al Valor Agregado",
-    "rate": 16,
-    "description": "IVA general",
+    "code": "SIN_IVA",
+    "name": "Sin IVA",
+    "rate": 0,
+    "description": "Producto exento o no gravado",
     "is_active": true
   }
 ]
@@ -4483,8 +4527,9 @@ curl -X PUT http://localhost:3001/taxes/1 \
 ### `DELETE /taxes/:id`
 
 Borra físicamente el impuesto y responde `204` sin cuerpo. Para dejar de usarlo
-sin borrarlo, actualícelo con `"is_active": false`. Si otra tabla lo referencia,
-responde `409 Tax is in use`.
+sin borrarlo, actualícelo con `"is_active": false`. Si un producto u otra tabla
+lo referencia, responde `409 Tax is in use`; primero debe reasignar esos
+productos a otro impuesto.
 
 ```bash
 curl -X DELETE http://localhost:3001/taxes/1 \

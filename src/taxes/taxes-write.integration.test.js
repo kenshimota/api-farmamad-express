@@ -11,6 +11,7 @@ const {
   resetDatabase,
   tokenFor,
 } = require("../../test/helpers/taxes");
+const { createProduct } = require("../../test/helpers/products");
 
 beforeAll(async () => {
   assertTestDatabase(sequelize.config.database);
@@ -127,6 +128,22 @@ describe("DELETE /taxes/:id with a real database", () => {
     const again = await as("delete", `/taxes/${tax.id}`, token);
     expect(again.status).toBe(404);
     expect(again.body).toEqual({ message: "Tax not found" });
+  });
+
+  it("responds 409 when a product still references the tax", async () => {
+    const tax = await createTax();
+    const suffix = Math.random().toString(36).slice(2, 10).toUpperCase();
+    await createProduct({
+      reference: `TAX-USE-${suffix}`,
+      tax_id: tax.id,
+    });
+    const token = await tokenFor("admin");
+
+    const response = await as("delete", `/taxes/${tax.id}`, token);
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ message: "Tax is in use" });
+    await expect(Tax.findByPk(tax.id)).resolves.not.toBeNull();
   });
 
   it("responds 401 and 403 for unauthorized roles", async () => {

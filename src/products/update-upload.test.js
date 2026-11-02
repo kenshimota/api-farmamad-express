@@ -10,6 +10,7 @@ jest.mock("../models/image", () => ({
   create: jest.fn(),
   findByPk: jest.fn(),
 }));
+jest.mock("../models/tax", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 jest.mock("../database", () => ({
   transaction: jest.fn((work) => work("transaction")),
@@ -26,6 +27,7 @@ const { UniqueConstraintError } = require("sequelize");
 const Product = require("../models/product");
 const Category = require("../models/category");
 const Image = require("../models/image");
+const Tax = require("../models/tax");
 const User = require("../models/user");
 const {
   InvalidImageDimensionsError,
@@ -48,6 +50,7 @@ const fields = {
   description: "Analgésico y antiinflamatorio",
   reference: "IBU-800",
   category_id: 1,
+  tax_id: 3,
 };
 const generatedImage = {
   image: {
@@ -84,6 +87,7 @@ function target(overrides = {}) {
     reference: "IBU-400",
     category_id: 1,
     image_id: 2,
+    tax_id: 3,
     update: jest.fn(function update(values) {
       Object.assign(this, values);
       return Promise.resolve(this);
@@ -123,11 +127,13 @@ beforeEach(() => {
   Category.findByPk.mockReset();
   Image.create.mockReset();
   Image.findByPk.mockReset();
+  Tax.findByPk.mockReset();
   User.findByPk.mockReset();
   processUploadedImage.mockReset();
   removeFiles.mockReset();
   Category.findByPk.mockResolvedValue({ id: 1 });
   Image.findByPk.mockResolvedValue({ id: 2 });
+  Tax.findByPk.mockResolvedValue({ id: 3 });
   User.findByPk.mockResolvedValue(AUTH_USER);
   removeFiles.mockResolvedValue();
 });

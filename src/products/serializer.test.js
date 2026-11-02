@@ -7,6 +7,7 @@ const PRODUCT = {
   reference: "IBU-400",
   category_id: 2,
   image_id: 3,
+  tax_id: 4,
 };
 
 describe("toPublicProduct", () => {
@@ -30,7 +31,7 @@ describe("toPublicProduct", () => {
     expect(product.get).toHaveBeenCalledWith("id");
   });
 
-  it("exposes only the six public fields in order", () => {
+  it("exposes only the seven public fields in order", () => {
     expect(Object.keys(toPublicProduct(PRODUCT))).toEqual([
       "id",
       "name",
@@ -38,6 +39,7 @@ describe("toPublicProduct", () => {
       "reference",
       "category_id",
       "image_id",
+      "tax_id",
     ]);
   });
 });

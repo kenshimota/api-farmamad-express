@@ -2,8 +2,22 @@ const sequelize = require("../database");
 const Product = require("../models/product");
 const Category = require("../models/category");
 const Image = require("../models/image");
+const Tax = require("../models/tax");
 
 const LIST_ORDER = Object.freeze([["id", "ASC"]]);
+
+/**
+ * Tells whether a row with the given id exists in a model, without relying on
+ * raw SQL. It backs every foreign key existence check of the repository.
+ * @param {object} model - Sequelize model.
+ * @param {number} id - Primary key to look up.
+ * @returns {Promise<boolean>} True when the row exists.
+ */
+async function exists(model, id) {
+  const row = await model.findByPk(id);
+
+  return row !== null && row !== undefined;
+}
 
 /**
  * Creates a repository that encapsulates every persistence call for the
@@ -13,6 +27,7 @@ const LIST_ORDER = Object.freeze([["id", "ASC"]]);
  * @param {object} [categoryModel] - Category model used for the checks.
  * @param {object} [imageModel] - Image model used for the checks.
  * @param {Function} [transactionRunner] - Runs a callback in one transaction.
+ * @param {object} [taxModel] - Tax model used for the checks.
  * @returns {object} Product repository.
  */
 function createProductRepository(
@@ -20,6 +35,7 @@ function createProductRepository(
   categoryModel = Category,
   imageModel = Image,
   transactionRunner = (work) => sequelize.transaction(work),
+  taxModel = Tax,
 ) {
   return {
     /**
@@ -108,10 +124,8 @@ function createProductRepository(
      * @param {number} id - Category id.
      * @returns {Promise<boolean>} True when the row exists.
      */
-    async categoryExists(id) {
-      const category = await categoryModel.findByPk(id);
-
-      return category !== null && category !== undefined;
+    categoryExists(id) {
+      return exists(categoryModel, id);
     },
 
     /**
@@ -119,10 +133,17 @@ function createProductRepository(
      * @param {number} id - Image id.
      * @returns {Promise<boolean>} True when the row exists.
      */
-    async imageExists(id) {
-      const image = await imageModel.findByPk(id);
+    imageExists(id) {
+      return exists(imageModel, id);
+    },
 
-      return image !== null && image !== undefined;
+    /**
+     * Tells whether a tax exists without relying on raw SQL.
+     * @param {number} id - Tax id.
+     * @returns {Promise<boolean>} True when the row exists.
+     */
+    taxExists(id) {
+      return exists(taxModel, id);
     },
   };
 }

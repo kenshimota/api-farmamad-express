@@ -1,6 +1,7 @@
 jest.mock("../models/product", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/category", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/image", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/tax", () => ({ findByPk: jest.fn() }));
 
 const {
   ForeignKeyConstraintError,
@@ -9,6 +10,7 @@ const {
 const Product = require("../models/product");
 const Category = require("../models/category");
 const Image = require("../models/image");
+const Tax = require("../models/tax");
 const {
   InvalidImageDimensionsError,
   InvalidImageError,
@@ -38,8 +40,10 @@ beforeEach(() => {
   Product.findByPk.mockReset();
   Category.findByPk.mockReset();
   Image.findByPk.mockReset();
+  Tax.findByPk.mockReset();
   Category.findByPk.mockResolvedValue({ id: 1 });
   Image.findByPk.mockResolvedValue({ id: 2 });
+  Tax.findByPk.mockResolvedValue({ id: 3 });
 });
 
 describe("loadProduct", () => {
@@ -86,13 +90,14 @@ describe("loadProduct", () => {
 
 describe("ensureReferences", () => {
   it("continues when both references exist", async () => {
-    const req = { validated: { category_id: 1, image_id: 2 } };
+    const req = { validated: { category_id: 1, image_id: 2, tax_id: 3 } };
     const res = response();
     const next = jest.fn();
 
     await ensureReferences(req, res, next);
 
     expect(Category.findByPk).toHaveBeenCalledWith(1);
+    expect(Tax.findByPk).toHaveBeenCalledWith(3);
     expect(Image.findByPk).toHaveBeenCalledWith(2);
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
@@ -100,7 +105,7 @@ describe("ensureReferences", () => {
 
   it("answers 422 when the category does not exist", async () => {
     Category.findByPk.mockResolvedValue(null);
-    const req = { validated: { category_id: 99, image_id: 2 } };
+    const req = { validated: { category_id: 99, image_id: 2, tax_id: 3 } };
     const res = response();
     const next = jest.fn();
 
@@ -110,13 +115,28 @@ describe("ensureReferences", () => {
     expect(res.body).toEqual({
       errors: { category_id: "Invalid category id" },
     });
+    expect(Tax.findByPk).not.toHaveBeenCalled();
+    expect(Image.findByPk).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("answers 422 when the tax does not exist", async () => {
+    Tax.findByPk.mockResolvedValue(null);
+    const req = { validated: { category_id: 1, image_id: 2, tax_id: 99 } };
+    const res = response();
+    const next = jest.fn();
+
+    await ensureReferences(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.body).toEqual({ errors: { tax_id: "Invalid tax id" } });
     expect(Image.findByPk).not.toHaveBeenCalled();
     expect(next).not.toHaveBeenCalled();
   });
 
   it("answers 422 when the image does not exist", async () => {
     Image.findByPk.mockResolvedValue(null);
-    const req = { validated: { category_id: 1, image_id: 99 } };
+    const req = { validated: { category_id: 1, image_id: 99, tax_id: 3 } };
     const res = response();
     const next = jest.fn();
 
@@ -129,7 +149,7 @@ describe("ensureReferences", () => {
 
   it("skips the image check when a new file will be stored", async () => {
     const req = {
-      validated: { category_id: 1 },
+      validated: { category_id: 1, tax_id: 3 },
       file: { buffer: Buffer.from("x") },
     };
     const res = response();
@@ -138,6 +158,7 @@ describe("ensureReferences", () => {
     await ensureReferences(req, res, next);
 
     expect(Category.findByPk).toHaveBeenCalledWith(1);
+    expect(Tax.findByPk).toHaveBeenCalledWith(3);
     expect(Image.findByPk).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledTimes(1);
   });
@@ -199,6 +220,19 @@ describe("handleWriteError", () => {
 
     expect(res.status).toHaveBeenCalledWith(422);
     expect(res.body).toEqual({ errors: { image_id: "Invalid image id" } });
+  });
+
+  it("maps a tax foreign key error to 422", () => {
+    const res = response();
+    const error = new ForeignKeyConstraintError({
+      message: "foreign key",
+      fields: ["tax_id"],
+    });
+
+    handleWriteError(error, res);
+
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.body).toEqual({ errors: { tax_id: "Invalid tax id" } });
   });
 
   it("maps an unlabelled foreign key error from its message", () => {
