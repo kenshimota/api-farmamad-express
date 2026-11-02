@@ -55,6 +55,7 @@ describe("invoice issuance service against a real database", () => {
       currency_id: currency.id,
       payment_term_id: null,
       payment_term_days: 15,
+      issued_at: "2026-11-01T12:00:00.000Z",
       notes: "Factura del pedido 500",
       items: [
         {
