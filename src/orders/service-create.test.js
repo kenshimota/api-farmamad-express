@@ -1,3 +1,8 @@
+jest.mock("../payment-terms/assignment", () => ({
+  assertAssignablePaymentTerm: jest.fn(),
+}));
+
+const { assertAssignablePaymentTerm } = require("../payment-terms/assignment");
 const { createOrderService } = require("./service");
 const {
   TRANSACTION_CURRENCY,
@@ -61,6 +66,7 @@ describe("order service creation", () => {
       user_id: 12,
       currency_id: 3,
       status: "pending",
+      payment_term_id: null,
       subtotal: "28.58",
       total: "28.58",
       delivery_address: "Av. Monseñor Rivero 123",

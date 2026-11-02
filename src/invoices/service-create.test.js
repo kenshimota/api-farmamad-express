@@ -19,6 +19,7 @@ describe("createInvoice", () => {
     });
 
     expect(repository.hasOrderInvoice).toHaveBeenCalledWith(10, TRANSACTION);
+    expect(repository.findPaymentTermById).toHaveBeenCalledWith(3, TRANSACTION);
     expect(repository.nextNumber).toHaveBeenCalledWith(TRANSACTION);
     expect(repository.create).toHaveBeenCalledWith(
       {
@@ -120,6 +121,64 @@ describe("createInvoice", () => {
 
     expect(repository.create).toHaveBeenCalledWith(
       expect.objectContaining({ due_date: "2026-12-01", notes: null }),
+      { transaction: TRANSACTION },
+    );
+  });
+
+  it("answers 422 when the order has no payment term", async () => {
+    const { repository, service } = buildService();
+    const { payment_term_id, ...withoutTerm } = INPUT;
+
+    await expect(service.createInvoice(withoutTerm)).rejects.toMatchObject({
+      status: 422,
+      body: { errors: { payment_term_id: "Payment term is required" } },
+    });
+    expect(repository.findPaymentTermById).not.toHaveBeenCalled();
+    expect(repository.nextNumber).not.toHaveBeenCalled();
+  });
+
+  it("answers 422 when the term does not exist or is inactive", async () => {
+    const { service } = buildService(
+      repositoryDouble({
+        findPaymentTermById: jest.fn().mockResolvedValue(null),
+      }),
+    );
+
+    await expect(service.createInvoice(INPUT)).rejects.toMatchObject({
+      status: 422,
+      body: { errors: { payment_term_id: "Invalid payment term" } },
+    });
+
+    const inactive = buildService(
+      repositoryDouble({
+        findPaymentTermById: jest
+          .fn()
+          .mockResolvedValue({ id: 3, days: 15, is_active: false }),
+      }),
+    );
+
+    await expect(inactive.service.createInvoice(INPUT)).rejects.toMatchObject({
+      status: 422,
+      body: { errors: { payment_term_id: "Invalid payment term" } },
+    });
+  });
+
+  it("calculates due_date with the stored term days", async () => {
+    const { repository, service } = buildService(
+      repositoryDouble({
+        findPaymentTermById: jest
+          .fn()
+          .mockResolvedValue({ id: 3, days: 30, is_active: true }),
+      }),
+    );
+
+    await service.createInvoice({ ...INPUT, due_date: undefined });
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment_term_id: 3,
+        due_date: "2026-12-01",
+      }),
       { transaction: TRANSACTION },
     );
   });

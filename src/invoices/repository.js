@@ -3,6 +3,7 @@ const sequelize = require("../database");
 const Invoice = require("../models/invoice");
 const InvoiceItem = require("../models/invoice-item");
 const User = require("../models/user");
+const PaymentTerm = require("../models/payment-term");
 const {
   CURRENCY_INCLUDE,
   CUSTOMER_INCLUDE,
@@ -11,6 +12,7 @@ const {
   LIST_ORDER,
   PAYMENT_ALLOCATION_INCLUDE,
   PAYMENT_CURRENCY_INCLUDE,
+  PAYMENT_TERM_INCLUDE,
 } = require("./includes");
 
 /**
@@ -53,7 +55,7 @@ function buildListOptions({
     options.where = where;
   }
 
-  options.include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE];
+  options.include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, PAYMENT_TERM_INCLUDE];
 
   if (includeItems) {
     options.include.push(ITEM_INCLUDE);
@@ -87,7 +89,7 @@ function createInvoiceRepository({
    * @returns {object[]} Sequelize includes.
    */
   function detailIncludes(includeItems, includeInvoicedBy, includePayments) {
-    const include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE];
+    const include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, PAYMENT_TERM_INCLUDE];
 
     if (includeItems) {
       include.push(ITEM_INCLUDE);
@@ -244,6 +246,16 @@ function createInvoiceRepository({
     findUserById(id, transaction) {
       return userModel.findByPk(id, { transaction });
     },
+
+    /**
+     * Loads the payment term snapshot referenced by an invoice.
+     * @param {number} id - Payment term id.
+     * @param {object} [transaction] - Open transaction.
+     * @returns {Promise<object|null>} The term or null.
+     */
+    findPaymentTermById(id, transaction) {
+      return PaymentTerm.findByPk(id, { transaction });
+    },
   };
 }
 
@@ -255,6 +267,7 @@ module.exports = {
   INVOICED_BY_INCLUDE,
   ITEM_INCLUDE,
   LIST_ORDER,
+  PAYMENT_TERM_INCLUDE,
   PAYMENT_ALLOCATION_INCLUDE,
   buildListOptions,
   createInvoiceRepository,

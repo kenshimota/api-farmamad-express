@@ -11,6 +11,7 @@ const Invoice = require("../../src/models/invoice");
 const InvoiceItem = require("../../src/models/invoice-item");
 const fixtures = require("./invoice-fixtures");
 const { ensureDefaultTransactionCurrency } = require("./currency-default");
+const { ensureStandardPaymentTerms } = require("./payment-terms");
 
 const PASSWORD = fixtures.PASSWORD;
 
@@ -92,6 +93,7 @@ async function resetDatabase() {
     restartIdentity: true,
   });
   await ensureDefaultTransactionCurrency();
+  await ensureStandardPaymentTerms();
 }
 
 /**

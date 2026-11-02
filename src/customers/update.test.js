@@ -6,6 +6,7 @@ jest.mock("../models/customer", () => ({
   findByPk: jest.fn(),
 }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/payment-term", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");
 const request = require("supertest");
@@ -13,6 +14,7 @@ const jwt = require("jsonwebtoken");
 const { UniqueConstraintError } = require("sequelize");
 const Customer = require("../models/customer");
 const User = require("../models/user");
+const PaymentTerm = require("../models/payment-term");
 const updateRouter = require("./update");
 
 const app = express();
@@ -83,6 +85,7 @@ function put(id, body, token = tokenFor()) {
 beforeEach(() => {
   Customer.findByPk.mockReset();
   User.findByPk.mockReset();
+  PaymentTerm.findByPk.mockReset();
   User.findByPk.mockResolvedValue(AUTH_USER);
 });
 
@@ -105,6 +108,8 @@ describe("PUT /customers/:id", () => {
         email: "juan@example.com",
         price_list_id: null,
         price_list: null,
+        payment_term_id: null,
+        payment_term: null,
       });
       expect(customer.update).toHaveBeenCalledWith(validBody);
       expect(response.body).not.toHaveProperty("isRegistered");

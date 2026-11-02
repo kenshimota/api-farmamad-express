@@ -5,6 +5,8 @@ const CUSTOMER_NOT_LINKED_MESSAGE = "Customer profile is not linked";
 const ORDER_ALREADY_INVOICED_MESSAGE = "Order already has an invoice";
 const ORDER_NOT_INVOICABLE_MESSAGE = "Order cannot be invoiced";
 const FORBIDDEN_MESSAGE = "Forbidden";
+const PAYMENT_TERM_REQUIRED_MESSAGE = "Payment term is required";
+const INVALID_PAYMENT_TERM_MESSAGE = "Invalid payment term";
 
 /**
  * 404 response for an unknown invoice or an invoice owned by another customer.
@@ -49,6 +51,26 @@ function orderNotInvoicable() {
 }
 
 /**
+ * 422 response used when the order does not have a payment term.
+ * @returns {Error} The HTTP error.
+ */
+function paymentTermRequired() {
+  return createHttpError(422, {
+    errors: { payment_term_id: PAYMENT_TERM_REQUIRED_MESSAGE },
+  });
+}
+
+/**
+ * 422 response used when the payment term does not exist or is inactive.
+ * @returns {Error} The HTTP error.
+ */
+function invalidPaymentTerm() {
+  return createHttpError(422, {
+    errors: { payment_term_id: INVALID_PAYMENT_TERM_MESSAGE },
+  });
+}
+
+/**
  * 422 response for an invalid invoice id.
  * @returns {Error} The HTTP error.
  */
@@ -59,13 +81,17 @@ function invalidInvoiceId() {
 module.exports = {
   CUSTOMER_NOT_LINKED_MESSAGE,
   FORBIDDEN_MESSAGE,
+  INVALID_PAYMENT_TERM_MESSAGE,
   INVOICE_NOT_FOUND_MESSAGE,
   ORDER_ALREADY_INVOICED_MESSAGE,
   ORDER_NOT_INVOICABLE_MESSAGE,
+  PAYMENT_TERM_REQUIRED_MESSAGE,
   customerProfileNotLinked,
   forbidden,
   invalidInvoiceId,
+  invalidPaymentTerm,
   invoiceNotFound,
   orderAlreadyInvoiced,
   orderNotInvoicable,
+  paymentTermRequired,
 };

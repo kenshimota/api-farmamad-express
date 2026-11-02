@@ -2,6 +2,7 @@ const Invoice = require("./invoice");
 const Customer = require("./customer");
 const Currency = require("./currency");
 const User = require("./user");
+const PaymentTerm = require("./payment-term");
 
 describe("Invoice model", () => {
   it("maps the invoices table", () => {
@@ -19,7 +20,7 @@ describe("Invoice model", () => {
     expect(attributes.customer_id.allowNull).toBe(false);
     expect(attributes.invoiced_by_user_id.allowNull).toBe(false);
     expect(attributes.currency_id.allowNull).toBe(false);
-    expect(attributes.payment_term_id.allowNull).toBe(true);
+    expect(attributes.payment_term_id.allowNull).toBe(false);
     expect(attributes.subtotal.type.toString()).toBe("DECIMAL(12,2)");
     expect(attributes.tax_amount.defaultValue).toBe(0);
     expect(attributes.paid_amount.defaultValue).toBe(0);
@@ -39,6 +40,10 @@ describe("Invoice model", () => {
     );
     expect(Invoice.associations.currency.target).toBe(Currency);
     expect(Invoice.associations.currency.foreignKey).toBe("currency_id");
+    expect(Invoice.associations.payment_term.target).toBe(PaymentTerm);
+    expect(Invoice.associations.payment_term.foreignKey).toBe(
+      "payment_term_id",
+    );
   });
 
   it("registers the inverse associations", () => {

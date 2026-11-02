@@ -10,6 +10,7 @@ const ItemState = require("../../src/models/item-state");
 const Invoice = require("../../src/models/invoice");
 const InvoiceItem = require("../../src/models/invoice-item");
 const { ensureDefaultTransactionCurrency } = require("./currency-default");
+const { ensurePaymentTerm } = require("./payment-terms");
 
 const PASSWORD = "secret123";
 const USERS = Object.freeze({
@@ -156,9 +157,12 @@ async function createInvoice(overrides = {}) {
     due_date: "2026-11-16",
     notes: null,
     order_id: null,
-    payment_term_id: null,
     ...overrides,
   };
+
+  if (values.payment_term_id === undefined) {
+    values.payment_term_id = (await ensurePaymentTerm("cash")).id;
+  }
 
   if (values.customer_id === undefined) {
     values.customer_id = (await createCustomer()).id;

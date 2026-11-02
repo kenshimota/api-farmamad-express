@@ -1,13 +1,25 @@
 const { UniqueConstraintError } = require("sequelize");
 const Customer = require("../models/customer");
 const PriceList = require("../models/price-list");
-const { PRICE_LIST_ID_MESSAGE, parseCustomerId } = require("./validators");
+const PaymentTerm = require("../models/payment-term");
+const {
+  PAYMENT_TERM_ID_MESSAGE,
+  PRICE_LIST_ID_MESSAGE,
+  parseCustomerId,
+} = require("./validators");
+const { findAssignablePaymentTerm } = require("../payment-terms/assignment");
 
 const CUSTOMER_INCLUDE = Object.freeze([
   {
     model: PriceList,
     as: "price_list",
     attributes: ["id", "name"],
+    required: false,
+  },
+  {
+    model: PaymentTerm,
+    as: "payment_term",
+    attributes: ["id", "code", "name", "days"],
     required: false,
   },
 ]);
@@ -68,8 +80,35 @@ async function ensurePriceListAssignment(req, res, next) {
 }
 
 /**
- * Reloads a customer with its price list association so the response always
- * exposes the nested `{ id, name }` summary.
+ * Express middleware that validates an optional `payment_term_id` reference
+ * before writing a customer. A missing or `null` value is accepted; a positive
+ * integer must point to an existing active payment term.
+ * @param {import("express").Request} req - Express request.
+ * @param {import("express").Response} res - Express response.
+ * @param {import("express").NextFunction} next - Next middleware.
+ * @returns {Promise<void>} Resolves after calling next or answering an error.
+ */
+async function ensurePaymentTermAssignment(req, res, next) {
+  const paymentTermId = req.validated.payment_term_id;
+
+  if (paymentTermId === undefined || paymentTermId === null) {
+    return next();
+  }
+
+  const term = await findAssignablePaymentTerm(paymentTermId);
+
+  if (!term) {
+    return res
+      .status(422)
+      .json({ errors: { payment_term_id: PAYMENT_TERM_ID_MESSAGE } });
+  }
+
+  return next();
+}
+
+/**
+ * Reloads a customer with its price list and payment term associations so the
+ * response always exposes both nested summaries.
  * @param {object} customer - Stored customer.
  * @returns {Promise<object>} The customer with `price_list` loaded.
  */
@@ -96,6 +135,7 @@ function handleWriteError(error, res) {
 
 module.exports = {
   CUSTOMER_INCLUDE,
+  ensurePaymentTermAssignment,
   ensurePriceListAssignment,
   handleWriteError,
   loadCustomer,

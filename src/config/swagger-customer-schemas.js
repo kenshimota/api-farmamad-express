@@ -32,6 +32,15 @@ const customerSchemas = {
         nullable: true,
         allOf: [{ $ref: "#/components/schemas/PriceListSummary" }],
       },
+      payment_term_id: {
+        type: "integer",
+        nullable: true,
+        example: 2,
+      },
+      payment_term: {
+        nullable: true,
+        allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
+      },
     },
   },
 };

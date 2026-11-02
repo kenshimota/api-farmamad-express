@@ -8,6 +8,7 @@ jest.mock("../models/invoice-item", () => ({ bulkCreate: jest.fn() }));
 jest.mock("../models/customer", () => ({}));
 jest.mock("../models/currency", () => ({}));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
+jest.mock("../models/payment-term", () => ({ findByPk: jest.fn() }));
 jest.mock("../models/payment-allocation", () => ({}));
 jest.mock("../models/payment", () => ({}));
 jest.mock("../database", () => ({
@@ -20,10 +21,12 @@ const db = require("../database");
 const Invoice = require("../models/invoice");
 const InvoiceItem = require("../models/invoice-item");
 const User = require("../models/user");
+const PaymentTerm = require("../models/payment-term");
 const {
   CURRENCY_INCLUDE,
   CUSTOMER_INCLUDE,
   INVOICED_BY_INCLUDE,
+  PAYMENT_TERM_INCLUDE,
   ITEM_INCLUDE,
   LIST_ORDER,
   PAYMENT_ALLOCATION_INCLUDE,
@@ -56,7 +59,7 @@ describe("buildListOptions", () => {
   it("orders by issued_at and id descending without filters", () => {
     expect(buildListOptions()).toEqual({
       order: LIST_ORDER,
-      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE],
+      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, PAYMENT_TERM_INCLUDE],
     });
   });
 
@@ -77,7 +80,12 @@ describe("buildListOptions", () => {
         number: 1,
         payment_status: "paid",
       },
-      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, ITEM_INCLUDE],
+      include: [
+        CUSTOMER_INCLUDE,
+        CURRENCY_INCLUDE,
+        PAYMENT_TERM_INCLUDE,
+        ITEM_INCLUDE,
+      ],
     });
   });
 });
@@ -132,7 +140,7 @@ describe("invoiceRepository", () => {
     expect(Invoice.findAll).toHaveBeenCalledWith({
       order: LIST_ORDER,
       where: { payment_status: "paid" },
-      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE],
+      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, PAYMENT_TERM_INCLUDE],
     });
   });
 
@@ -152,6 +160,7 @@ describe("invoiceRepository", () => {
       include: [
         CUSTOMER_INCLUDE,
         CURRENCY_INCLUDE,
+        PAYMENT_TERM_INCLUDE,
         ITEM_INCLUDE,
         INVOICED_BY_INCLUDE,
         PAYMENT_ALLOCATION_INCLUDE,
@@ -162,7 +171,7 @@ describe("invoiceRepository", () => {
 
     await repository.findById(2);
     expect(Invoice.findByPk).toHaveBeenLastCalledWith(2, {
-      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE],
+      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, PAYMENT_TERM_INCLUDE],
       transaction: undefined,
       lock: undefined,
     });
@@ -180,7 +189,12 @@ describe("invoiceRepository", () => {
     ).resolves.toBe(invoice);
     expect(Invoice.findOne).toHaveBeenCalledWith({
       where: { order_id: 10 },
-      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, ITEM_INCLUDE],
+      include: [
+        CUSTOMER_INCLUDE,
+        CURRENCY_INCLUDE,
+        PAYMENT_TERM_INCLUDE,
+        ITEM_INCLUDE,
+      ],
       transaction: TRANSACTION,
       lock: undefined,
     });
@@ -197,6 +211,18 @@ describe("invoiceRepository", () => {
       attributes: ["id"],
       transaction: undefined,
       lock: undefined,
+    });
+  });
+
+  it("loads the payment term snapshot", async () => {
+    const term = { id: 3, code: "credit_15", days: 15 };
+    PaymentTerm.findByPk.mockResolvedValue(term);
+
+    await expect(repository.findPaymentTermById(3, TRANSACTION)).resolves.toBe(
+      term,
+    );
+    expect(PaymentTerm.findByPk).toHaveBeenCalledWith(3, {
+      transaction: TRANSACTION,
     });
   });
 
@@ -240,7 +266,7 @@ describe("invoiceRepository", () => {
     });
     expect(model.findAll).toHaveBeenCalledWith({
       order: LIST_ORDER,
-      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE],
+      include: [CUSTOMER_INCLUDE, CURRENCY_INCLUDE, PAYMENT_TERM_INCLUDE],
     });
     expect(userModel.findByPk).toHaveBeenCalledWith(1, {
       transaction: undefined,

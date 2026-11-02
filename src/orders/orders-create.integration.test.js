@@ -3,6 +3,10 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "integration-test-secret";
 const sequelize = require("../database");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 const {
+  createPaymentTerm,
+  ensurePaymentTerm,
+} = require("../../test/helpers/payment-terms");
+const {
   Order,
   OrderHistory,
   OrderItem,
@@ -81,6 +85,7 @@ describe("POST /orders creation with a real database", () => {
       },
       subtotal: 28.58,
       total: 28.58,
+      payment_term_id: null,
       delivery_address: fixture.customer.direction,
       notes: "Entregar por la tarde",
       created_at: expect.any(String),

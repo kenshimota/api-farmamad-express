@@ -7,6 +7,7 @@ const OrderHistory = require("../models/order-history");
 const Customer = require("../models/customer");
 const User = require("../models/user");
 const Currency = require("../models/currency");
+const PaymentTerm = require("../models/payment-term");
 const Lot = require("../models/lot");
 const Product = require("../models/product");
 const ItemState = require("../models/item-state");
@@ -51,6 +52,11 @@ const CURRENCY_INCLUDE = Object.freeze({
   as: "currency",
   attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
 });
+const PAYMENT_TERM_INCLUDE = Object.freeze({
+  model: PaymentTerm,
+  as: "payment_term",
+  attributes: ["id", "code", "name", "days"],
+});
 
 /**
  * Creates the repository that encapsulates every persistence call of the
@@ -89,6 +95,7 @@ function createOrderRepository({
       include: [
         { ...CUSTOMER_INCLUDE },
         { ...CURRENCY_INCLUDE },
+        { ...PAYMENT_TERM_INCLUDE },
         { ...ITEM_INCLUDE },
         { ...HISTORY_INCLUDE },
       ],
@@ -223,6 +230,16 @@ function createOrderRepository({
       return historyModel.create(values, { transaction });
     },
 
+    /**
+     * Replaces the payment term snapshot of an editable order.
+     * @param {object} order - Loaded order.
+     * @param {number} paymentTermId - Active payment term id.
+     * @returns {Promise<object>} The updated order.
+     */
+    updatePaymentTerm(order, paymentTermId) {
+      return order.update({ payment_term_id: paymentTermId });
+    },
+
     findById,
   };
 }
@@ -236,6 +253,7 @@ module.exports = {
   HISTORY_ORDER,
   ITEM_INCLUDE,
   ITEM_ORDER,
+  PAYMENT_TERM_INCLUDE,
   createOrderRepository,
   orderRepository,
 };

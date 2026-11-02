@@ -16,7 +16,7 @@ describe("swagger invoice spec", () => {
         number: { type: "integer" },
         order_id: { type: "integer", nullable: true },
         customer_id: { type: "integer" },
-        payment_term_id: { type: "integer", nullable: true },
+        payment_term_id: { type: "integer" },
         balance_due: { type: "number" },
         payment_status: {
           type: "string",

@@ -59,19 +59,12 @@ const INVOICE_BASE = {
     currency: { $ref: "#/components/schemas/CurrencySummary" },
     payment_term_id: {
       type: "integer",
-      nullable: true,
-      description: "Null until payment_terms exists (HU-41/#65)",
+      description: "Immutable payment term snapshot copied from the order",
       example: 3,
     },
     payment_term: {
-      type: "object",
       nullable: true,
-      properties: {
-        id: { type: "integer", example: 3 },
-        code: { type: "string", example: "credit_15" },
-        name: { type: "string", example: "Crédito 15 días" },
-        days: { type: "integer", example: 15 },
-      },
+      allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
     },
     subtotal: { type: "number", example: 25.0 },
     tax_amount: {
@@ -104,6 +97,7 @@ const INVOICE_BASE = {
     due_date: {
       type: "string",
       format: "date",
+      description: "issued_at date + payment_terms.days (cash = issue date)",
       example: "2026-11-16",
     },
     notes: { type: "string", nullable: true, example: "Factura del pedido 1" },

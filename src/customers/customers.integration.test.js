@@ -7,6 +7,10 @@ const User = require("../models/user");
 const Customer = require("../models/customer");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 const {
+  createPaymentTerm,
+  ensurePaymentTerm,
+} = require("../../test/helpers/payment-terms");
+const {
   BODY,
   PUBLIC_CUSTOMER,
   as,
@@ -138,6 +142,8 @@ describe("GET /customers with a real database", () => {
         email: "ana@example.com",
         price_list_id: null,
         price_list: null,
+        payment_term_id: null,
+        payment_term: null,
       },
     ]);
   });
@@ -203,6 +209,8 @@ describe("PUT /customers/:id with a real database", () => {
       email: "juan@example.com",
       price_list_id: null,
       price_list: null,
+      payment_term_id: null,
+      payment_term: null,
     });
 
     expect(response.status).toBe(202);
@@ -215,6 +223,8 @@ describe("PUT /customers/:id with a real database", () => {
       email: "juan@example.com",
       price_list_id: null,
       price_list: null,
+      payment_term_id: null,
+      payment_term: null,
     });
 
     const stored = await Customer.findByPk(customer.id);

@@ -57,6 +57,12 @@ function repositoryDouble(overrides = {}) {
     findByOrderId: jest.fn().mockResolvedValue(INVOICE),
     hasOrderInvoice: jest.fn().mockResolvedValue(false),
     findUserById: jest.fn().mockResolvedValue({ id: 5, customer_id: 8 }),
+    findPaymentTermById: jest.fn().mockResolvedValue({
+      id: 3,
+      code: "credit_15",
+      days: 15,
+      is_active: true,
+    }),
     ...overrides,
   };
 }

@@ -5,6 +5,8 @@ const CUSTOMER_NOT_LINKED_MESSAGE = "Customer profile is not linked";
 const FORBIDDEN_MESSAGE = "Forbidden";
 const UNAUTHORIZED_MESSAGE = "Unauthorized";
 const INSUFFICIENT_STOCK_MESSAGE = "Insufficient stock";
+const ORDER_NOT_FOUND_MESSAGE = "Order not found";
+const ORDER_NOT_EDITABLE_MESSAGE = "Order is not editable";
 
 /**
  * 401 response for a missing or unknown authenticated user.
@@ -75,6 +77,24 @@ function duplicatedItem(productId, itemStateId) {
 }
 
 /**
+ * 404 response for an unknown order.
+ * @returns {Error & { status: number, body: object }} The HTTP error.
+ */
+function orderNotFound() {
+  return createHttpError(404, { message: ORDER_NOT_FOUND_MESSAGE });
+}
+
+/**
+ * 422 response used when an order is no longer editable.
+ * @returns {Error & { status: number, body: object }} The HTTP error.
+ */
+function orderNotEditable() {
+  return createHttpError(422, {
+    errors: { status: ORDER_NOT_EDITABLE_MESSAGE },
+  });
+}
+
+/**
  * 409 response listing the lines without enough available stock.
  * @param {Array<{ product_id: number, item_state_id: number }>} items -
  *   Missing product/state pairs.
@@ -91,12 +111,16 @@ module.exports = {
   CUSTOMER_NOT_LINKED_MESSAGE,
   FORBIDDEN_MESSAGE,
   INSUFFICIENT_STOCK_MESSAGE,
+  ORDER_NOT_EDITABLE_MESSAGE,
+  ORDER_NOT_FOUND_MESSAGE,
   UNAUTHORIZED_MESSAGE,
   customerProfileNotLinked,
   duplicatedItem,
   forbidden,
   insufficientStock,
   invalidItemState,
+  orderNotEditable,
+  orderNotFound,
   priceListNotAssigned,
   productNotAvailable,
   unauthorized,

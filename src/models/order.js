@@ -3,6 +3,7 @@ const sequelize = require("../database");
 const Customer = require("./customer");
 const User = require("./user");
 const Currency = require("./currency");
+const PaymentTerm = require("./payment-term");
 
 /**
  * Sequelize model that represents a customer order. The server assigns the
@@ -49,6 +50,10 @@ const Order = sequelize.define(
       type: DataTypes.STRING(500),
       allowNull: false,
     },
+    payment_term_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     notes: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -67,5 +72,14 @@ User.hasMany(Order, { foreignKey: "user_id", as: "orders" });
 
 Order.belongsTo(Currency, { foreignKey: "currency_id", as: "currency" });
 Currency.hasMany(Order, { foreignKey: "currency_id", as: "orders" });
+
+Order.belongsTo(PaymentTerm, {
+  foreignKey: "payment_term_id",
+  as: "payment_term",
+});
+PaymentTerm.hasMany(Order, {
+  foreignKey: "payment_term_id",
+  as: "orders",
+});
 
 module.exports = Order;

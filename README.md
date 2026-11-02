@@ -714,7 +714,9 @@ devuelve como **números** con hasta 7 decimales. Ninguna respuesta incluye
 `createdAt`, `updatedAt` ni `isRegistered`. Todas las respuestas incluyen
 `price_list_id` (número o `null`) y `price_list` con la forma `{ id, name }` (o
 `null`) cuando el cliente tiene una lista asignada; el porcentaje y la
-descripción de la lista nunca se exponen.
+descripción de la lista nunca se exponen. También incluyen `payment_term_id` y
+`payment_term` con la forma `{ id, code, name, days }` (o `null`) cuando el
+cliente tiene un término de pago por defecto (HU-41).
 
 Permisos por endpoint:
 
@@ -736,7 +738,10 @@ Protegido: requiere un JWT con rol `admin` o `seller`. Campos requeridos:
 `fullName`, `latitude` (entre `-90` y `90`), `longitude` (entre `-180` y `180`),
 `direction` y `email`. El campo opcional `isRegistered` (booleano) se guarda en
 la tabla pero no se expone en la respuesta. El campo opcional `price_list_id`
-asigna una lista de precios existente al cliente.
+asigna una lista de precios existente al cliente. El campo opcional
+`payment_term_id` asigna un término de pago activo; si el término no existe o
+está inactivo responde `422` con
+`{ "errors": { "payment_term_id": "Invalid payment term" } }`.
 
 ```bash
 curl -X POST http://localhost:3001/customers \
@@ -756,7 +761,9 @@ Respuesta `201`:
   "direction": "Av. Monseñor Rivero 123",
   "email": "juan@example.com",
   "price_list_id": null,
-  "price_list": null
+  "price_list": null,
+  "payment_term_id": null,
+  "payment_term": null
 }
 ```
 
@@ -770,6 +777,7 @@ Errores:
 | `409`  | `{ "message": "Customer already exists" }`                                         |
 | `422`  | `{ "errors": { "latitude": "Latitud inválida" } }`                                 |
 | `422`  | `{ "errors": { "price_list_id": "Invalid price list" } }`                          |
+| `422`  | `{ "errors": { "payment_term_id": "Invalid payment term" } }`                      |
 
 ### `GET /customers`
 
@@ -825,7 +833,9 @@ Respuesta `200`:
   "direction": "Av. Monseñor Rivero 123",
   "email": "juan@example.com",
   "price_list_id": null,
-  "price_list": null
+  "price_list": null,
+  "payment_term_id": null,
+  "payment_term": null
 }
 ```
 
@@ -845,7 +855,9 @@ completa: exige los mismos campos que la creación (`fullName`, `latitude`,
 `longitude`, `direction` y `email`); `isRegistered` es opcional y, si se omite,
 conserva su valor anterior. `price_list_id` también es opcional: si se omite
 conserva la lista actual, si llega `null` limpia la asignación y si llega un
-entero reemplaza la lista.
+entero reemplaza la lista. `payment_term_id` funciona igual: si se omite
+conserva el término, `null` lo limpia y un entero lo reemplaza cuando el
+término existe y está activo.
 
 ```bash
 curl -X PUT http://localhost:3001/customers/1 \
@@ -865,7 +877,9 @@ Respuesta `202`:
   "direction": "Av. Monseñor Rivero 456",
   "email": "juan@example.com",
   "price_list_id": null,
-  "price_list": null
+  "price_list": null,
+  "payment_term_id": null,
+  "payment_term": null
 }
 ```
 
@@ -3744,6 +3758,150 @@ curl -X DELETE http://localhost:3001/lots/1 \
 | `422`  | `{ "errors": { "section_id": "Section does not belong to the shelf" } }`                                                  |
 | `422`  | `{ "errors": { "expiration_date": "expiration_date must be a valid date (YYYY-MM-DD)" } }`                                |
 
+## Términos de pago (`payment_terms`) — HU-41
+
+Catálogo de condiciones de pago reutilizado por clientes, pedidos y facturas.
+Cada fila de la tabla `payment_terms` (modelo `PaymentTerm`) tiene un `code`
+único ignorando mayúsculas, un `name`, una `description` opcional, `days` y
+`is_active`. `days = 0` significa **contado** y `days > 0` significa **crédito**;
+el máximo es `3650`.
+
+El seeder `seeders/20260910000007-payment-terms.js` crea de forma idempotente:
+
+| `code`      | `name`             | `days` |
+| ----------- | ------------------ | ------ |
+| `cash`      | Contado            | 0      |
+| `credit_10` | Crédito 10 días    | 10     |
+| `credit_15` | Crédito 15 días    | 15     |
+
+Reglas de negocio:
+
+- `code` se normaliza a minúsculas, cumple `^[a-z][a-z0-9_]{1,29}$` y es único
+  ignorando mayúsculas mediante un índice funcional sobre `LOWER(code)`. Es
+  inmutable: un `PUT` que lo envíe lo ignora.
+- `name` mide entre 1 y 100 caracteres; `description` admite hasta 255 y se
+  guarda como `null` cuando se omite o llega vacía.
+- `days` debe ser un entero entre 0 y 3650; no se aceptan decimales, negativos
+  ni valores no numéricos.
+- `is_active` es booleano y vale `true` por defecto. Un término inactivo no se
+  puede asignar a clientes, pedidos ni facturas nuevas, pero las referencias
+  existentes se conservan.
+- `DELETE` es físico. Si el término está asignado a un cliente, pedido o
+  factura responde `409` con `{ "message": "Payment term is in use" }`; las FK
+  `ON DELETE RESTRICT` protegen la integridad incluso ante peticiones
+  simultáneas.
+- Los timestamps `createdAt` y `updatedAt` nunca se exponen.
+
+Permisos por endpoint:
+
+| Endpoint                    | `admin` | `seller` | Otros roles |
+| --------------------------- | ------- | -------- | ----------- |
+| `POST /payment-terms`       | ✅      | ✅       | ❌ `403`    |
+| `GET /payment-terms`        | ✅      | ✅       | ❌ `403`    |
+| `GET /payment-terms/:id`    | ✅      | ✅       | ❌ `403`    |
+| `PUT /payment-terms/:id`    | ✅      | ✅       | ❌ `403`    |
+| `DELETE /payment-terms/:id` | ✅      | ✅       | ❌ `403`    |
+
+### `POST /payment-terms`
+
+Requiere `code`, `name` y `days`. `description` e `is_active` son opcionales.
+
+```bash
+curl -X POST http://localhost:3001/payment-terms \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"credit_30","name":"Crédito 30 días","description":"Pago a 30 días","days":30,"is_active":true}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 4,
+  "code": "credit_30",
+  "name": "Crédito 30 días",
+  "description": "Pago a 30 días",
+  "days": 30,
+  "is_active": true
+}
+```
+
+### `GET /payment-terms`
+
+Lista los términos ordenados por `days` ascendente y luego `id` ascendente.
+Filtro exacto opcional: `?is_active=true|false`.
+
+```bash
+curl "http://localhost:3001/payment-terms?is_active=true" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `GET /payment-terms/:id`
+
+Devuelve un término. Un id inválido responde `422` con
+`{ "errors": { "id": "Invalid payment term id" } }` y uno inexistente `404`
+con `{ "message": "Payment term not found" }`.
+
+### `PUT /payment-terms/:id`
+
+Reemplaza `name`, `description`, `days` e `is_active` y responde `202`. El
+`code` es inmutable. Un cuerpo sin campos editables responde `400` con
+`{ "message": "At least one field is required" }`.
+
+```bash
+curl -X PUT http://localhost:3001/payment-terms/4 \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Crédito 45 días","days":45,"is_active":true}'
+```
+
+### `DELETE /payment-terms/:id`
+
+Elimina un término no usado y responde `204` sin cuerpo. Si está asignado a un
+cliente, pedido o factura responde `409`.
+
+### Asignación a clientes
+
+`POST /customers` y `PUT /customers/:id` aceptan `payment_term_id` opcional. En
+`PUT`, omitirlo conserva el término actual, `null` lo limpia y un entero lo
+reemplaza cuando existe y está activo. Las respuestas de clientes incluyen
+`payment_term_id` y `payment_term` (`{ id, code, name, days }`) o `null`.
+
+```bash
+curl -X PUT http://localhost:3001/customers/8 \
+  -H "Authorization: Bearer <jwt-admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Cliente Demo","latitude":-17.7833,"longitude":-63.1821,"direction":"Av. Monseñor Rivero 123","email":"cliente@example.com","payment_term_id":2}'
+```
+
+### Pedidos y facturas
+
+- `POST /orders` copia `customers.payment_term_id`; un `customer` no puede
+  enviar otro término. `admin`/`seller` podrán elegirlo al crear pedidos en el
+  flujo de HU-39/#63.
+- `PUT /orders/:id/payment-term` reemplaza el término de un pedido en `draft` o
+  `request`; en `generate`, `invoiced`, `cancelled` o cualquier otro estado
+  responde `422` con `{ "errors": { "status": "Order is not editable" } }`.
+- La validación que exige un término activo antes de `draft → request`,
+  `draft → generate` y `request → generate` pertenece a HU-39/#63.
+- Al emitir la factura se copia `orders.payment_term_id`, se exige un término
+  activo y `due_date` se calcula como `issued_at + payment_terms.days`; para
+  contado (`days = 0`) es la misma fecha de emisión. Cambiar o desactivar el
+  término después no altera facturas existentes.
+
+### Errores del módulo
+
+| Código | Situación                                      | Cuerpo                                                        |
+| ------ | ---------------------------------------------- | ------------------------------------------------------------- |
+| `400`  | Faltan `code`, `name` o `days`                 | `{ "message": "code, name and days are required" }`           |
+| `401`  | Token ausente, inválido o expirado             | `{ "message": "Unauthorized" }`                               |
+| `403`  | Rol sin permiso o usuario bloqueado            | `{ "message": "Forbidden" }`                                  |
+| `404`  | Término inexistente                            | `{ "message": "Payment term not found" }`                     |
+| `409`  | Código duplicado                               | `{ "message": "Payment term already exists" }`                |
+| `409`  | Término en uso                                 | `{ "message": "Payment term is in use" }`                     |
+| `422`  | Días, id o término inválido/inactivo           | `{ "errors": { "days": "..." } }` o `payment_term_id`         |
+| `500`  | Error interno                                  | `{ "message": "Internal server error" }`                      |
+
 ## Pedidos (`orders`, `order_items`, `order_item_lot_allocations`, `order_history`) — HU-34
 
 Un pedido es una compra creada por un cliente autenticado. En esta HU la
@@ -3757,8 +3915,10 @@ vigentes.
 - `orders`: cabecera con `number` único asignado por `orders_number_seq`,
   `customer_id`, `user_id`, `currency_id`, `status`
   (`pending`, `confirmed`, `preparing`, `shipped`, `delivered`, `cancelled`),
-  `subtotal`, `total`, `delivery_address` y `notes`. `total = subtotal` en esta
-  HU porque no hay impuestos, descuentos ni envío.
+  `payment_term_id` (nullable), `subtotal`, `total`, `delivery_address` y
+  `notes`. `total = subtotal` en esta HU porque no hay impuestos, descuentos ni
+  envío. El término de pago es un snapshot: cambiar el del cliente después no
+  modifica pedidos ya creados.
 - `order_items`: líneas con `quantity`, `unit_price` y `subtotal` como
   **snapshot inmutable** del momento de la compra, en la moneda del pedido.
   La combinación `(order_id, product_id, item_state_id)` es única, por lo que
@@ -3797,11 +3957,17 @@ vigentes.
 
 `POST /orders` requiere JWT válido y rol `customer`. Los roles internos
 (`admin`, `seller`, `dispatcher`, `manager_warehouse`, `support`) reciben `403`
-en esta HU. El usuario debe tener `users.customer_id`; si no, responde `403`
-con `{ "message": "Customer profile is not linked" }`. El pedido se asocia
-siempre al cliente del usuario autenticado y se descartan `customer_id`,
-`user_id`, `status`, `number`, `subtotal`, `total` y `currency_id` enviados por
-el cliente.
+en la creación de esta HU. El usuario debe tener `users.customer_id`; si no,
+responde `403` con `{ "message": "Customer profile is not linked" }`. El pedido
+se asocia siempre al cliente del usuario autenticado y se descartan
+`customer_id`, `user_id`, `status`, `number`, `subtotal`, `total` y
+`currency_id` enviados por el cliente. El `payment_term_id` enviado por un
+`customer` también se ignora: el pedido copia el término de su perfil.
+
+`PUT /orders/:id/payment-term` permite a `admin` y `seller` reemplazar el
+término mientras el pedido siga en `draft` o `request` (estados de HU-39/#63).
+En esta rama los pedidos nacen en `pending`, por lo que el endpoint responde
+`422 Order is not editable` hasta integrar el ciclo de vida de #63.
 
 ### `POST /orders`
 
@@ -3828,6 +3994,10 @@ Reglas del cuerpo:
 - `delivery_address` es opcional (1–500 caracteres); si se omite se usa
   `customers.direction`.
 - `notes` es opcional, hasta 1000 caracteres.
+- `payment_term_id` es opcional: el `customer` copia el de su perfil y no puede
+  enviar otro; puede quedar `null` porque el pedido nace en borrador. Un término
+  inactivo o inexistente responde `422` con
+  `{ "errors": { "payment_term_id": "Invalid payment term" } }`.
 
 Respuesta `201`:
 
@@ -3840,6 +4010,8 @@ Respuesta `201`:
   "user_id": 12,
   "currency_id": 3,
   "currency": { "id": 3, "code": "USD_BCV", "name": "Dólar BCV", "symbol": "$" },
+  "payment_term_id": 2,
+  "payment_term": { "id": 2, "code": "credit_10", "name": "Crédito 10 días", "days": 10 },
   "subtotal": 25.0,
   "total": 25.0,
   "delivery_address": "Av. Monseñor Rivero 123",
@@ -3895,6 +4067,8 @@ La respuesta no expone asignaciones por lote, `lot_id`, `lots.stock`,
 | `422`  | `{ "errors": { "items": "Invalid item state 1" } }`                    |
 | `422`  | `{ "errors": { "items": "Product 15 is not available for sale" } }`    |
 | `422`  | `{ "errors": { "items": "Duplicate product 15 and item state 1" } }`   |
+| `422`  | `{ "errors": { "payment_term_id": "Invalid payment term" } }`          |
+| `422`  | `{ "errors": { "status": "Order is not editable" } }`                  |
 | `503`  | `{ "message": "Default transaction currency is not configured" }`      |
 | `500`  | `{ "message": "Internal server error" }`                               |
 
@@ -4621,15 +4795,15 @@ endpoints de escritura: una factura no se puede crear, editar ni eliminar por
 API. La creación ocurre dentro de la transición `generate → invoiced` de
 pedidos (HU-39).
 
-> **Dependencias pendientes en esta rama (#58, #63 y #65).** Las tablas
-> `orders`, `order_items`, `order_statuses`, `order_item_lot_allocations`,
-> `order_history`, `payment_terms` y la columna `users.customer_id` todavía no
-> existen aquí. Por eso `invoices.order_id`, `invoices.payment_term_id` e
-> `invoice_items.order_item_id` quedan **nullable y sin FK** por ahora, y la
+> **Dependencias pendientes (#63).** El ciclo de vida `draft/request/generate/
+> invoiced` y la columna `users.customer_id` todavía no están en esta rama. La
 > emisión desde un pedido, la transición de estado, el consumo de reservas y
-> `GET /orders/:id/invoice` quedan bloqueados hasta integrar esas HUs. El
-> servicio `invoiceService.createInvoice` ya implementa la creación atómica de
-> la cabecera y sus líneas para que la transición de pedidos lo invoque.
+> `GET /orders/:id/invoice` quedan bloqueados hasta integrar HU-39. El servicio
+> `invoiceService.createInvoice` ya implementa la creación atómica de la
+> cabecera y sus líneas, exige un término de pago activo y calcula `due_date`,
+> para que la transición de pedidos lo invoque. `invoices.payment_term_id` ya
+> es obligatorio y tiene FK a `payment_terms` (HU-41); `order_id` e
+> `invoice_items.order_item_id` siguen nullable y sin FK.
 
 ### Tablas y numeración
 
@@ -4647,9 +4821,10 @@ pedidos (HU-39).
   línea del pedido.
 - `tax_amount` es siempre `0` en esta HU; `paid_amount` nace en `0` y
   `payment_status` en `pending`. El historial de pagos vive en la sección HU-43.
-- `due_date = issued_at + payment_terms.days`; para contado (`days = 0`) es la
-  fecha de emisión. Mientras no exista `payment_terms`, el servicio usa
-  `payment_term_days` del snapshot o la fecha de emisión.
+- `payment_term_id` es obligatorio y se copia del pedido como snapshot
+  inmutable. `due_date = issued_at + payment_terms.days`; para contado
+  (`days = 0`) es la fecha de emisión. Un término inexistente o inactivo hace
+  que la emisión falle con `422` y no consuma la reserva.
 
 ### Roles
 
@@ -4798,9 +4973,6 @@ columnas de auditoría.
 - `GET /orders/:id/invoice` (HU-39/#63): el servicio
   `invoiceService.getInvoiceByOrder` ya aplica la regla de propiedad; falta
   montar la ruta en el módulo de pedidos.
-- `invoices.payment_term_id`, `payment_term` y el cálculo con
-  `payment_terms.days` (HU-41/#65). Mientras tanto el campo es nullable y el
-  servicio acepta `payment_term_days` o `due_date` explícito.
 - Propiedad de facturas para `customer` (HU-39/#63): requiere
   `users.customer_id`; hoy todos los clientes reciben
   `403 Customer profile is not linked`.
@@ -4818,6 +4990,7 @@ columnas de auditoría.
 | `404`  | Factura inexistente o ajena         | `{ "message": "Invoice not found" }`              |
 | `409`  | El pedido ya tiene factura          | `{ "message": "Order already has an invoice" }`   |
 | `422`  | Id o filtro inválido                | `{ "errors": { ... } }`                           |
+| `422`  | Término requerido o inválido        | `{ "errors": { "payment_term_id": "..." } }`      |
 | `500`  | Error interno                       | Manejador global existente                        |
 
 ## Billetera del cliente y pagos recibidos (HU-42)

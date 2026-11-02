@@ -8,6 +8,7 @@ const {
   REQUIRED_CUSTOMER_FIELDS,
 } = require("./validators");
 const {
+  ensurePaymentTermAssignment,
   ensurePriceListAssignment,
   handleWriteError,
   loadCustomer,
@@ -81,6 +82,14 @@ const router = Router();
  *                   Optional; omitted keeps the current list, `null` clears it
  *                   and an integer replaces it.
  *                 example: 1
+ *               payment_term_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 nullable: true
+ *                 description: >
+ *                   Optional; omitted keeps the current term, `null` clears it
+ *                   and an integer replaces it when the term is active.
+ *                 example: 2
  *     responses:
  *       202:
  *         description: Updated public customer data
@@ -150,12 +159,14 @@ router.put(
   }),
   loadCustomer,
   ensurePriceListAssignment,
+  ensurePaymentTermAssignment,
   async (req, res) => {
     try {
       await req.customer.update(req.validated);
 
       const customer =
-        req.validated.price_list_id !== undefined
+        req.validated.price_list_id !== undefined ||
+        req.validated.payment_term_id !== undefined
           ? await reloadCustomer(req.customer)
           : req.customer;
 

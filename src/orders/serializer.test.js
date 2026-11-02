@@ -121,3 +121,34 @@ describe("orders serializer", () => {
     expect(item).not.toHaveProperty("allocations");
   });
 });
+
+describe("order payment term snapshot", () => {
+  it("exposes the id and the compact term when loaded", () => {
+    const result = toPublicOrder({
+      id: 10,
+      payment_term_id: 3,
+      payment_term: {
+        id: 3,
+        code: "credit_15",
+        name: "Crédito 15 días",
+        days: 15,
+        is_active: true,
+      },
+    });
+
+    expect(result.payment_term_id).toBe(3);
+    expect(result.payment_term).toEqual({
+      id: 3,
+      code: "credit_15",
+      name: "Crédito 15 días",
+      days: 15,
+    });
+  });
+
+  it("exposes a null id and no nested term for a draft without term", () => {
+    const result = toPublicOrder({ id: 10, payment_term_id: null });
+
+    expect(result.payment_term_id).toBeNull();
+    expect(result).not.toHaveProperty("payment_term");
+  });
+});

@@ -22,6 +22,8 @@ const PUBLIC_CUSTOMER = {
   email: "juan@example.com",
   price_list_id: null,
   price_list: null,
+  payment_term_id: null,
+  payment_term: null,
 };
 const USERS = {
   admin: { username: "admin", email: "admin@superking.com", name: "Admin" },

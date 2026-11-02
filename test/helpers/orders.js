@@ -19,6 +19,7 @@ const OrderItem = require("../../src/models/order-item");
 const OrderItemLotAllocation = require("../../src/models/order-item-lot-allocation");
 const OrderHistory = require("../../src/models/order-history");
 const { ensureDefaultTransactionCurrency } = require("./currency-default");
+const { ensureStandardPaymentTerms } = require("./payment-terms");
 const catalog = require("./order-catalog");
 
 const PASSWORD = "secret123";
@@ -212,6 +213,7 @@ async function resetDatabase() {
   }
 
   await ensureDefaultTransactionCurrency();
+  await ensureStandardPaymentTerms();
 }
 
 module.exports = {

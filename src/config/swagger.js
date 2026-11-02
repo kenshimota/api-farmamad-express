@@ -129,6 +129,11 @@ const swaggerSpec = swaggerJsdoc({
           "Immutable invoice headers and line snapshots created when an order is invoiced, plus the immutable wallet payments applied to each invoice and their history.",
       },
       {
+        name: "Payment terms",
+        description:
+          "Cash and credit payment terms with their days, used by customers, orders and invoices to calculate due dates.",
+      },
+      {
         name: "Store",
         description:
           "Customer store catalog with prices resolved from the assigned price list and availability calculated from lots.",

@@ -81,11 +81,22 @@ describe("order repository", () => {
       include: [
         expect.objectContaining({ as: "customer" }),
         expect.objectContaining({ as: "currency" }),
+        expect.objectContaining({ as: "payment_term" }),
         expect.objectContaining({ as: "items", separate: true }),
         expect.objectContaining({ as: "history", separate: true }),
       ],
       transaction: "tx",
     });
+  });
+
+  it("replaces the payment term snapshot of an order", async () => {
+    const doubles = setup();
+    const order = { id: 10, update: jest.fn().mockResolvedValue({ id: 10 }) };
+
+    await expect(
+      doubles.repository.updatePaymentTerm(order, 3),
+    ).resolves.toEqual({ id: 10 });
+    expect(order.update).toHaveBeenCalledWith({ payment_term_id: 3 });
   });
 
   it("reserves the next number from the PostgreSQL sequence", async () => {
