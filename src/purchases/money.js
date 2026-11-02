@@ -35,6 +35,21 @@ function hasAtMostTwoDecimals(value) {
 }
 
 /**
+ * Rounds a monetary value to two decimals using the usual half-up rule.
+ * @param {unknown} value - Numeric value or numeric string.
+ * @returns {number} The rounded number, or NaN when the value is not finite.
+ */
+function round2(value) {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    return NaN;
+  }
+
+  return Number(numeric.toFixed(2));
+}
+
+/**
  * Formats a decimal value with exactly two decimals for a DECIMAL(12,2)
  * column.
  * @param {unknown} value - Numeric value.
@@ -129,6 +144,7 @@ module.exports = {
   calculateLineTotal,
   calculateTotals,
   hasAtMostTwoDecimals,
+  round2,
   toCents,
   toDecimal,
   toLineAmounts,

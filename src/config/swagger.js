@@ -104,6 +104,11 @@ const swaggerSpec = swaggerJsdoc({
           "Concrete payment methods (PayPal account, Binance wallet, bank account, mobile payment) with JSONB details validated against their type and the currency inherited from it.",
       },
       {
+        name: "Price lists",
+        description:
+          "Customer price lists with a margin percentage over the real cost: creation, listing, lookup, update and deletion.",
+      },
+      {
         name: "Invoices",
         description:
           "Immutable invoice headers and line snapshots created when an order is invoiced; read-only consultation for admin, seller and the owning customer.",

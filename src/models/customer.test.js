@@ -63,6 +63,8 @@ describe("Customer model", () => {
       longitude: -63.1821,
       direction: "Av. Monseñor Rivero 123",
       email: "juan@example.com",
+      price_list_id: null,
+      price_list: null,
     });
     expect(instance.toJSON()).not.toHaveProperty("isRegistered");
     expect(instance.toJSON()).not.toHaveProperty("createdAt");

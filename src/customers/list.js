@@ -3,7 +3,7 @@ const Customer = require("../models/customer");
 const { authenticate } = require("../auth/middleware");
 const { authorize } = require("../auth/authorize");
 const { toPublicCustomer } = require("./serializer");
-const { loadCustomer } = require("./shared");
+const { CUSTOMER_INCLUDE, loadCustomer } = require("./shared");
 
 const router = Router();
 
@@ -51,7 +51,10 @@ router.get(
   authenticate,
   authorize("admin", "seller", "dispatcher"),
   async (req, res) => {
-    const customers = await Customer.findAll({ order: [["id", "ASC"]] });
+    const customers = await Customer.findAll({
+      order: [["id", "ASC"]],
+      include: CUSTOMER_INCLUDE,
+    });
 
     return res.json(customers.map((customer) => toPublicCustomer(customer)));
   },

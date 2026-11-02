@@ -23,6 +23,15 @@ const customerSchemas = {
         format: "email",
         example: "juan@example.com",
       },
+      price_list_id: {
+        type: "integer",
+        nullable: true,
+        example: 1,
+      },
+      price_list: {
+        nullable: true,
+        allOf: [{ $ref: "#/components/schemas/PriceListSummary" }],
+      },
     },
   },
 };

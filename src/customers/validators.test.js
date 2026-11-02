@@ -138,6 +138,31 @@ describe("createCustomerSchema", () => {
   });
 });
 
+describe("price_list_id", () => {
+  it("accepts a positive integer and null", async () => {
+    await expect(validate({ ...VALID, price_list_id: 3 })).resolves.toEqual({
+      ...VALID,
+      price_list_id: 3,
+    });
+    await expect(validate({ ...VALID, price_list_id: null })).resolves.toEqual({
+      ...VALID,
+      price_list_id: null,
+    });
+  });
+
+  it.each([0, -1, 1.5, "abc", ""])(
+    "rejects %p with the documented message",
+    async (priceListId) => {
+      const errors = await errorsFor({
+        ...VALID,
+        price_list_id: priceListId,
+      });
+
+      expect(errors).toEqual({ price_list_id: "Invalid price list" });
+    },
+  );
+});
+
 describe("REQUIRED_CUSTOMER_FIELDS", () => {
   it("lists the five fields required to create a customer", () => {
     expect(REQUIRED_CUSTOMER_FIELDS).toEqual([

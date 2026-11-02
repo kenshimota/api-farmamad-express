@@ -36,6 +36,10 @@ const Customer = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    price_list_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     tableName: "customers",
@@ -53,6 +57,9 @@ Customer.prototype.toJSON = function toJSON() {
 
 module.exports = Customer;
 
+// Registers the `Customer.belongsTo(PriceList)` association declared by the
+// price-list model once both modules are fully loaded.
+require("./price-list");
 // Load the User model so the inverse `Customer.hasOne(User)` association is
 // registered even when only the customer model is required. The association
 // itself is declared in user.js to avoid a circular definition.
