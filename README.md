@@ -214,7 +214,26 @@ Respuesta `200`:
     "email": "admin@superking.com",
     "name": "Administrador",
     "role": "admin",
-    "isBlocked": false
+    "isBlocked": false,
+    "customer_id": null,
+    "customer": null
+  }
+}
+```
+
+Cuando la cuenta está vinculada a un cliente, `customer_id` lleva el id y
+`customer` el resumen público del cliente:
+
+```json
+{
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "cliente@example.com"
   }
 }
 ```
@@ -235,11 +254,38 @@ suspendida. El mensaje nunca se emite para credenciales inválidas.
 ### `GET /auth/me`
 
 Protegido. Devuelve los datos públicos del usuario autenticado, incluido su
-`role`.
+`role` y, cuando existe, el vínculo con su cliente. La asociación `customer` se
+carga en la misma consulta que el usuario, sin consultas N+1.
 
 ```bash
 curl http://localhost:3001/auth/me -H "Authorization: Bearer <jwt>"
 ```
+
+Respuesta `200` con un cliente vinculado:
+
+```json
+{
+  "id": 12,
+  "username": "cliente",
+  "email": "cliente@example.com",
+  "name": "Cliente Demo",
+  "role": "customer",
+  "isBlocked": false,
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "cliente@example.com"
+  }
+}
+```
+
+Sin vínculo, `customer_id` y `customer` son `null`. El resumen solo incluye
+`id`, `fullName`, `email`, `direction`, `latitude` y `longitude`: nunca
+`isRegistered`, `createdAt` ni `updatedAt`.
 
 ### `POST /auth/forgot-password`
 
@@ -361,10 +407,15 @@ seis roles del catálogo: `admin`, `customer`, `seller`, `dispatcher`,
 `manager_warehouse` o `support`.
 
 Campos: `username`, `email`, `password` (mínimo 8 caracteres) y `role`
-(requeridos); `name` (opcional). Si `username` o `email` ya existen responde
-`409`; si el rol no existe en el catálogo (por ejemplo `delivery`,
-`freelance_delivery` o cualquier otro valor) responde `422` con
+(requeridos); `name` y `customer_id` (opcionales). Si `username` o `email` ya
+existen responde `409`; si el rol no existe en el catálogo (por ejemplo
+`delivery`, `freelance_delivery` o cualquier otro valor) responde `422` con
 `{ "errors": { "role": "Invalid role" } }`.
+
+`customer_id` solo se acepta cuando `role` es `customer`: el cliente debe
+existir y no puede estar vinculado a otra cuenta. La cuenta y el vínculo se
+crean en una sola operación, de modo que si el vínculo falla no queda un usuario
+a medias.
 
 Tras crearlo, la API envía el **correo de bienvenida** al `email` del usuario
 (ver _Correo de bienvenida_); un fallo de envío no cambia la respuesta `201`.
@@ -389,6 +440,37 @@ Respuesta `201`:
 }
 ```
 
+Con vínculo a un cliente:
+
+```bash
+curl -X POST http://localhost:3001/users \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"cliente","email":"cliente@example.com","password":"secreto123","name":"Cliente Demo","role":"customer","customer_id":8}'
+```
+
+Respuesta `201`:
+
+```json
+{
+  "id": 12,
+  "username": "cliente",
+  "email": "cliente@example.com",
+  "name": "Cliente Demo",
+  "role": "customer",
+  "isBlocked": false,
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "cliente@example.com"
+  }
+}
+```
+
 Errores:
 
 | Código | Cuerpo                                                             |
@@ -397,7 +479,11 @@ Errores:
 | `401`  | `{ "message": "Unauthorized" }`                                    |
 | `403`  | `{ "message": "Forbidden" }`                                       |
 | `409`  | `{ "message": "User already exists" }`                             |
+| `409`  | `{ "message": "Customer is already linked to a user" }`            |
 | `422`  | `{ "errors": { "role": "Invalid role" } }`                         |
+| `422`  | `{ "errors": { "customer_id": "User is not a customer" } }`        |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer" } }`              |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer id" } }`           |
 
 Los usuarios siempre se crean desbloqueados (`isBlocked: false`): el campo no se
 acepta en el cuerpo y un usuario no puede crearse bloqueado.
@@ -482,6 +568,69 @@ Errores:
 | ------ | ------------------------------- |
 | `401`  | `{ "message": "Unauthorized" }` |
 | `403`  | `{ "message": "Forbidden" }`    |
+
+### `PUT /users/:id/customer`
+
+Protegido: requiere un JWT con rol `admin`. Vincula la cuenta indicada con un
+cliente (`{ "customer_id": 8 }`) o elimina el vínculo (`{ "customer_id": null }`).
+El usuario debe tener rol `customer`, el cliente debe existir y solo una cuenta
+puede estar vinculada a cada cliente. Reenviar el mismo `customer_id` es
+idempotente. Responde `202` con los datos públicos del usuario actualizado.
+
+```bash
+curl -X PUT http://localhost:3001/users/12/customer \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id":8}'
+```
+
+Respuesta `202`:
+
+```json
+{
+  "id": 12,
+  "username": "cliente",
+  "email": "cliente@example.com",
+  "name": "Cliente Demo",
+  "role": "customer",
+  "isBlocked": false,
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "latitude": -17.7833,
+    "longitude": -63.1821,
+    "direction": "Av. Monseñor Rivero 123",
+    "email": "cliente@example.com"
+  }
+}
+```
+
+Para desvincular:
+
+```bash
+curl -X PUT http://localhost:3001/users/12/customer \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_id":null}'
+```
+
+La respuesta `202` conserva los datos del usuario con `customer_id: null` y
+`customer: null`. El endpoint no cambia el rol de la cuenta ni crea clientes.
+
+Errores:
+
+| Código | Cuerpo                                                       |
+| ------ | ------------------------------------------------------------ |
+| `400`  | `{ "message": "customer_id is required" }`                   |
+| `401`  | `{ "message": "Unauthorized" }`                              |
+| `403`  | `{ "message": "Forbidden" }`                                 |
+| `404`  | `{ "message": "User not found" }`                            |
+| `409`  | `{ "message": "Customer is already linked to a user" }`      |
+| `422`  | `{ "errors": { "id": "Invalid user id" } }`                  |
+| `422`  | `{ "errors": { "customer_id": "User is not a customer" } }`  |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer" } }`        |
+| `422`  | `{ "errors": { "customer_id": "Invalid customer id" } }`     |
 
 ### `PATCH /users/:id/status`
 

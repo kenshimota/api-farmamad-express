@@ -7,6 +7,7 @@ jest.mock("../models/user", () => ({
   count: jest.fn(),
 }));
 jest.mock("../models/role", () => ({ findOne: jest.fn() }));
+jest.mock("../models/customer", () => ({ findByPk: jest.fn() }));
 jest.mock("../database", () => ({ transaction: jest.fn() }));
 jest.mock("../auth/mailer", () => ({ sendWelcomeEmail: jest.fn() }));
 jest.mock("../config/logger", () => ({

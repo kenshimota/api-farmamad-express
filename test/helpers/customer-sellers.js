@@ -140,11 +140,11 @@ async function resetDatabase() {
     where: {},
     truncate: { cascade: true, restartIdentity: true },
   });
-  await Customer.destroy({
+  await User.destroy({
     where: {},
     truncate: { cascade: true, restartIdentity: true },
   });
-  await User.destroy({
+  await Customer.destroy({
     where: {},
     truncate: { cascade: true, restartIdentity: true },
   });
