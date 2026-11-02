@@ -123,6 +123,14 @@ con tests rojos.
 3. **No hagas merge**: el PR queda a revisión contra `dev`.
 4. Deja la issue abierta con `Closes #<n>` en el PR (GitHub la cerrará al
    mergear). No la cierres a mano.
+5. **Al mergear el PR, la rama se elimina** (no queda rama huérfana):
+   - Habilita `--delete-branch` si haces el merge con `gh` (solo con
+     autorización): `gh pr merge <n> --merge --delete-branch`.
+   - Si el merge ocurre en la web de GitHub, activa "Delete branch" en el
+     botón de merge o borra la remota después:
+     `git push origin --delete <rama>`.
+   - Limpia la rama local: `git checkout dev && git pull --ff-only origin dev &&
+     git branch -d <rama>`.
 
 ## Paso 6 — Reporte final
 
@@ -141,3 +149,4 @@ Entrega al usuario, de forma breve:
 - Nunca commitees secretos o `.env`.
 - Si el builder o el refactor rompen tests, detente y corrige antes de seguir.
 - Un PR por issue y por rama.
+- Al mergear el PR, elimina la rama (remota y local); no dejes ramas huérfanas.
