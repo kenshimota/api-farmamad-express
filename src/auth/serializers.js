@@ -31,6 +31,27 @@ function readField(record, field) {
 }
 
 /**
+ * Builds the customer summary embedded in authentication responses. Price-list
+ * fields are intentionally omitted: the auth contract exposes only the public
+ * identity of the linked customer.
+ * @param {object} customer - Customer instance or plain object.
+ * @returns {{ id: number, fullName: string, email: string, direction: string,
+ *   latitude: number|null, longitude: number|null }} The auth summary.
+ */
+function toAuthCustomer(customer) {
+  const publicCustomer = toPublicCustomer(customer);
+
+  return {
+    id: publicCustomer.id,
+    fullName: publicCustomer.fullName,
+    email: publicCustomer.email,
+    direction: publicCustomer.direction,
+    latitude: publicCustomer.latitude,
+    longitude: publicCustomer.longitude,
+  };
+}
+
+/**
  * Builds the public representation of a user, excluding the password hash and
  * the internal roleId while exposing the role name.
  * @param {object} user - User instance or plain object.
@@ -66,7 +87,7 @@ function toPublicUser(
 
   publicUser.customer_id =
     customerId ?? (customer ? readField(customer, "id") : null);
-  publicUser.customer = customer ? toPublicCustomer(customer) : null;
+  publicUser.customer = customer ? toAuthCustomer(customer) : null;
 
   return publicUser;
 }

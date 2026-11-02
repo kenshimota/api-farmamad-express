@@ -18,6 +18,8 @@ describe("toPublicCustomer", () => {
       longitude: -63.1821,
       direction: "Av. Monseñor Rivero 123",
       email: "juan@example.com",
+      price_list_id: null,
+      price_list: null,
     });
   });
 
@@ -50,6 +52,8 @@ describe("toPublicCustomer", () => {
       longitude: -63.19,
       direction: "Calle 2 #45",
       email: "ana@example.com",
+      price_list_id: null,
+      price_list: null,
     });
     expect(customer.get).toHaveBeenCalledWith("id");
   });
@@ -71,6 +75,37 @@ describe("toPublicCustomer", () => {
       longitude: null,
       direction: "Av. Monseñor Rivero 123",
       email: "juan@example.com",
+      price_list_id: null,
+      price_list: null,
+    });
+  });
+
+  it("includes the assigned price list summary without the margin", () => {
+    const customer = {
+      id: 1,
+      fullName: "Juan Pérez",
+      latitude: "-17.7833000",
+      longitude: "-63.1821000",
+      direction: "Av. Monseñor Rivero 123",
+      email: "juan@example.com",
+      price_list_id: 3,
+      price_list: {
+        id: 3,
+        name: "Mayorista 30",
+        percentage: "30.00",
+        description: "internal",
+      },
+    };
+
+    expect(toPublicCustomer(customer)).toEqual({
+      id: 1,
+      fullName: "Juan Pérez",
+      latitude: -17.7833,
+      longitude: -63.1821,
+      direction: "Av. Monseñor Rivero 123",
+      email: "juan@example.com",
+      price_list_id: 3,
+      price_list: { id: 3, name: "Mayorista 30" },
     });
   });
 
@@ -94,6 +129,8 @@ describe("toPublicCustomer", () => {
       "longitude",
       "direction",
       "email",
+      "price_list_id",
+      "price_list",
     ]);
   });
 });

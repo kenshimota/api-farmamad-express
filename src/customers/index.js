@@ -8,7 +8,11 @@ const {
   createCustomerSchema,
   REQUIRED_CUSTOMER_FIELDS,
 } = require("./validators");
-const { handleWriteError } = require("./shared");
+const {
+  ensurePriceListAssignment,
+  handleWriteError,
+  reloadCustomer,
+} = require("./shared");
 const listRouter = require("./list");
 const updateRouter = require("./update");
 const removeRouter = require("./remove");
@@ -61,6 +65,12 @@ const router = Router();
  *                 type: boolean
  *                 description: Optional; defaults to false
  *                 example: false
+ *               price_list_id:
+ *                 type: integer
+ *                 minimum: 1
+ *                 nullable: true
+ *                 description: Optional price list assigned to the customer
+ *                 example: 1
  *     responses:
  *       201:
  *         description: Customer created
@@ -122,9 +132,13 @@ router.post(
     schema: createCustomerSchema,
     fields: REQUIRED_CUSTOMER_FIELDS,
   }),
+  ensurePriceListAssignment,
   async (req, res) => {
     try {
-      const customer = await Customer.create(req.validated);
+      const created = await Customer.create(req.validated);
+      const customer = req.validated.price_list_id
+        ? await reloadCustomer(created)
+        : created;
 
       return res.status(201).json(toPublicCustomer(customer));
     } catch (error) {

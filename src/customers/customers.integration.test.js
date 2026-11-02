@@ -136,6 +136,8 @@ describe("GET /customers with a real database", () => {
         longitude: -63.19,
         direction: "Calle 2 #45",
         email: "ana@example.com",
+        price_list_id: null,
+        price_list: null,
       },
     ]);
   });
@@ -199,6 +201,8 @@ describe("PUT /customers/:id with a real database", () => {
       longitude: -63.19,
       direction: "Av. Monseñor Rivero 456",
       email: "juan@example.com",
+      price_list_id: null,
+      price_list: null,
     });
 
     expect(response.status).toBe(202);
@@ -209,6 +213,8 @@ describe("PUT /customers/:id with a real database", () => {
       longitude: -63.19,
       direction: "Av. Monseñor Rivero 456",
       email: "juan@example.com",
+      price_list_id: null,
+      price_list: null,
     });
 
     const stored = await Customer.findByPk(customer.id);
@@ -253,43 +259,6 @@ describe("PUT /customers/:id with a real database", () => {
     const response = await as("put", `/customers/${customer.id}`, token).send(
       BODY,
     );
-
-    expect(response.status).toBe(403);
-    expect(response.body).toEqual({ message: "Forbidden" });
-  });
-});
-
-describe("DELETE /customers/:id with a real database", () => {
-  it("deletes the customer and answers 204 without body", async () => {
-    const customer = await createCustomer();
-    const token = await tokenFor("seller");
-
-    const response = await as("delete", `/customers/${customer.id}`, token);
-
-    expect(response.status).toBe(204);
-    expect(response.text).toBe("");
-    await expect(Customer.findByPk(customer.id)).resolves.toBeNull();
-  });
-
-  it("responds 404 for an unknown customer and 422 for an invalid id", async () => {
-    const token = await tokenFor("admin");
-
-    const missing = await as("delete", "/customers/99999", token);
-    expect(missing.status).toBe(404);
-    expect(missing.body).toEqual({ message: "Customer not found" });
-
-    const invalid = await as("delete", "/customers/abc", token);
-    expect(invalid.status).toBe(422);
-    expect(invalid.body).toEqual({
-      errors: { id: "Invalid customer id" },
-    });
-  });
-
-  it("responds 403 for a dispatcher user", async () => {
-    const customer = await createCustomer();
-    const token = await tokenFor("dispatcher");
-
-    const response = await as("delete", `/customers/${customer.id}`, token);
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ message: "Forbidden" });

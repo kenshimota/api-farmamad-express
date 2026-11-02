@@ -8,6 +8,7 @@ const REQUIRED_CUSTOMER_FIELDS = [
   "email",
 ];
 const POSITIVE_INTEGER_PATTERN = /^\d+$/;
+const PRICE_LIST_ID_MESSAGE = "Invalid price list";
 
 /**
  * Builds a trimmed string schema that rejects blank values and non-string
@@ -34,6 +35,32 @@ function coordinate(min, max, message) {
   return yup.number().typeError(message).min(min, message).max(max, message);
 }
 
+/**
+ * Builds the optional price list reference schema. `null` clears the
+ * assignment, a positive integer replaces it and an omitted value keeps the
+ * stored one on updates.
+ * @returns {import("yup").NumberSchema} The nullable price list id schema.
+ */
+function priceListIdField() {
+  return yup
+    .number()
+    .transform((value, originalValue) => {
+      if (originalValue === null || originalValue === undefined) {
+        return originalValue;
+      }
+
+      if (typeof originalValue === "string" && originalValue.trim() === "") {
+        return NaN;
+      }
+
+      return value;
+    })
+    .nullable()
+    .integer(PRICE_LIST_ID_MESSAGE)
+    .min(1, PRICE_LIST_ID_MESSAGE)
+    .typeError(PRICE_LIST_ID_MESSAGE);
+}
+
 const createCustomerSchema = yup.object({
   fullName: trimmedString("Nombre inválido"),
   latitude: coordinate(-90, 90, "Latitud inválida"),
@@ -44,6 +71,7 @@ const createCustomerSchema = yup.object({
     .boolean()
     .strict()
     .typeError("isRegistered must be a boolean"),
+  price_list_id: priceListIdField(),
 });
 
 /**
@@ -74,6 +102,7 @@ function parseCustomerId(value) {
 }
 
 module.exports = {
+  PRICE_LIST_ID_MESSAGE,
   createCustomerSchema,
   parseCustomerId,
   REQUIRED_CUSTOMER_FIELDS,
