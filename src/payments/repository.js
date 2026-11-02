@@ -7,25 +7,20 @@ const Customer = require("../models/customer");
 const MethodPayment = require("../models/method-payment");
 const MethodPaymentType = require("../models/method-payment-type");
 const Currency = require("../models/currency");
+const Image = require("../models/image");
+const PaymentStatus = require("../models/payment-status");
+const PaymentStatusHistory = require("../models/payment-status-history");
+const User = require("../models/user");
 const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 const { createWalletOperations } = require("./wallet-operations");
-
-const LIST_ORDER = Object.freeze([
-  ["paid_at", "DESC"],
-  ["id", "DESC"],
-]);
-const METHOD_ATTRIBUTES = Object.freeze([
-  "id",
-  "label",
-  "is_active",
-  "method_payment_type_id",
-]);
-const TYPE_ATTRIBUTES = Object.freeze(["id", "is_active", "currency_id"]);
-const CURRENCY_INCLUDE = Object.freeze({
-  model: Currency,
-  as: "currency",
-  attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
-});
+const { createAssetOperations } = require("./repository-assets");
+const {
+  LIST_ORDER,
+  METHOD_ATTRIBUTES,
+  TYPE_ATTRIBUTES,
+  buildHistoryOrder,
+  buildPaymentIncludes,
+} = require("./includes");
 
 /**
  * Creates a repository that encapsulates every persistence call of the
@@ -41,33 +36,36 @@ function createPaymentRepository({
   methodModel = MethodPayment,
   typeModel = MethodPaymentType,
   currencyModel = Currency,
+  imageModel = Image,
+  statusModel = PaymentStatus,
+  historyModel = PaymentStatusHistory,
+  userModel = User,
   connection = sequelize,
 } = {}) {
-  const paymentCurrency = {
-    ...CURRENCY_INCLUDE,
-    model: currencyModel,
+  const models = {
+    methodModel,
+    currencyModel,
+    statusModel,
+    imageModel,
+    historyModel,
+    userModel,
   };
-  const paymentIncludes = Object.freeze([
-    {
-      model: methodModel,
-      as: "method_payment",
-      attributes: [...METHOD_ATTRIBUTES],
-    },
-    paymentCurrency,
-  ]);
-
-  /**
-   * Builds the payment include set.
-   * @returns {object[]} Fresh include definitions.
-   */
-  function includes() {
-    return paymentIncludes.map((include) => ({ ...include }));
-  }
+  const currencyInclude = {
+    model: currencyModel,
+    as: "currency",
+    attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
+  };
 
   const walletOperations = createWalletOperations({
     walletModel,
     transactionModel,
-    currencyInclude: paymentCurrency,
+    currencyInclude,
+  });
+  const assetOperations = createAssetOperations({
+    model,
+    imageModel,
+    historyModel,
+    userModel,
   });
 
   return {
@@ -81,13 +79,38 @@ function createPaymentRepository({
     },
 
     /**
-     * Finds a payment by primary key with its method and currency.
+     * Finds a payment by primary key with its method, currency, status and
+     * reference image. History is nested only when requested.
      * @param {number} id - Payment id.
      * @param {object} [options] - Sequelize options with the transaction.
+     * @param {object} [readOptions] - Read options.
+     * @param {boolean} [readOptions.includeHistory] - Nest the history.
      * @returns {Promise<object|null>} The payment or null.
      */
-    findById(id, options = {}) {
-      return model.findByPk(id, { ...options, include: includes() });
+    findById(id, options = {}, { includeHistory = false } = {}) {
+      const query = {
+        ...options,
+        include: buildPaymentIncludes(models, includeHistory),
+      };
+
+      if (includeHistory) {
+        query.order = buildHistoryOrder(historyModel);
+      }
+
+      return model.findByPk(id, query);
+    },
+
+    /**
+     * Loads one payment and locks its row for the reconciliation transaction.
+     * @param {number} id - Payment id.
+     * @param {object} transaction - Open transaction.
+     * @returns {Promise<object|null>} The locked payment or null.
+     */
+    findPaymentForUpdate(id, transaction) {
+      return model.findByPk(id, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
     },
 
     /**
@@ -95,7 +118,14 @@ function createPaymentRepository({
      * @param {object} [filters] - Listing filters.
      * @returns {Promise<object[]>} The matching payments.
      */
-    list({ customerId, methodPaymentId, currencyId, paidFrom, paidTo } = {}) {
+    list({
+      customerId,
+      methodPaymentId,
+      currencyId,
+      status,
+      paidFrom,
+      paidTo,
+    } = {}) {
       const where = {};
 
       if (customerId !== undefined) {
@@ -108,6 +138,10 @@ function createPaymentRepository({
 
       if (currencyId !== undefined) {
         where.currency_id = currencyId;
+      }
+
+      if (status !== undefined) {
+        where.status = status;
       }
 
       if (paidFrom !== undefined || paidTo !== undefined) {
@@ -125,7 +159,7 @@ function createPaymentRepository({
       return model.findAll({
         where,
         order: LIST_ORDER,
-        include: includes(),
+        include: buildPaymentIncludes(models),
       });
     },
 
@@ -140,7 +174,7 @@ function createPaymentRepository({
 
       return model.findByPk(created.id, {
         ...options,
-        include: includes(),
+        include: buildPaymentIncludes(models),
       });
     },
 
@@ -202,6 +236,7 @@ function createPaymentRepository({
     },
 
     ...walletOperations,
+    ...assetOperations,
   };
 }
 
@@ -209,6 +244,7 @@ const paymentRepository = createPaymentRepository();
 
 module.exports = {
   LIST_ORDER,
+  METHOD_ATTRIBUTES,
   createPaymentRepository,
   paymentRepository,
 };

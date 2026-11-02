@@ -7,6 +7,7 @@ const {
   invoiceNotFound,
   paymentAlreadyAllocated,
   paymentCustomerMismatch,
+  paymentNotConciliated,
   paymentNotFound,
 } = require("./errors");
 const {
@@ -93,6 +94,10 @@ function createInvoicePaymentService({
 
         if (!payment) {
           throw paymentNotFound();
+        }
+
+        if (readField(payment, "status") !== "conciliated") {
+          throw paymentNotConciliated();
         }
 
         if (

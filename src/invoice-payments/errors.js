@@ -11,6 +11,7 @@ const PAYMENT_ALREADY_ALLOCATED_MESSAGE =
 const INSUFFICIENT_WALLET_BALANCE_MESSAGE = "Insufficient wallet balance";
 const PAYMENT_CUSTOMER_MISMATCH_MESSAGE =
   "Payment does not belong to invoice customer";
+const PAYMENT_NOT_CONCILIATED_MESSAGE = "Payment is not conciliated";
 const AMOUNT_EXCEEDS_INVOICE_BALANCE_MESSAGE = "Amount exceeds invoice balance";
 
 /**
@@ -46,6 +47,16 @@ function paymentNotFound() {
 function paymentCustomerMismatch() {
   return httpError(422, {
     errors: { payment_id: PAYMENT_CUSTOMER_MISMATCH_MESSAGE },
+  });
+}
+
+/**
+ * 422 response when the payment is still pending or was rejected.
+ * @returns {Error} The HTTP error.
+ */
+function paymentNotConciliated() {
+  return httpError(422, {
+    errors: { payment_id: PAYMENT_NOT_CONCILIATED_MESSAGE },
   });
 }
 
@@ -103,6 +114,7 @@ module.exports = {
   INVOICE_NOT_FOUND_MESSAGE,
   PAYMENT_ALREADY_ALLOCATED_MESSAGE,
   PAYMENT_CUSTOMER_MISMATCH_MESSAGE,
+  PAYMENT_NOT_CONCILIATED_MESSAGE,
   PAYMENT_NOT_FOUND_MESSAGE,
   amountExceedsInvoiceBalance,
   handleInvoicePaymentError,
@@ -112,5 +124,6 @@ module.exports = {
   invoiceNotFound,
   paymentAlreadyAllocated,
   paymentCustomerMismatch,
+  paymentNotConciliated,
   paymentNotFound,
 };

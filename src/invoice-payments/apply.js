@@ -40,8 +40,9 @@ function validateInvoiceId(req, res, next) {
  *   post:
  *     summary: Applies a wallet payment to an invoice; admin and seller
  *     description: >
- *       Requires `payment_id` and `amount`. The payment must belong to the
- *       same customer as the invoice and the customer wallet must have enough
+ *       Requires `payment_id` and `amount`. Only a `conciliated` payment can be
+ *       applied; a pending or rejected payment answers 422. The payment must
+ *       belong to the same customer as the invoice and the customer wallet must have enough
  *       balance in the payment currency. `exchange_rate` is the payment
  *       currency rate divided by the invoice currency rate and
  *       `applied_amount = round2(amount × exchange_rate)`. Inside one
@@ -104,7 +105,7 @@ function validateInvoiceId(req, res, next) {
  *             schema: { $ref: '#/components/schemas/ErrorMessage' }
  *             example: { message: Invoice is already paid }
  *       422:
- *         description: Invalid amount, another customer or amount above the invoice balance
+ *         description: Invalid amount, non-conciliated payment, another customer or amount above the invoice balance
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ValidationErrors' }

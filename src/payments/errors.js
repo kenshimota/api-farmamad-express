@@ -2,6 +2,10 @@ const {
   createHttpError,
   createPersistenceErrorHandler,
 } = require("../shared/http-error");
+const {
+  InvalidImageDimensionsError,
+  InvalidImageError,
+} = require("../products/image-errors");
 
 /**
  * Builds an error that carries the HTTP status and body the payments router
@@ -66,6 +70,34 @@ function immutableField(field) {
 }
 
 /**
+ * 422 response for an unknown requested status.
+ * @returns {Error} The HTTP error.
+ */
+function invalidStatus() {
+  return httpError(422, { errors: { status: "Invalid status" } });
+}
+
+/**
+ * 422 response for a repeated or terminal status transition.
+ * @returns {Error} The HTTP error.
+ */
+function invalidStatusTransition() {
+  return httpError(422, {
+    errors: { status: "Invalid status transition" },
+  });
+}
+
+/**
+ * 422 response when a rejected payment has no meaningful reason.
+ * @returns {Error} The HTTP error.
+ */
+function rejectionReasonRequired() {
+  return httpError(422, {
+    errors: { reason: "reason is required when the payment is rejected" },
+  });
+}
+
+/**
  * 409 response when the payment already has invoice allocations.
  * @returns {Error} The HTTP error.
  */
@@ -92,11 +124,30 @@ function depositNotFound() {
 }
 
 /**
- * Translates the persistence errors of the payment writes.
+ * Translates the persistence errors of the payment writes and the image
+ * validation errors raised by the shared sharp pipeline.
  */
-const handlePaymentError = createPersistenceErrorHandler({
+const handlePersistenceError = createPersistenceErrorHandler({
   foreignKey: customerNotFound,
 });
+
+/**
+ * Answers the documented image validation error or delegates to the
+ * persistence translator.
+ * @param {unknown} error - Error thrown by the service.
+ * @param {import("express").Response} res - Express response.
+ * @returns {import("express").Response} The error response.
+ */
+function handlePaymentError(error, res) {
+  if (
+    error instanceof InvalidImageError ||
+    error instanceof InvalidImageDimensionsError
+  ) {
+    return res.status(422).json({ errors: { image: "Invalid image" } });
+  }
+
+  return handlePersistenceError(error, res);
+}
 
 module.exports = {
   customerNotFound,
@@ -106,8 +157,11 @@ module.exports = {
   immutableField,
   invalidMethodPayment,
   invalidPaymentId,
+  invalidStatus,
+  invalidStatusTransition,
   methodPaymentNotFound,
   paymentHasAllocations,
   paymentNotFound,
+  rejectionReasonRequired,
   walletBalanceWouldBeNegative,
 };

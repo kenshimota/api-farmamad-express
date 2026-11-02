@@ -5294,10 +5294,12 @@ columnas de auditoría.
 | `422`  | Término requerido o inválido        | `{ "errors": { "payment_term_id": "..." } }`      |
 | `500`  | Error interno                       | Manejador global existente                        |
 
-## Billetera del cliente y pagos recibidos (HU-42)
+## Billetera del cliente y pagos recibidos (HU-42, modificado por HU-47)
 
 Registro de los depósitos que recibe la empresa y del saldo disponible de cada
-cliente (HU-42). Reutiliza `customers`, `currencies`, `method_payments`,
+cliente (HU-42). Desde HU-47 un pago nace `pending` y la billetera solo se
+acredita al conciliarlo; los pagos históricos se migran como `conciliated`.
+Reutiliza `customers`, `currencies`, `method_payments`,
 `method_payment_types` y `users`; no crea métodos de pago ni monedas nuevas.
 
 Tablas nuevas, todas con migración reversible:
@@ -5315,18 +5317,19 @@ billetera y pagos.
 
 Reglas de negocio:
 
-- La primera vez que se registra un pago se crea automáticamente la billetera
-  del cliente y la moneda del método. Una segunda recarga reutiliza la misma
-  billetera.
+- Un pago nuevo queda en `pending` y **no** modifica la billetera. La
+  billetera se crea o reutiliza recién al conciliar (`conciliated`), cuando se
+  acredita el saldo y se agrega el movimiento `deposit`.
 - `currency_id` no se acepta en el cuerpo: se copia de
   `method_payment_types.currency_id`. El método, su tipo y su moneda deben
   existir y estar activos.
 - `amount` debe ser numérico, mayor que `0` y tener como máximo dos decimales.
   `reference` y `notes` se recortan y un texto vacío se guarda como `null`.
-- El depósito es atómico: se bloquea o crea la billetera, se incrementa el
-  saldo, se crea el pago y se agrega el movimiento `deposit` con
-  `balance_after` dentro de la misma transacción. Dos depósitos simultáneos no
-  pierden movimientos.
+- La creación del pago, la imagen opcional y el evento inicial del historial son
+  atómicos. La conciliación bloquea el pago con `FOR UPDATE`, crea o bloquea la
+  billetera, incrementa el saldo, agrega el movimiento `deposit` con
+  `balance_after` y actualiza el estado en la misma transacción. Dos
+  conciliaciones simultáneas del mismo pago: solo una acredita.
 - `wallet_transactions` es append-only: la API no permite editar ni borrar
   movimientos. `payments` solo permite editar `reference`, `notes` y `paid_at`;
   `customer_id`, `method_payment_id`, `currency_id` y `amount` son inmutables.
@@ -5342,6 +5345,8 @@ Reglas de negocio:
 | `GET /payments`                          | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
 | `GET /payments/:id`                      | Solo propio  | ✅      | ✅       | ❌ `403`    |
 | `PUT /payments/:id`                      | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
+| `PUT /payments/:id/status`               | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
+| `GET /payments/:id/history`              | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
 | `DELETE /payments/:id`                   | ❌ `403`     | ✅      | ❌ `403` | ❌ `403`    |
 | `GET /customer-wallets`                  | Solo propias | ✅      | ✅       | ❌ `403`    |
 | `GET /customer-wallets/:id`              | Solo propia  | ✅      | ✅       | ❌ `403`    |
@@ -5356,6 +5361,9 @@ de otro cliente responde `404` para ocultar su existencia.
 
 Solo `admin` y `seller`. Requiere `customer_id`, `method_payment_id` y
 `amount`; `paid_at` (por defecto ahora), `reference` y `notes` son opcionales.
+Acepta `application/json` o `multipart/form-data` con el archivo opcional
+`image` (JPEG, PNG o WebP, máximo 5 MB). La respuesta es `201` y el pago queda
+`pending` con `wallet: null`.
 
 ```bash
 curl -X POST http://localhost:3001/payments \
@@ -5378,8 +5386,22 @@ Respuesta `201`:
   "paid_at": "2026-11-01T12:00:00.000Z",
   "reference": "TRX-123",
   "notes": "Depósito Binance",
-  "wallet": { "id": 5, "customer_id": 8, "currency_id": 2, "balance": 100 }
+  "status": "pending",
+  "status_name": "Pendiente",
+  "rejection_reason": null,
+  "reference_image_id": null,
+  "reference_image": null,
+  "wallet": null
 }
+```
+
+Para adjuntar la imagen:
+
+```bash
+curl -X POST http://localhost:3001/payments \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -F customer_id=8 -F method_payment_id=3 -F amount=100 \
+  -F reference=TRX-123 -F image=@comprobante.jpg
 ```
 
 ### `GET /payments` y `GET /payments/:id`
@@ -5397,10 +5419,14 @@ curl "http://localhost:3001/payments?customer_id=8&paid_from=2026-11-01" \
 
 ### `PUT /payments/:id` y `DELETE /payments/:id`
 
-`PUT` (solo `admin` y `seller`) actualiza `reference`, `notes` y `paid_at`, y
-responde `202`. Enviar otro `customer_id`, `method_payment_id`, `currency_id` o
-`amount` responde `422`. `DELETE` (solo `admin`) responde `204` y revierte el
-saldo. Ambos responden `409` si el pago ya tiene asignaciones.
+`PUT` (solo `admin` y `seller`) actualiza `reference`, `notes` y `paid_at` y
+responde `202`. También acepta `multipart/form-data` con `image`; la nueva
+imagen reemplaza `reference_image_id` y la anterior se conserva en `images`
+para auditoría. Enviar otro `customer_id`, `method_payment_id`, `currency_id`,
+`amount`, `image_id` o `reference_image_id` no cambia esos valores. `DELETE`
+(solo `admin`) responde `204`: un pago `pending`/`rejected` se borra sin tocar
+la billetera y uno `conciliated` revierte el depósito. Ambos responden `409` si
+el pago ya tiene asignaciones.
 
 ```bash
 curl -X PUT http://localhost:3001/payments/1 \
@@ -5483,6 +5509,122 @@ curl "http://localhost:3001/customer-wallets/5/transactions" \
 | `422`  | `{ "errors": { "id": "Invalid wallet id" } }`                                      |
 | `500`  | Error interno manejado por el handler global                                       |
 
+## Conciliación de pagos, imagen e historial (HU-47)
+
+Cambia el flujo de HU-42: `POST /payments` deja el pago en `pending` y no
+acredita la billetera. Solo `PUT /payments/:id/status` con `conciliated`
+acredita el saldo, exactamente una vez. `rejected` exige un motivo y nunca
+acredita. Los pagos existentes al aplicar la migración se marcan
+`conciliated` y conservan su depósito.
+
+Tablas nuevas y cambios:
+
+| Tabla / columna | Contenido |
+| --- | --- |
+| `payment_statuses` | Catálogo `pending`/`conciliated`/`rejected` con nombre, orden e `is_system`. |
+| `payment_status_history` | Eventos append-only con estado anterior/nuevo, motivo, actor (`actor_user_id`) y fecha. |
+| `payments.status` | FK a `payment_statuses.code`, por defecto `pending`, con índice. |
+| `payments.rejection_reason` | Motivo de rechazo, obligatorio solo cuando `status = 'rejected'`. |
+| `payments.reference_image_id` | Imagen opcional en `images` con FK restrictiva e índice. |
+
+La semilla `seeders/20260910000009-payment-statuses.js` es idempotente por
+`code`. La migración también inserta los estados porque necesita `conciliated`
+para el backfill. `payment_status_history` se elimina en cascada con el pago.
+
+### Flujo de conciliación
+
+1. `POST /payments` crea el pago `pending`, el evento inicial
+   (`from_status: null`, `to_status: 'pending'`, actor autenticado) y,
+   opcionalmente, la imagen. No crea billetera ni movimiento.
+2. `PUT /payments/:id/status` con `{ "status": "conciliated", "reason": "..." }`
+   bloquea el pago, valida `pending → conciliated`, acredita la billetera,
+   agrega un único `deposit` y actualiza el estado en la misma transacción.
+3. `PUT /payments/:id/status` con `{ "status": "rejected", "reason": "..." }`
+   exige un motivo de 3–500 caracteres, guarda `rejection_reason` y no toca la
+   billetera.
+4. `conciliated` y `rejected` son terminales. Repetir el estado o intentar otra
+   transición responde `422 { "errors": { "status": "Invalid status transition" } }`.
+
+```bash
+curl -X PUT http://localhost:3001/payments/10/status \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"conciliated","reason":"Transferencia verificada en el banco"}'
+```
+
+Respuesta `202` (fragmento):
+
+```json
+{
+  "id": 10,
+  "status": "conciliated",
+  "status_name": "Conciliado",
+  "rejection_reason": null,
+  "wallet": { "id": 5, "customer_id": 8, "currency_id": 2, "balance": 100 }
+}
+```
+
+```bash
+curl -X PUT http://localhost:3001/payments/10/status \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"rejected","reason":"El monto no coincide con el comprobante"}'
+```
+
+Respuesta `202` (fragmento):
+
+```json
+{
+  "id": 10,
+  "status": "rejected",
+  "status_name": "Rechazado",
+  "rejection_reason": "El monto no coincide con el comprobante",
+  "wallet": null
+}
+```
+
+La lista y el detalle incluyen `status`, `status_name`, `rejection_reason`,
+`reference_image_id` y `reference_image` (`{ id, url, pathname, reference,
+thumbnail }` o `null`). La lista acepta `?status=pending|conciliated|rejected`.
+El detalle incluye `history` solo para `admin` y `seller`; el `customer` dueño
+ve estado, motivo e imagen, pero nunca el actor.
+
+### Historial
+
+`GET /payments/:id/history` (solo `admin` y `seller`) devuelve los eventos por
+`createdAt` e `id` ascendente. Cada evento tiene `from_status`, `to_status`,
+`reason`, `created_at` y `actor` (`{ id, username, email }`). No existen
+endpoints para editar ni borrar eventos.
+
+```bash
+curl http://localhost:3001/payments/10/history \
+  -H "Authorization: Bearer <jwt-seller>"
+```
+
+### Reemplazar la imagen
+
+```bash
+curl -X PUT http://localhost:3001/payments/10 \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -F notes="Comprobante corregido" \
+  -F image=@comprobante-corregido.jpg
+```
+
+Responde `202` con el nuevo `reference_image_id`; la fila y los archivos de la
+imagen anterior no se borran. Al eliminar el pago, si la imagen ya no está
+referenciada se elimina la fila y sus archivos de forma best-effort.
+
+### Errores de HU-47
+
+| Código | Cuerpo esperado |
+| --- | --- |
+| `400` | `{ "message": "status is required" }` o archivo en campo inesperado |
+| `409` | `{ "message": "Payment has allocations" }` |
+| `413` | `{ "message": "Image too large" }` |
+| `422` | `{ "errors": { "status": "Invalid status transition" } }` |
+| `422` | `{ "errors": { "reason": "reason is required when the payment is rejected" } }` |
+| `422` | `{ "errors": { "image": "Invalid image" } }` |
+
 ## Aplicación de pagos a facturas y estado de pago (HU-43)
 
 Permite aplicar el saldo de una billetera a una factura, consultar el historial
@@ -5504,6 +5646,9 @@ Reglas de negocio:
 - Un pago no se puede aplicar dos veces a la misma factura: la pareja
   `(payment_id, invoice_id)` es única y un duplicado responde
   `409 Payment already allocated to this invoice`.
+- Solo se aceptan pagos `conciliated` (HU-47). Un pago `pending` o `rejected`
+  responde `422` con
+  `{ "errors": { "payment_id": "Payment is not conciliated" } }`.
 - El pago debe pertenecer al mismo cliente que la factura. Si no, responde
   `422` con `{ "errors": { "payment_id": "Payment does not belong to invoice customer" } }`.
 - `amount` se descuenta de la billetera en la moneda del pago y debe ser mayor

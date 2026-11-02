@@ -68,7 +68,7 @@ describe("payment repository", () => {
       transaction: "tx",
       include: expect.any(Array),
     });
-    expect(model.findByPk.mock.calls[0][1].include).toHaveLength(2);
+    expect(model.findByPk.mock.calls[0][1].include).toHaveLength(4);
   });
 
   it("lists with the documented order and every filter", async () => {

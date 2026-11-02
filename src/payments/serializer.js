@@ -1,6 +1,40 @@
 const { toPublicCurrencySummary } = require("../currencies/serializer");
+const { toPublicImage } = require("../images/serializer");
 const { toPublicWallet } = require("../wallets/serializer");
 const { readField, toDecimalNumber } = require("../shared/serializer");
+
+/**
+ * Builds the compact actor nested in a history event.
+ * @param {object|null} actor - User instance or null.
+ * @returns {{ id: number, username: string, email: string }|null} Public actor.
+ */
+function toPublicActor(actor) {
+  if (!actor || typeof actor !== "object") {
+    return null;
+  }
+
+  return {
+    id: readField(actor, "id"),
+    username: readField(actor, "username"),
+    email: readField(actor, "email"),
+  };
+}
+
+/**
+ * Builds one public history event.
+ * @param {object} event - PaymentStatusHistory instance or plain object.
+ * @returns {object} Public event.
+ */
+function toPublicHistoryEvent(event) {
+  return {
+    id: readField(event, "id"),
+    from_status: readField(event, "from_status"),
+    to_status: readField(event, "to_status"),
+    reason: readField(event, "reason"),
+    created_at: toTimestamp(readField(event, "createdAt")),
+    actor: toPublicActor(readField(event, "actor")),
+  };
+}
 
 /**
  * Serializes a timestamp as an ISO string.
@@ -37,11 +71,13 @@ function toPublicMethodPaymentSummary(method) {
  * @param {object} payment - Payment instance or plain object.
  * @returns {object} Public payment.
  */
-function toPublicPayment(payment) {
+function toPublicPayment(payment, { includeHistory = false } = {}) {
   const currency = readField(payment, "currency");
   const method = readField(payment, "method_payment");
+  const statusDetail = readField(payment, "status_detail");
+  const referenceImage = readField(payment, "reference_image");
 
-  return {
+  const serialized = {
     id: readField(payment, "id"),
     customer_id: readField(payment, "customer_id"),
     method_payment_id: readField(payment, "method_payment_id"),
@@ -52,7 +88,22 @@ function toPublicPayment(payment) {
     paid_at: toTimestamp(readField(payment, "paid_at")),
     reference: readField(payment, "reference"),
     notes: readField(payment, "notes"),
+    status: readField(payment, "status") ?? "pending",
+    status_name: statusDetail ? readField(statusDetail, "name") : null,
+    rejection_reason: readField(payment, "rejection_reason"),
+    reference_image_id: readField(payment, "reference_image_id"),
+    reference_image: referenceImage ? toPublicImage(referenceImage) : null,
   };
+
+  if (includeHistory) {
+    const history = readField(payment, "history");
+
+    serialized.history = Array.isArray(history)
+      ? history.map((event) => toPublicHistoryEvent(event))
+      : [];
+  }
+
+  return serialized;
 }
 
 /**
@@ -61,14 +112,16 @@ function toPublicPayment(payment) {
  * @param {object} wallet - Credited wallet with its currency.
  * @returns {object} Public payment with the nested wallet.
  */
-function toPublicPaymentWithWallet(payment, wallet) {
+function toPublicPaymentWithWallet(payment, wallet, options = {}) {
   return {
-    ...toPublicPayment(payment),
-    wallet: toPublicWallet(wallet),
+    ...toPublicPayment(payment, options),
+    wallet: wallet ? toPublicWallet(wallet) : null,
   };
 }
 
 module.exports = {
+  toPublicActor,
+  toPublicHistoryEvent,
   toPublicMethodPaymentSummary,
   toPublicPayment,
   toPublicPaymentWithWallet,

@@ -10,12 +10,19 @@ jest.mock("../../src/payments/service", () => ({
     deletePayment: jest.fn(),
   },
 }));
+jest.mock("../../src/payments/status-service", () => ({
+  paymentStatusService: {
+    changeStatus: jest.fn(),
+    listHistory: jest.fn(),
+  },
+}));
 
 const express = require("express");
 const request = require("supertest");
 const jwt = require("jsonwebtoken");
 const User = require("../../src/models/user");
 const { paymentService } = require("../../src/payments/service");
+const { paymentStatusService } = require("../../src/payments/status-service");
 const paymentsRouter = require("../../src/payments/index");
 
 const app = express();
@@ -45,6 +52,12 @@ const PAYMENT = {
   paid_at: new Date("2026-11-01T12:00:00.000Z"),
   reference: "TRX-123",
   notes: "Depósito",
+  status: "pending",
+  status_detail: { code: "pending", name: "Pendiente" },
+  rejection_reason: null,
+  reference_image_id: null,
+  reference_image: null,
+  history: [],
 };
 
 /**
@@ -108,6 +121,20 @@ function resetMocks() {
   });
   paymentService.updatePayment.mockResolvedValue(PAYMENT);
   paymentService.deletePayment.mockResolvedValue();
+  paymentStatusService.changeStatus.mockResolvedValue({
+    payment: { ...PAYMENT, status: "conciliated" },
+    wallet: WALLET,
+  });
+  paymentStatusService.listHistory.mockResolvedValue([
+    {
+      id: 1,
+      from_status: null,
+      to_status: "pending",
+      reason: null,
+      createdAt: new Date("2026-11-01T12:00:00.000Z"),
+      actor: { id: 1, username: "user", email: "user@farmamad.com" },
+    },
+  ]);
 }
 
 beforeEach(resetMocks);
@@ -118,6 +145,7 @@ module.exports = {
   WALLET,
   app,
   paymentService,
+  paymentStatusService,
   resetMocks,
   send,
   tokenFor,

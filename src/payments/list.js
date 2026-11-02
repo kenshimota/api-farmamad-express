@@ -6,6 +6,7 @@ const { resolveQueryFilters } = require("../shared/query-filters");
 const { toPublicPayment } = require("./serializer");
 const { paymentService } = require("./service");
 const { addDays, parseDateOnly } = require("./validators");
+const { PAYMENT_STATUS_CODES } = require("./statuses");
 
 const router = Router();
 
@@ -46,6 +47,14 @@ function resolveListQuery(query = {}) {
 
   const { filters } = resolved;
 
+  if (query.status !== undefined) {
+    if (!PAYMENT_STATUS_CODES.includes(query.status)) {
+      return { errors: { status: "Invalid status" } };
+    }
+
+    filters.status = query.status;
+  }
+
   if (query.paid_from !== undefined) {
     const paidFrom = parseDateOnly(query.paid_from);
 
@@ -76,9 +85,10 @@ function resolveListQuery(query = {}) {
  *     summary: Lists received payments; admin and seller
  *     description: >
  *       Returns payments ordered by `paid_at` and `id` descending with their
- *       method and currency nested. Optional exact filters: `customer_id`,
- *       `method_payment_id`, `currency_id`, `paid_from` and `paid_to` in
- *       `YYYY-MM-DD` format.
+ *       method, currency, status and reference image nested. Optional exact
+ *       filters: `customer_id`, `method_payment_id`, `currency_id`,
+ *       `status` (`pending`, `conciliated` or `rejected`), `paid_from` and
+ *       `paid_to` in `YYYY-MM-DD` format.
  *     tags:
  *       - Payments
  *     security:
@@ -87,6 +97,7 @@ function resolveListQuery(query = {}) {
  *       - { in: query, name: customer_id, schema: { type: integer, minimum: 1 } }
  *       - { in: query, name: method_payment_id, schema: { type: integer, minimum: 1 } }
  *       - { in: query, name: currency_id, schema: { type: integer, minimum: 1 } }
+ *       - { in: query, name: status, schema: { type: string, enum: [pending, conciliated, rejected] } }
  *       - { in: query, name: paid_from, schema: { type: string, format: date } }
  *       - { in: query, name: paid_to, schema: { type: string, format: date } }
  *     responses:

@@ -12,7 +12,11 @@ const router = Router();
  * /payments/{id}:
  *   get:
  *     summary: Returns one payment; admin, seller or its owner
- *     description: A customer can only read its own payments; another payment answers 404.
+ *     description: >
+ *       A customer can only read its own payments; another payment answers 404.
+ *       Every viewer receives `status`, `status_name`, `rejection_reason` and
+ *       the reference image. `history` with the actor is only included for
+ *       admin and seller; the owning customer never receives the actor.
  *     tags:
  *       - Payments
  *     security:
@@ -58,7 +62,12 @@ router.get(
   authorize("admin", "seller", "customer"),
   loadCurrentUser,
   loadPayment,
-  (req, res) => res.json(toPublicPayment(req.payment)),
+  (req, res) => {
+    const role = req.currentUser?.role?.name ?? req.currentUser?.role;
+    const includeHistory = role === "admin" || role === "seller";
+
+    return res.json(toPublicPayment(req.payment, { includeHistory }));
+  },
 );
 
 module.exports = router;
