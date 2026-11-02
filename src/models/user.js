@@ -3,6 +3,7 @@ const sequelize = require("../database");
 const { hashPassword } = require("../auth/password");
 const Role = require("./role");
 const PasswordResetCode = require("./password-reset-code");
+const Customer = require("./customer");
 
 /**
  * Sequelize model that represents an application user.
@@ -34,6 +35,10 @@ const User = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    customer_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     isBlocked: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -57,6 +62,9 @@ const User = sequelize.define(
 
 User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
 Role.hasMany(User, { foreignKey: "roleId", as: "users" });
+
+User.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
+Customer.hasMany(User, { foreignKey: "customer_id", as: "users" });
 
 User.hasMany(PasswordResetCode, {
   foreignKey: "userId",

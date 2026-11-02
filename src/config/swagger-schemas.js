@@ -7,6 +7,7 @@ const customerSellerSchemas = require("./swagger-customer-seller-schemas");
 const taxSchemas = require("./swagger-tax-schemas");
 const methodPaymentTypeSchemas = require("./swagger-method-payment-type-schemas");
 const methodPaymentSchemas = require("./swagger-method-payment-schemas");
+const paymentSchemas = require("./swagger-payment-schemas");
 const customerSchemas = require("./swagger-customer-schemas");
 const CURRENCY_SUMMARY = { $ref: "#/components/schemas/CurrencySummary" };
 const schemas = {
@@ -20,6 +21,7 @@ const schemas = {
   ...taxSchemas,
   ...methodPaymentTypeSchemas,
   ...methodPaymentSchemas,
+  ...paymentSchemas,
   Warehouse: {
     type: "object",
     properties: {

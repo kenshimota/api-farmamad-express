@@ -2,19 +2,16 @@ jest.mock("./database", () => ({
   authenticate: jest.fn().mockResolvedValue(),
   transaction: jest.fn(),
 }));
-
 jest.mock("./models/user", () => ({
   findOne: jest.fn(),
   findByPk: jest.fn(),
   count: jest.fn(),
   create: jest.fn(),
 }));
-
 jest.mock("./models/role", () => ({
   findOne: jest.fn(),
   findAll: jest.fn(),
 }));
-
 jest.mock("./models/password-reset-code", () => ({
   findOne: jest.fn(),
   create: jest.fn(),
@@ -116,6 +113,9 @@ jest.mock("./models/customer-seller");
 jest.mock("./models/tax");
 jest.mock("./models/method-payment-type");
 jest.mock("./models/method-payment", () => ({}));
+jest.mock("./models/customer-wallet", () => ({}));
+jest.mock("./models/payment", () => ({}));
+jest.mock("./models/wallet-transaction", () => ({}));
 
 const request = require("supertest");
 const app = require("./app");

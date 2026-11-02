@@ -149,6 +149,9 @@ jest.mock("./models/method-payment", () => ({
   count: jest.fn(),
   getAttributes: jest.fn(() => ({ method_payment_type_id: {} })),
 }));
+jest.mock("./models/customer-wallet", () => ({}));
+jest.mock("./models/payment", () => ({}));
+jest.mock("./models/wallet-transaction", () => ({}));
 
 const request = require("supertest");
 const app = require("./app");
