@@ -1,9 +1,9 @@
 process.env.JWT_SECRET = "test-secret";
 
+jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 jest.mock("./service", () => ({
   orderService: { createOrder: jest.fn() },
 }));
-jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");
 const request = require("supertest");
@@ -34,22 +34,23 @@ function tokenFor(role = "customer") {
 }
 
 /**
- * Builds the expected serialized order returned by the service double.
- * @returns {object} The order snapshot.
+ * Builds a draft order snapshot returned by the service double.
+ * @returns {object} Order snapshot.
  */
 function orderSnapshot() {
   return {
     id: 10,
     number: 1,
-    status: "pending",
+    status: "draft",
     customer_id: 8,
     user_id: 12,
     currency_id: 3,
-    subtotal: "28.58",
-    total: "28.58",
+    subtotal: "0.00",
+    total: "0.00",
+    payment_term_id: null,
     delivery_address: "Av. Monseñor Rivero 123",
     notes: null,
-    createdAt: new Date("2026-10-30T15:00:00.000Z"),
+    createdAt: new Date("2026-11-01T10:00:00.000Z"),
     currency: { id: 3, code: "USD_BCV", name: "Dólar BCV", symbol: "$" },
     customer: {
       id: 8,
@@ -57,24 +58,14 @@ function orderSnapshot() {
       email: "cliente@example.com",
       direction: "Av. Monseñor Rivero 123",
     },
-    items: [
-      {
-        id: 20,
-        product_id: 15,
-        item_state_id: 1,
-        quantity: 2,
-        unit_price: "14.29",
-        subtotal: "28.58",
-        product: { id: 15, name: "Ibuprofeno", reference: "IBU", image_id: 1 },
-        item_state: { id: 1, name: "sellable", label: "Vendible" },
-      },
-    ],
+    items: [],
     history: [
       {
         event_type: "created",
         from_status: null,
-        to_status: "pending",
-        createdAt: new Date("2026-10-30T15:00:00.000Z"),
+        to_status: "draft",
+        metadata: null,
+        createdAt: new Date("2026-11-01T10:00:00.000Z"),
       },
     ],
   };
@@ -94,10 +85,10 @@ describe("POST /orders", () => {
     expect(response.body).toEqual({ message: "Unauthorized" });
   });
 
-  it("responds 403 for roles other than customer", async () => {
+  it("responds 403 for roles outside the order roles", async () => {
     const response = await request(app)
       .post("/orders")
-      .set("Authorization", `Bearer ${tokenFor("admin")}`)
+      .set("Authorization", `Bearer ${tokenFor("dispatcher")}`)
       .send({ items: ITEMS });
 
     expect(response.status).toBe(403);
@@ -105,108 +96,64 @@ describe("POST /orders", () => {
     expect(orderService.createOrder).not.toHaveBeenCalled();
   });
 
-  it("responds 400 when items is missing", async () => {
-    const response = await request(app)
-      .post("/orders")
-      .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({ notes: "sin líneas" });
-
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ message: "items is required" });
-  });
-
-  it("responds 422 for invalid quantities", async () => {
-    const response = await request(app)
-      .post("/orders")
-      .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({ items: [{ ...ITEMS[0], quantity: 0 }] });
-
-    expect(response.status).toBe(422);
-    expect(response.body.errors["items.0.quantity"]).toBeDefined();
-  });
-
-  it("creates the order and answers 201 with the public snapshot", async () => {
+  it("creates a customer draft without items", async () => {
     orderService.createOrder.mockResolvedValue(orderSnapshot());
 
     const response = await request(app)
       .post("/orders")
       .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({
-        items: ITEMS,
-        delivery_address: "  Av. Monseñor Rivero 123  ",
-        customer_id: 999,
-      });
+      .send({ notes: "Entregar por la tarde" });
 
     expect(response.status).toBe(201);
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       id: 10,
-      number: 1,
-      status: "pending",
-      customer_id: 8,
-      user_id: 12,
-      currency_id: 3,
-      currency: { id: 3, code: "USD_BCV", name: "Dólar BCV", symbol: "$" },
-      subtotal: 28.58,
-      total: 28.58,
-      delivery_address: "Av. Monseñor Rivero 123",
-      notes: null,
-      created_at: "2026-10-30T15:00:00.000Z",
-      customer: {
-        id: 8,
-        fullName: "Cliente Demo",
-        email: "cliente@example.com",
-        direction: "Av. Monseñor Rivero 123",
-      },
-      items: [
-        {
-          id: 20,
-          product_id: 15,
-          item_state_id: 1,
-          item_state: { id: 1, name: "sellable", label: "Vendible" },
-          quantity: 2,
-          unit_price: 14.29,
-          subtotal: 28.58,
-          product: {
-            id: 15,
-            name: "Ibuprofeno",
-            reference: "IBU",
-            image_id: 1,
-          },
-        },
-      ],
+      status: "draft",
+      subtotal: 0,
+      total: 0,
+      items: [],
       history: [
         {
           event_type: "created",
           from_status: null,
-          to_status: "pending",
-          created_at: "2026-10-30T15:00:00.000Z",
+          to_status: "draft",
+          metadata: null,
+          created_at: "2026-11-01T10:00:00.000Z",
         },
       ],
     });
     expect(orderService.createOrder).toHaveBeenCalledWith(
-      {
-        items: ITEMS,
-        delivery_address: "Av. Monseñor Rivero 123",
-      },
-      expect.objectContaining({ sub: 1, role: "customer" }),
+      { notes: "Entregar por la tarde" },
+      expect.objectContaining({ role: "customer" }),
     );
   });
 
-  it("sends controlled service errors with their status and body", async () => {
-    orderService.createOrder.mockRejectedValue(
-      require("../shared/http-error").createHttpError(403, {
-        message: "Customer profile is not linked",
-      }),
-    );
+  it("lets a seller create an assisted order with customer_id", async () => {
+    orderService.createOrder.mockResolvedValue(orderSnapshot());
 
     const response = await request(app)
       .post("/orders")
-      .set("Authorization", `Bearer ${tokenFor()}`)
-      .send({ items: ITEMS });
+      .set("Authorization", `Bearer ${tokenFor("seller")}`)
+      .send({ customer_id: 8, items: ITEMS });
 
-    expect(response.status).toBe(403);
-    expect(response.body).toEqual({
-      message: "Customer profile is not linked",
+    expect(response.status).toBe(201);
+    expect(orderService.createOrder).toHaveBeenCalledWith(
+      { customer_id: 8, items: ITEMS },
+      expect.objectContaining({ role: "seller" }),
+    );
+  });
+
+  it("forwards the controlled service errors", async () => {
+    orderService.createOrder.mockRejectedValue({
+      status: 400,
+      body: { message: "customer_id is required" },
     });
+
+    const response = await request(app)
+      .post("/orders")
+      .set("Authorization", `Bearer ${tokenFor("seller")}`)
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ message: "customer_id is required" });
   });
 });

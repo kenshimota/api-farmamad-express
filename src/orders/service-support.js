@@ -24,7 +24,7 @@ function normalizeNotes(notes) {
 /**
  * Normalizes the delivery address, falling back to the customer direction.
  * @param {unknown} address - Raw address value.
- * @param {object} customer - Linked customer.
+ * @param {object} customer - Target customer.
  * @returns {string} The address to persist.
  */
 function normalizeAddress(address, customer) {
@@ -39,7 +39,7 @@ function normalizeAddress(address, customer) {
  * Rejects duplicated `(product_id, item_state_id)` pairs before any write.
  * @param {object[]} lines - Validated request lines.
  * @returns {void}
- * @throws {Error} 422 with the duplicated pair message.
+ * @throws {Error} 409 with the duplicated pair message.
  */
 function assertNoDuplicates(lines) {
   const seen = new Set();
@@ -48,7 +48,7 @@ function assertNoDuplicates(lines) {
     const key = `${line.product_id}:${line.item_state_id}`;
 
     if (seen.has(key)) {
-      throw duplicatedItem(line.product_id, line.item_state_id);
+      throw duplicatedItem();
     }
 
     seen.add(key);
@@ -56,14 +56,11 @@ function assertNoDuplicates(lines) {
 }
 
 /**
- * Translates the shared pricing errors into the order line contract. A missing
- * price list keeps its 403, a missing default currency keeps its 503 and every
- * 422 becomes the documented `items` error.
+ * Translates the shared pricing errors into the order contract.
  * @param {unknown} error - Error thrown by the price resolver.
- * @param {object} line - Requested line.
  * @returns {Error} The error that must be thrown.
  */
-function translatePricingError(error, line) {
+function translatePricingError(error) {
   if (!isHttpError(error)) {
     return error;
   }
@@ -76,10 +73,12 @@ function translatePricingError(error, line) {
     const details = error.body?.errors ?? {};
 
     if (details.item_state_id !== undefined) {
-      return invalidItemState(line.item_state_id);
+      return invalidItemState();
     }
 
-    return productNotAvailable(line.product_id);
+    if (details.product_id !== undefined) {
+      return productNotAvailable();
+    }
   }
 
   return error;

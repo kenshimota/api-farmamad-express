@@ -111,6 +111,7 @@ jest.mock("./models/invoice-item", () => ({
 }));
 jest.mock("./models/payment-term", () => ({}));
 jest.mock("./models/order", () => ({}));
+jest.mock("./order-statuses", () => require("express").Router());
 jest.mock("./models/payment-allocation", () => ({
   belongsTo: jest.fn(),
   hasMany: jest.fn(),
@@ -123,12 +124,9 @@ const request = require("supertest");
 const app = require("./app");
 const logger = require("./config/logger");
 const User = require("./models/user");
-
 const ORIGINAL_CORS_ORIGIN = process.env.CORS_ORIGIN;
-
 describe("app", () => {
   let errorSpy;
-
   beforeEach(() => {
     delete process.env.CORS_ORIGIN;
     jest.spyOn(logger, "info").mockImplementation(() => {});

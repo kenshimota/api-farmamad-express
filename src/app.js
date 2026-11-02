@@ -38,6 +38,7 @@ const invoicesRouter = require("./invoices");
 const invoicePaymentsRouter = require("./invoice-payments");
 const ordersRouter = require("./orders");
 const paymentTermsRouter = require("./payment-terms");
+const orderStatusesRouter = require("./order-statuses");
 const storeRouter = require("./store");
 
 const app = express();
@@ -89,6 +90,7 @@ app.use("/price-lists", priceListsRouter);
 app.use("/invoices", invoicePaymentsRouter);
 app.use("/invoices", invoicesRouter);
 app.use("/orders", ordersRouter);
+app.use("/order-statuses", orderStatusesRouter);
 app.use("/payment-terms", paymentTermsRouter);
 app.use("/store", storeRouter);
 

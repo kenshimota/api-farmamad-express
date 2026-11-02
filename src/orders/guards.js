@@ -1,15 +1,16 @@
 const { authenticate } = require("../auth/middleware");
 const { authorize } = require("../auth/authorize");
 
-const CREATE_ROLES = Object.freeze(["customer"]);
+const ORDER_ROLES = Object.freeze(["customer", "admin", "seller"]);
 
 /**
- * Guards `POST /orders`: only authenticated customers with a linked profile
- * can create orders. The service enforces the profile link itself.
+ * Guards every orders endpoint: only authenticated customers, administrators
+ * and sellers can continue. The service enforces customer ownership, seller
+ * assignments and the transition rules.
  * @returns {import("express").RequestHandler[]} The middleware chain.
  */
-function createAccess() {
-  return [authenticate, authorize(...CREATE_ROLES)];
+function orderAccess() {
+  return [authenticate, authorize(...ORDER_ROLES)];
 }
 
-module.exports = { CREATE_ROLES, createAccess };
+module.exports = { ORDER_ROLES, createAccess: orderAccess, orderAccess };

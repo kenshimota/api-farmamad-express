@@ -53,6 +53,23 @@ function toPublicCurrency(currency) {
 }
 
 /**
+ * Builds the actor nested in a history event for internal roles.
+ * @param {object|null} actor - User instance or plain object.
+ * @returns {{ id: number, username: string, email: string }|null} Actor data.
+ */
+function toPublicActor(actor) {
+  if (!actor) {
+    return null;
+  }
+
+  return {
+    id: readField(actor, "id"),
+    username: readField(actor, "username"),
+    email: readField(actor, "email"),
+  };
+}
+
+/**
  * Builds the product summary nested in an order line.
  * @param {object} product - Product instance or plain object.
  * @returns {{ id: number, name: string, reference: string,
@@ -127,30 +144,44 @@ function toPublicOrderItem(item) {
 /**
  * Builds the public representation of one history event.
  * @param {object} event - OrderHistory instance or plain object.
- * @returns {{ event_type: string, from_status: string|null,
- *   to_status: string|null, created_at: string|null }} Public event data.
+ * @param {object} [options] - Serialization options.
+ * @param {boolean} [options.includeActor] - Nest the internal actor.
+ * @returns {object} Public event data.
  */
-function toPublicOrderHistory(event) {
-  return {
+function toPublicOrderHistory(event, { includeActor = false } = {}) {
+  const data = {
     event_type: readField(event, "event_type"),
     from_status: readField(event, "from_status"),
     to_status: readField(event, "to_status"),
+    metadata: readField(event, "metadata") ?? null,
     created_at: toIso(readField(event, "createdAt")),
   };
+
+  if (includeActor) {
+    data.actor = toPublicActor(readField(event, "actor_user"));
+  }
+
+  return data;
 }
 
 /**
- * Builds the public representation of an order. Customer, currency, lines and
- * history are nested only when requested and loaded.
+ * Builds the public representation of an order.
  * @param {object} order - Order instance or plain object.
  * @param {object} [options] - Serialization options.
  * @param {boolean} [options.includeItems] - Nest the order lines.
  * @param {boolean} [options.includeHistory] - Nest the history events.
+ * @param {boolean} [options.includeActor] - Nest history actors.
+ * @param {boolean} [options.includeItemsCount] - Add `items_count`.
  * @returns {object} Public order data.
  */
 function toPublicOrder(
   order,
-  { includeItems = false, includeHistory = false } = {},
+  {
+    includeItems = false,
+    includeHistory = false,
+    includeActor = false,
+    includeItemsCount = false,
+  } = {},
 ) {
   const customer = readField(order, "customer");
   const currency = readField(order, "currency");
@@ -189,7 +220,13 @@ function toPublicOrder(
   }
 
   if (includeHistory && Array.isArray(history)) {
-    data.history = history.map((event) => toPublicOrderHistory(event));
+    data.history = history.map((event) =>
+      toPublicOrderHistory(event, { includeActor }),
+    );
+  }
+
+  if (includeItemsCount) {
+    data.items_count = Array.isArray(items) ? items.length : 0;
   }
 
   return data;
@@ -198,6 +235,7 @@ function toPublicOrder(
 module.exports = {
   toIso,
   toMoneyNumber,
+  toPublicActor,
   toPublicCurrency,
   toPublicCustomer,
   toPublicItemState,

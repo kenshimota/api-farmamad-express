@@ -1,3 +1,11 @@
+const ORDER_STATUSES = [
+  "draft",
+  "request",
+  "generate",
+  "invoiced",
+  "cancelled",
+];
+
 const orderSchemas = {
   OrderItemInput: {
     type: "object",
@@ -40,12 +48,12 @@ const orderSchemas = {
       quantity: { type: "integer", minimum: 1, example: 2 },
       unit_price: {
         type: "number",
-        description: "Immutable snapshot in the order currency",
+        description: "Snapshot in the order currency",
         example: 12.5,
       },
       subtotal: {
         type: "number",
-        description: "Immutable snapshot: quantity × unit_price",
+        description: "quantity × unit_price",
         example: 25.0,
       },
       product: { $ref: "#/components/schemas/OrderProductSummary" },
@@ -67,11 +75,26 @@ const orderSchemas = {
         example: "created",
       },
       from_status: { type: "string", nullable: true, example: null },
-      to_status: { type: "string", nullable: true, example: "pending" },
+      to_status: { type: "string", nullable: true, example: "draft" },
+      metadata: {
+        type: "object",
+        nullable: true,
+        example: null,
+      },
       created_at: {
         type: "string",
         format: "date-time",
-        example: "2026-10-30T15:00:00.000Z",
+        example: "2026-11-01T10:00:00.000Z",
+      },
+      actor: {
+        type: "object",
+        nullable: true,
+        description: "Internal roles only",
+        properties: {
+          id: { type: "integer", example: 1 },
+          username: { type: "string", example: "admin" },
+          email: { type: "string", example: "admin@farmamad.com" },
+        },
       },
     },
   },
@@ -88,48 +111,23 @@ const orderSchemas = {
       direction: { type: "string", example: "Av. Monseñor Rivero 123" },
     },
   },
-  OrderDetail: {
+  OrderSummary: {
     type: "object",
     properties: {
       id: { type: "integer", example: 10 },
-      number: {
-        type: "integer",
-        description: "Assigned by orders_number_seq",
-        example: 1,
-      },
-      status: {
-        type: "string",
-        enum: [
-          "pending",
-          "confirmed",
-          "preparing",
-          "shipped",
-          "delivered",
-          "cancelled",
-        ],
-        example: "pending",
-      },
+      number: { type: "integer", example: 1 },
+      status: { type: "string", enum: ORDER_STATUSES, example: "draft" },
       customer_id: { type: "integer", example: 8 },
       user_id: { type: "integer", example: 12 },
       currency_id: { type: "integer", example: 3 },
       currency: { $ref: "#/components/schemas/CurrencySummary" },
-      payment_term_id: {
-        type: "integer",
-        nullable: true,
-        description:
-          "Snapshot of the term; null while the order is a draft without a term",
-        example: 2,
-      },
+      payment_term_id: { type: "integer", nullable: true, example: 2 },
       payment_term: {
         nullable: true,
         allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
       },
       subtotal: { type: "number", example: 25.0 },
-      total: {
-        type: "number",
-        description: "Equals subtotal in this HU",
-        example: 25.0,
-      },
+      total: { type: "number", example: 25.0 },
       delivery_address: {
         type: "string",
         example: "Av. Monseñor Rivero 123",
@@ -142,7 +140,42 @@ const orderSchemas = {
       created_at: {
         type: "string",
         format: "date-time",
-        example: "2026-10-30T15:00:00.000Z",
+        example: "2026-11-01T10:00:00.000Z",
+      },
+      customer: { $ref: "#/components/schemas/OrderCustomerSummary" },
+      items_count: { type: "integer", minimum: 0, example: 2 },
+    },
+  },
+  OrderDetail: {
+    type: "object",
+    properties: {
+      id: { type: "integer", example: 10 },
+      number: { type: "integer", example: 1 },
+      status: { type: "string", enum: ORDER_STATUSES, example: "draft" },
+      customer_id: { type: "integer", example: 8 },
+      user_id: { type: "integer", example: 12 },
+      currency_id: { type: "integer", example: 3 },
+      currency: { $ref: "#/components/schemas/CurrencySummary" },
+      payment_term_id: { type: "integer", nullable: true, example: 2 },
+      payment_term: {
+        nullable: true,
+        allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
+      },
+      subtotal: { type: "number", example: 25.0 },
+      total: { type: "number", example: 25.0 },
+      delivery_address: {
+        type: "string",
+        example: "Av. Monseñor Rivero 123",
+      },
+      notes: {
+        type: "string",
+        nullable: true,
+        example: "Entregar por la tarde",
+      },
+      created_at: {
+        type: "string",
+        format: "date-time",
+        example: "2026-11-01T10:00:00.000Z",
       },
       customer: { $ref: "#/components/schemas/OrderCustomerSummary" },
       items: {

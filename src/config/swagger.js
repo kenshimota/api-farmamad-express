@@ -119,6 +119,11 @@ const swaggerSpec = swaggerJsdoc({
           "Customer price lists with a margin percentage over the real cost: creation, listing, lookup, update and deletion.",
       },
       {
+        name: "Order statuses",
+        description:
+          "Order status catalog with the five base states, the forward chain and the additional states managed by administrators.",
+      },
+      {
         name: "Orders",
         description:
           "Customer orders with their price snapshot, FEFO lot reservations, transactional numbering and append-only history.",
