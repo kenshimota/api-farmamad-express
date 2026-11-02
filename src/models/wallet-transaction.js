@@ -10,10 +10,10 @@ const User = require("./user");
  * `balance_after` stores the resulting balance. There are no API endpoints to
  * edit or delete movements.
  *
- * `invoice_id` and `payment_allocation_id` stay nullable and without a foreign
- * key on purpose: the invoices and payment allocations tables belong to
- * HU-40/HU-43 and do not exist in this branch yet. The integration point is
- * documented in the migration and in the README.
+ * `invoice_id` references the invoices table added by HU-40.
+ * `payment_allocation_id` stays nullable and without a foreign key until HU-43
+ * adds the payment allocations table. The integration point is documented in
+ * the migration and in the README.
  */
 const WalletTransaction = sequelize.define(
   "WalletTransaction",

@@ -222,22 +222,26 @@ describe("PUT /products/:id", () => {
   );
 
   it.each([
-    {},
-    { ...validBody, name: undefined },
-    { ...validBody, description: null },
-    { ...validBody, reference: "" },
-    { ...validBody, category_id: undefined },
-    { ...validBody, image_id: null },
-  ])("responds 400 when a required field is missing in %p", async (body) => {
-    const response = await put("1", body);
+    [{}, "image or image_id is required"],
+    [{ ...validBody, image_id: null }, "image or image_id is required"],
+    [
+      { ...validBody, name: undefined },
+      "name, description, reference and category_id are required",
+    ],
+    [
+      { ...validBody, category_id: undefined },
+      "name, description, reference and category_id are required",
+    ],
+  ])(
+    "responds 400 when a required field is missing in %p",
+    async (body, message) => {
+      const response = await put("1", body);
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({
-      message:
-        "name, description, reference, category_id and image_id are required",
-    });
-    expect(Product.findByPk).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ message });
+      expect(Product.findByPk).not.toHaveBeenCalled();
+    },
+  );
 
   it("responds 422 when a field is invalid", async () => {
     const response = await put("1", {

@@ -6,6 +6,7 @@ const requestId = require("./middleware/request-id");
 const requestLogger = require("./middleware/request-logger");
 const notFound = require("./middleware/not-found");
 const errorHandler = require("./middleware/error-handler");
+const { getUploadDir } = require("./products/image-config");
 const helloRouter = require("./hello");
 const healthRouter = require("./health");
 const authRouter = require("./auth");
@@ -32,6 +33,7 @@ const methodPaymentTypesRouter = require("./method-payment-types");
 const methodPaymentsRouter = require("./method-payments");
 const paymentsRouter = require("./payments");
 const walletsRouter = require("./wallets");
+const invoicesRouter = require("./invoices");
 
 const app = express();
 
@@ -42,6 +44,16 @@ app.use(requestLogger);
 app.use(cors);
 app.use(express.json());
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Public files uploaded by the API. Disabling indexes and redirects keeps the
+// directory from listing its contents.
+app.use(
+  "/uploads",
+  express.static(getUploadDir(), {
+    index: false,
+    redirect: false,
+    dotfiles: "ignore",
+  }),
+);
 app.use("/hello-world", helloRouter);
 app.use("/health", healthRouter);
 app.use("/auth", authRouter);
@@ -68,6 +80,7 @@ app.use("/method-payment-types", methodPaymentTypesRouter);
 app.use("/method-payments", methodPaymentsRouter);
 app.use("/payments", paymentsRouter);
 app.use("/customer-wallets", walletsRouter);
+app.use("/invoices", invoicesRouter);
 
 app.use(notFound);
 app.use(errorHandler);

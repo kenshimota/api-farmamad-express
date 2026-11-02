@@ -152,6 +152,14 @@ jest.mock("./models/method-payment", () => ({
 jest.mock("./models/customer-wallet", () => ({}));
 jest.mock("./models/payment", () => ({}));
 jest.mock("./models/wallet-transaction", () => ({}));
+jest.mock("./models/invoice", () => ({
+  belongsTo: jest.fn(),
+  hasMany: jest.fn(),
+}));
+jest.mock("./models/invoice-item", () => ({
+  belongsTo: jest.fn(),
+  hasMany: jest.fn(),
+}));
 
 const request = require("supertest");
 const app = require("./app");

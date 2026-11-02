@@ -5,6 +5,7 @@ const Payment = require("../models/payment");
 const CustomerWallet = require("../models/customer-wallet");
 const WalletTransaction = require("../models/wallet-transaction");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
+const { createInvoice } = require("../../test/helpers/invoice-fixtures");
 const {
   as,
   buildFixture,
@@ -223,13 +224,19 @@ describe("PUT /payments/:id with a real database", () => {
     const fixture = await buildFixture();
     const { response, wallet } = await deposit(fixture);
 
+    const invoice = await createInvoice({
+      customer_id: fixture.customer.id,
+      invoiced_by_user_id: fixture.admin.user.id,
+      currency_id: fixture.currency.id,
+    });
+
     await WalletTransaction.create({
       wallet_id: wallet.id,
       transaction_type: "invoice_payment",
       amount: -10,
       balance_after: 90,
       payment_id: response.body.id,
-      invoice_id: 999,
+      invoice_id: invoice.id,
       payment_allocation_id: 888,
       description: "Pago de factura",
       created_by_user_id: fixture.admin.user.id,

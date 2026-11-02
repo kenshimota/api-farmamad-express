@@ -117,7 +117,9 @@ beforeEach(async () => {
   assertTestDatabase(sequelize.config.database);
   await User.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await runUp();
 });
@@ -129,7 +131,9 @@ afterEach(async () => {
 afterAll(async () => {
   await User.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await runUp();
   await sequelize.close();

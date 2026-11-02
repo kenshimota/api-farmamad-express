@@ -153,6 +153,35 @@ async function tokenFor(role, options = {}) {
 }
 
 /**
+ * Logs in an existing user and returns its token.
+ * @param {object} user - Persisted user.
+ * @returns {Promise<{ token: string, user: object }>} The session.
+ */
+async function sessionFor(user) {
+  const response = await request(app)
+    .post("/auth/login")
+    .send({ identifier: user.username, password: PASSWORD });
+
+  return { token: response.body.token, user };
+}
+
+/**
+ * Resolves the customer session, reusing the user already linked to the
+ * customer when the fixture is built twice with the same customer.
+ * @param {object} customer - Customer instance.
+ * @returns {Promise<{ token: string, user: object }>} The session.
+ */
+async function tokenForCustomer(customer) {
+  const existing = await User.findOne({
+    where: { customer_id: customer.id },
+  });
+
+  return existing
+    ? sessionFor(existing)
+    : tokenFor("customer", { customer_id: customer.id });
+}
+
+/**
  * Builds a customer, currency, method and the staff/customer tokens.
  * @param {object} [options] - Fixture options.
  * @returns {Promise<object>} The fixture.
@@ -175,9 +204,7 @@ async function buildFixture(options = {}) {
     }));
   const admin = await tokenFor("admin");
   const seller = await tokenFor("seller");
-  const customerUser = await tokenFor("customer", {
-    customer_id: customer.id,
-  });
+  const customerUser = await tokenForCustomer(customer);
   const otherUser = await tokenFor("customer", {
     customer_id: otherCustomer.id,
   });
@@ -231,31 +258,45 @@ function createPayment(fixture, overrides = {}, token = fixture.sellerToken) {
 async function resetDatabase() {
   await WalletTransaction.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await Payment.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await CustomerWallet.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await MethodPayment.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await MethodPaymentType.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await User.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await Customer.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
 }
 

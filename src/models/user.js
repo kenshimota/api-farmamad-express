@@ -2,8 +2,8 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
 const { hashPassword } = require("../auth/password");
 const Role = require("./role");
-const PasswordResetCode = require("./password-reset-code");
 const Customer = require("./customer");
+const PasswordResetCode = require("./password-reset-code");
 
 /**
  * Sequelize model that represents an application user.
@@ -44,6 +44,11 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    customer_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      unique: true,
+    },
   },
   {
     tableName: "users",
@@ -64,7 +69,7 @@ User.belongsTo(Role, { foreignKey: "roleId", as: "role" });
 Role.hasMany(User, { foreignKey: "roleId", as: "users" });
 
 User.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
-Customer.hasMany(User, { foreignKey: "customer_id", as: "users" });
+Customer.hasOne(User, { foreignKey: "customer_id", as: "user" });
 
 User.hasMany(PasswordResetCode, {
   foreignKey: "userId",

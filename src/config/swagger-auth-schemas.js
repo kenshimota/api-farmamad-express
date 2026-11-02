@@ -21,6 +21,20 @@ const authSchemas = {
           "Whether the account is blocked and cannot start a session",
         example: false,
       },
+      customer_id: {
+        type: "integer",
+        nullable: true,
+        description:
+          "Customer linked to this account; null when the user has no link",
+        example: 8,
+      },
+      customer: {
+        type: "object",
+        nullable: true,
+        description:
+          "Public summary of the linked customer; null when the user has no link",
+        allOf: [{ $ref: "#/components/schemas/Customer" }],
+      },
     },
   },
   Role: {

@@ -113,6 +113,11 @@ const swaggerSpec = swaggerJsdoc({
         description:
           "Read-only customer balances per currency and their append-only movement history.",
       },
+      {
+        name: "Invoices",
+        description:
+          "Immutable invoice headers and line snapshots created when an order is invoiced; read-only consultation for admin, seller and the owning customer.",
+      },
     ],
     components: {
       securitySchemes: {

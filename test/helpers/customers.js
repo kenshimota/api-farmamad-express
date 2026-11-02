@@ -104,13 +104,17 @@ function as(method, path, token) {
  * @returns {Promise<void>} Resolves once both tables are empty.
  */
 async function resetDatabase() {
-  await Customer.destroy({
-    where: {},
-    truncate: { cascade: true, restartIdentity: true },
-  });
   await User.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
+  });
+  await Customer.destroy({
+    where: {},
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
 }
 

@@ -177,19 +177,27 @@ function as(method, path, token) {
 async function resetDatabase() {
   await Supplier.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await City.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await State.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
   await User.destroy({
     where: {},
-    truncate: { cascade: true, restartIdentity: true },
+    truncate: true,
+    cascade: true,
+    restartIdentity: true,
   });
 }
 

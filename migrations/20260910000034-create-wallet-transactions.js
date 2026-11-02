@@ -7,11 +7,11 @@ const BALANCE_CHECK = "wallet_transactions_balance_after_non_negative";
 const WALLET_INDEX = "wallet_transactions_wallet_created_idx";
 
 /**
- * Creates the append-only wallet movement table. `invoice_id` and
- * `payment_allocation_id` are intentionally nullable and have no foreign key
- * yet: the invoices module belongs to HU-40/HU-43 and does not exist in this
- * branch. The service enforces the conditional requirements until the tables
- * and their RESTRICT foreign keys are added by those issues.
+ * Creates the append-only wallet movement table. `invoice_id` references the
+ * invoices table added by HU-40. `payment_allocation_id` stays nullable and
+ * without a foreign key until HU-43 adds the payment allocations table. The
+ * service enforces the conditional requirements until that table and its
+ * RESTRICT foreign key exist.
  *
  * @type {import('sequelize-cli').Migration}
  */
@@ -44,8 +44,6 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: true,
       },
-      // TODO(HU-40/HU-43): add the RESTRICT foreign key to invoices.id once
-      // the invoices table exists.
       invoice_id: {
         type: Sequelize.INTEGER,
         allowNull: true,
@@ -88,6 +86,15 @@ module.exports = {
       type: "foreign key",
       name: `${TABLE}_payment_id_fkey`,
       references: { table: "payments", field: "id" },
+      onUpdate: "CASCADE",
+      onDelete: "RESTRICT",
+    });
+
+    await queryInterface.addConstraint(TABLE, {
+      fields: ["invoice_id"],
+      type: "foreign key",
+      name: `${TABLE}_invoice_id_fkey`,
+      references: { table: "invoices", field: "id" },
       onUpdate: "CASCADE",
       onDelete: "RESTRICT",
     });

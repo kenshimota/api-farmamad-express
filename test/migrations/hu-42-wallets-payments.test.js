@@ -135,7 +135,7 @@ describe("migration HU-42", () => {
     expect(query.dropTable).toHaveBeenCalledWith("payments");
   });
 
-  it("creates wallet_transactions without invoice foreign keys", async () => {
+  it("creates wallet_transactions with the invoice foreign key", async () => {
     const query = queryInterfaceDouble();
     const Sequelize = sequelizeDouble();
 
@@ -151,9 +151,17 @@ describe("migration HU-42", () => {
         payment_allocation_id: { type: "INTEGER", allowNull: true },
       }),
     );
+    expect(query.addConstraint).toHaveBeenCalledWith("wallet_transactions", {
+      fields: ["invoice_id"],
+      type: "foreign key",
+      name: "wallet_transactions_invoice_id_fkey",
+      references: { table: "invoices", field: "id" },
+      onUpdate: "CASCADE",
+      onDelete: "RESTRICT",
+    });
     expect(query.addConstraint).not.toHaveBeenCalledWith(
       "wallet_transactions",
-      expect.objectContaining({ fields: ["invoice_id"] }),
+      expect.objectContaining({ fields: ["payment_allocation_id"] }),
     );
     expect(query.addConstraint).toHaveBeenCalledWith("wallet_transactions", {
       fields: ["transaction_type"],
