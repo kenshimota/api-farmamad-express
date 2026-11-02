@@ -128,6 +128,9 @@ jest.mock("./models/payment-allocation", () => ({
   belongsTo: jest.fn(),
   hasMany: jest.fn(),
 }));
+jest.mock("./orders/service", () => ({
+  orderService: { createOrder: jest.fn() },
+}));
 
 const request = require("supertest");
 const app = require("./app");

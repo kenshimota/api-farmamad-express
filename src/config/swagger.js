@@ -119,9 +119,19 @@ const swaggerSpec = swaggerJsdoc({
           "Customer price lists with a margin percentage over the real cost: creation, listing, lookup, update and deletion.",
       },
       {
+        name: "Orders",
+        description:
+          "Customer orders with their price snapshot, FEFO lot reservations, transactional numbering and append-only history.",
+      },
+      {
         name: "Invoices",
         description:
           "Immutable invoice headers and line snapshots created when an order is invoiced, plus the immutable wallet payments applied to each invoice and their history.",
+      },
+      {
+        name: "Store",
+        description:
+          "Customer store catalog with prices resolved from the assigned price list and availability calculated from lots.",
       },
     ],
     components: {
