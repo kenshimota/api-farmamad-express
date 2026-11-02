@@ -112,13 +112,11 @@ function as(method, path, token) {
 async function resetDatabase() {
   await User.destroy({
     where: {},
-    truncate: { cascade: true },
-    restartIdentity: true,
+    truncate: { cascade: true, restartIdentity: true },
   });
   await Customer.destroy({
     where: {},
-    truncate: { cascade: true },
-    restartIdentity: true,
+    truncate: { cascade: true, restartIdentity: true },
   });
 }
 
