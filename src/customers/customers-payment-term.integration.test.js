@@ -55,7 +55,7 @@ describe("customer payment term assignment with a real database", () => {
 
   it("omits the term on PUT, clears it with null and rejects inactive terms", async () => {
     const first = await ensurePaymentTerm("credit_10");
-    const second = await ensurePaymentTerm("credit_15");
+    const second = await createPaymentTerm({ days: 15 });
     const customer = await createCustomer({ payment_term_id: first.id });
     const token = await tokenFor("admin");
 
