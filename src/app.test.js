@@ -124,6 +124,10 @@ jest.mock("./models/invoice-item", () => ({
   belongsTo: jest.fn(),
   hasMany: jest.fn(),
 }));
+jest.mock("./models/payment-allocation", () => ({
+  belongsTo: jest.fn(),
+  hasMany: jest.fn(),
+}));
 
 const request = require("supertest");
 const app = require("./app");

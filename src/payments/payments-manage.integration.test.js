@@ -237,7 +237,7 @@ describe("PUT /payments/:id with a real database", () => {
       balance_after: 90,
       payment_id: response.body.id,
       invoice_id: invoice.id,
-      payment_allocation_id: 888,
+      payment_allocation_id: null,
       description: "Pago de factura",
       created_by_user_id: fixture.admin.user.id,
     });

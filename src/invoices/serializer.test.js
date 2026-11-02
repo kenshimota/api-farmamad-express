@@ -199,4 +199,63 @@ describe("toPublicInvoice", () => {
     expect(result.issued_at).toBeNull();
     expect(result.due_date).toBeNull();
   });
+
+  it("adds the summarized payment history on demand", () => {
+    const result = toPublicInvoice(
+      {
+        ...INVOICE,
+        paid_amount: "10.00",
+        payment_status: "partial",
+        payment_allocations: [
+          {
+            payment_id: 5,
+            amount: "10.00",
+            applied_amount: "10.00",
+            allocated_at: new Date("2026-11-01T13:00:00.000Z"),
+            payment: {
+              currency: {
+                id: 2,
+                code: "USDT",
+                name: "Tether",
+                symbol: "$",
+              },
+            },
+          },
+        ],
+      },
+      { includePaymentHistory: true },
+    );
+
+    expect(result).toMatchObject({
+      paid_amount: 10,
+      balance_due: 15,
+      payment_status: "partial",
+      payments_count: 1,
+      payment_history: [
+        {
+          payment_id: 5,
+          amount: 10,
+          currency: {
+            id: 2,
+            code: "USDT",
+            name: "Tether",
+            symbol: "$",
+          },
+          applied_amount: 10,
+          allocated_at: "2026-11-01T13:00:00.000Z",
+        },
+      ],
+    });
+    expect(result.payment_history[0]).not.toHaveProperty("created_by");
+  });
+
+  it("returns an empty payment history when there are no allocations", () => {
+    const result = toPublicInvoice(
+      { ...INVOICE, payment_allocations: [] },
+      { includePaymentHistory: true },
+    );
+
+    expect(result.payments_count).toBe(0);
+    expect(result.payment_history).toEqual([]);
+  });
 });

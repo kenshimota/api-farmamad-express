@@ -2,36 +2,16 @@ const { QueryTypes } = require("sequelize");
 const sequelize = require("../database");
 const Invoice = require("../models/invoice");
 const InvoiceItem = require("../models/invoice-item");
-const Customer = require("../models/customer");
-const Currency = require("../models/currency");
 const User = require("../models/user");
-const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
-
-const LIST_ORDER = Object.freeze([
-  ["issued_at", "DESC"],
-  ["id", "DESC"],
-]);
-const CUSTOMER_INCLUDE = Object.freeze({
-  model: Customer,
-  as: "customer",
-  attributes: ["id", "fullName", "email", "direction"],
-});
-const CURRENCY_INCLUDE = Object.freeze({
-  model: Currency,
-  as: "currency",
-  attributes: [...CURRENCY_SUMMARY_ATTRIBUTES],
-});
-const INVOICED_BY_INCLUDE = Object.freeze({
-  model: User,
-  as: "invoiced_by",
-  attributes: ["id", "username", "email"],
-});
-const ITEM_INCLUDE = Object.freeze({
-  model: InvoiceItem,
-  as: "items",
-  separate: true,
-  order: [["id", "ASC"]],
-});
+const {
+  CURRENCY_INCLUDE,
+  CUSTOMER_INCLUDE,
+  INVOICED_BY_INCLUDE,
+  ITEM_INCLUDE,
+  LIST_ORDER,
+  PAYMENT_ALLOCATION_INCLUDE,
+  PAYMENT_CURRENCY_INCLUDE,
+} = require("./includes");
 
 /**
  * Builds the Sequelize options for the invoice listing.
@@ -103,9 +83,10 @@ function createInvoiceRepository({
    * Builds the includes of an invoice detail.
    * @param {boolean} includeItems - Nest the lines.
    * @param {boolean} includeInvoicedBy - Nest the internal user.
+   * @param {boolean} includePayments - Nest the payment allocations.
    * @returns {object[]} Sequelize includes.
    */
-  function detailIncludes(includeItems, includeInvoicedBy) {
+  function detailIncludes(includeItems, includeInvoicedBy, includePayments) {
     const include = [CUSTOMER_INCLUDE, CURRENCY_INCLUDE];
 
     if (includeItems) {
@@ -114,6 +95,10 @@ function createInvoiceRepository({
 
     if (includeInvoicedBy) {
       include.push(INVOICED_BY_INCLUDE);
+    }
+
+    if (includePayments) {
+      include.push(PAYMENT_ALLOCATION_INCLUDE);
     }
 
     return include;
@@ -125,16 +110,23 @@ function createInvoiceRepository({
    * @param {object} [options] - Query options.
    * @param {boolean} [options.includeItems] - Nest the lines.
    * @param {boolean} [options.includeInvoicedBy] - Nest the internal user.
+   * @param {boolean} [options.includePayments] - Nest the allocations.
    * @param {object} [options.transaction] - Open transaction.
    * @param {string} [options.lock] - Row lock mode.
    * @returns {Promise<object|null>} The instance or null.
    */
   function findById(
     id,
-    { includeItems = false, includeInvoicedBy = false, transaction, lock } = {},
+    {
+      includeItems = false,
+      includeInvoicedBy = false,
+      includePayments = false,
+      transaction,
+      lock,
+    } = {},
   ) {
     return model.findByPk(id, {
-      include: detailIncludes(includeItems, includeInvoicedBy),
+      include: detailIncludes(includeItems, includeInvoicedBy, includePayments),
       transaction,
       lock,
     });
@@ -263,6 +255,7 @@ module.exports = {
   INVOICED_BY_INCLUDE,
   ITEM_INCLUDE,
   LIST_ORDER,
+  PAYMENT_ALLOCATION_INCLUDE,
   buildListOptions,
   createInvoiceRepository,
   invoiceRepository,

@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
 const CustomerWallet = require("./customer-wallet");
 const Payment = require("./payment");
+const PaymentAllocation = require("./payment-allocation");
 const User = require("./user");
 
 /**
@@ -10,10 +11,9 @@ const User = require("./user");
  * `balance_after` stores the resulting balance. There are no API endpoints to
  * edit or delete movements.
  *
- * `invoice_id` references the invoices table added by HU-40.
- * `payment_allocation_id` stays nullable and without a foreign key until HU-43
- * adds the payment allocations table. The integration point is documented in
- * the migration and in the README.
+ * `invoice_id` references the invoices table added by HU-40 and
+ * `payment_allocation_id` references the immutable allocation that produced an
+ * `invoice_payment` movement added by HU-43.
  */
 const WalletTransaction = sequelize.define(
   "WalletTransaction",
@@ -85,6 +85,15 @@ WalletTransaction.belongsTo(User, {
 User.hasMany(WalletTransaction, {
   foreignKey: "created_by_user_id",
   as: "created_wallet_transactions",
+});
+
+WalletTransaction.belongsTo(PaymentAllocation, {
+  foreignKey: "payment_allocation_id",
+  as: "payment_allocation",
+});
+PaymentAllocation.hasOne(WalletTransaction, {
+  foreignKey: "payment_allocation_id",
+  as: "wallet_transaction",
 });
 
 module.exports = WalletTransaction;
