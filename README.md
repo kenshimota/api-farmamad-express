@@ -4263,6 +4263,214 @@ curl -X DELETE http://localhost:3001/method-payments/1 \
 | `422`  | `{ "errors": { "id": "Invalid payment method id" } }`                                    |
 | `422`  | `{ "errors": { "is_active": "Invalid is_active" } }`                                     |
 
+## Facturas (`invoices`, `invoice_items`) — HU-40
+
+Las facturas son un comprobante **inmutable** de una venta. Esta entrega incluye
+las migraciones reversibles, los modelos, la secuencia de numeración, el
+servicio de emisión transaccional y la consulta de facturas. No existen
+endpoints de escritura: una factura no se puede crear, editar ni eliminar por
+API. La creación ocurre dentro de la transición `generate → invoiced` de
+pedidos (HU-39).
+
+> **Dependencias pendientes en esta rama (#58, #63 y #65).** Las tablas
+> `orders`, `order_items`, `order_statuses`, `order_item_lot_allocations`,
+> `order_history`, `payment_terms` y la columna `users.customer_id` todavía no
+> existen aquí. Por eso `invoices.order_id`, `invoices.payment_term_id` e
+> `invoice_items.order_item_id` quedan **nullable y sin FK** por ahora, y la
+> emisión desde un pedido, la transición de estado, el consumo de reservas y
+> `GET /orders/:id/invoice` quedan bloqueados hasta integrar esas HUs. El
+> servicio `invoiceService.createInvoice` ya implementa la creación atómica de
+> la cabecera y sus líneas para que la transición de pedidos lo invoque.
+
+### Tablas y numeración
+
+- `invoices`: cabecera con `number` único asignado por
+  `invoices_number_seq`, snapshot de `customer_id`, `invoiced_by_user_id`,
+  `currency_id`, `payment_term_id`, importes, `payment_status`
+  (`pending`, `partial`, `paid`), `issued_at`, `due_date` y `notes`.
+- `invoice_items`: líneas inmutables con snapshots de nombre de producto,
+  referencia y nombre del estado, además de `quantity`, `unit_price` y
+  `subtotal`.
+- `invoices_number_seq`: empieza en 1 y avanza de uno en uno. Los huecos por
+  transacciones fallidas son aceptables.
+- `order_id` es único, por lo que un pedido puede tener como máximo una
+  factura. La restricción `(invoice_id, order_item_id)` evita duplicar una
+  línea del pedido.
+- `tax_amount` es siempre `0` en esta HU; `paid_amount` nace en `0` y
+  `payment_status` en `pending`. El historial de pagos se agrega en HU-43.
+- `due_date = issued_at + payment_terms.days`; para contado (`days = 0`) es la
+  fecha de emisión. Mientras no exista `payment_terms`, el servicio usa
+  `payment_term_days` del snapshot o la fecha de emisión.
+
+### Roles
+
+| Acción                                 | `customer`  | `admin` | `seller` | Otros roles |
+| -------------------------------------- | ----------- | ------- | -------- | ----------- |
+| `GET /invoices`                        | No (`403`)  | Sí      | Sí       | `403`       |
+| `GET /invoices/:id`                    | Solo propia | Todas   | Todas    | `403`       |
+| Emitir factura (`generate → invoiced`) | No (`403`)  | Sí      | Sí       | `403`       |
+
+Sin token, o con token inválido/expirado, responde `401 Unauthorized`. Un
+usuario bloqueado responde `403 User is blocked`. Un `customer` sin
+`users.customer_id` responde `403 Customer profile is not linked`; por eso, en
+esta rama, la consulta de un cliente queda bloqueada hasta integrar HU-39.
+
+### `GET /invoices`
+
+Solo `admin` y `seller`. Devuelve resúmenes sin líneas, ordenados por
+`issued_at` descendente y luego `id` descendente. Filtros exactos opcionales:
+
+- `?order_id=<id>`
+- `?customer_id=<id>`
+- `?number=<número>`
+- `?payment_status=pending|partial|paid`
+
+Un filtro inválido responde `422` con `{ "errors": { "<filtro>": "..." } }`.
+
+```bash
+curl "http://localhost:3001/invoices?payment_status=pending&customer_id=8" \
+  -H "Authorization: Bearer <jwt-admin>"
+```
+
+Respuesta `200`:
+
+```json
+[
+  {
+    "id": 1,
+    "number": 1,
+    "order_id": 10,
+    "order_number": null,
+    "customer_id": 8,
+    "customer": {
+      "id": 8,
+      "fullName": "Cliente Demo",
+      "email": "cliente@example.com",
+      "direction": "Av. Monseñor Rivero 123"
+    },
+    "currency_id": 3,
+    "currency": {
+      "id": 3,
+      "code": "USD_BCV",
+      "name": "Dólar BCV",
+      "symbol": "$"
+    },
+    "payment_term_id": 3,
+    "subtotal": 25,
+    "tax_amount": 0,
+    "total": 25,
+    "paid_amount": 0,
+    "balance_due": 25,
+    "payment_status": "pending",
+    "issued_at": "2026-11-01T12:00:00.000Z",
+    "due_date": "2026-11-16",
+    "notes": "Factura generada desde el pedido 10"
+  }
+]
+```
+
+### `GET /invoices/:id`
+
+`admin`, `seller` o el `customer` dueño. Un id inválido responde `422` con
+`{ "errors": { "id": "Invalid invoice id" } }`. Una factura inexistente o de
+otro cliente responde `404` con `{ "message": "Invoice not found" }` para no
+revelar su existencia. El cliente no recibe `invoiced_by`; `admin` y `seller`
+sí lo reciben.
+
+```bash
+curl http://localhost:3001/invoices/1 \
+  -H "Authorization: Bearer <jwt-admin>"
+```
+
+Respuesta `200`:
+
+```json
+{
+  "id": 1,
+  "number": 1,
+  "order_id": 10,
+  "order_number": null,
+  "customer_id": 8,
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "email": "cliente@example.com",
+    "direction": "Av. Monseñor Rivero 123"
+  },
+  "invoiced_by": { "id": 1, "username": "admin", "email": "admin@example.com" },
+  "currency_id": 3,
+  "currency": {
+    "id": 3,
+    "code": "USD_BCV",
+    "name": "Dólar BCV",
+    "symbol": "$"
+  },
+  "payment_term_id": 3,
+  "payment_term": {
+    "id": 3,
+    "code": "credit_15",
+    "name": "Crédito 15 días",
+    "days": 15
+  },
+  "subtotal": 25,
+  "tax_amount": 0,
+  "total": 25,
+  "paid_amount": 0,
+  "balance_due": 25,
+  "payment_status": "pending",
+  "issued_at": "2026-11-01T12:00:00.000Z",
+  "due_date": "2026-11-16",
+  "notes": "Factura generada desde el pedido 10",
+  "items": [
+    {
+      "order_item_id": 20,
+      "product_id": 15,
+      "product_name": "Ibuprofeno 400 mg",
+      "product_reference": "IBU-400",
+      "item_state_id": 1,
+      "item_state_name": "sellable",
+      "quantity": 2,
+      "unit_price": 12.5,
+      "subtotal": 25
+    }
+  ]
+}
+```
+
+No se exponen costos, márgenes, lotes, ubicaciones, datos de otros clientes ni
+columnas de auditoría.
+
+### Pendiente por dependencias
+
+- `POST /orders` y la transición `generate → invoiced` (HU-34/#58 y HU-39/#63):
+  bloquean la emisión real desde un pedido, el bloqueo `FOR UPDATE`, la
+  validación de estado, el consumo de reservas, el descuento de `lots.stock` y
+  `stocks.quantity`, y los eventos `status_changed`/`invoice_issued`.
+- `GET /orders/:id/invoice` (HU-39/#63): el servicio
+  `invoiceService.getInvoiceByOrder` ya aplica la regla de propiedad; falta
+  montar la ruta en el módulo de pedidos.
+- `invoices.payment_term_id`, `payment_term` y el cálculo con
+  `payment_terms.days` (HU-41/#65). Mientras tanto el campo es nullable y el
+  servicio acepta `payment_term_days` o `due_date` explícito.
+- Propiedad de facturas para `customer` (HU-39/#63): requiere
+  `users.customer_id`; hoy todos los clientes reciben
+  `403 Customer profile is not linked`.
+- Las FK `invoices.order_id → orders.id` e
+  `invoice_items.order_item_id → order_items.id` deben agregarse en una
+  migración posterior cuando existan esas tablas.
+
+### Errores del módulo
+
+| Código | Situación                           | Cuerpo                                            |
+| ------ | ----------------------------------- | ------------------------------------------------- |
+| `401`  | Token ausente, inválido o expirado  | `{ "message": "Unauthorized" }`                   |
+| `403`  | Rol sin permiso o usuario bloqueado | `{ "message": "Forbidden" }`                      |
+| `403`  | Cliente sin vínculo                 | `{ "message": "Customer profile is not linked" }` |
+| `404`  | Factura inexistente o ajena         | `{ "message": "Invoice not found" }`              |
+| `409`  | El pedido ya tiene factura          | `{ "message": "Order already has an invoice" }`   |
+| `422`  | Id o filtro inválido                | `{ "errors": { ... } }`                           |
+| `500`  | Error interno                       | Manejador global existente                        |
+
 ## Logs y manejo de errores
 
 La API escribe logs en stdout/stderr con timestamp ISO, nivel (`INFO`, `WARN`,
