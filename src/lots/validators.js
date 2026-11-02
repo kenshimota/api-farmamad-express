@@ -20,7 +20,6 @@ const REQUIRED_UPDATE_FIELDS = Object.freeze([
   "expiration_date",
   "item_state_id",
   "stock",
-  "reserved",
   "warehouse_id",
   "shelf_id",
   "section_id",
@@ -39,6 +38,7 @@ const STOCK_MESSAGE = `stock must be an integer between 0 and ${MAX_QUANTITY}`;
 const RESERVED_MESSAGE = `reserved must be an integer between 0 and ${MAX_QUANTITY}`;
 const RESERVED_STOCK_MESSAGE = "reserved cannot exceed stock";
 const NUMBER_FILTER_MESSAGE = "Invalid number";
+const LOCATION_STATUS_MESSAGE = "Invalid location_status";
 const EXPIRED_MESSAGE = "expired must be a boolean";
 const EXPIRING_BEFORE_MESSAGE =
   "expiring_before must be a valid date (YYYY-MM-DD)";
@@ -142,7 +142,6 @@ const createLotSchema = yup.object({
   expiration_date: expirationDateField(true),
   item_state_id: positiveIntegerField(ITEM_STATE_ID_MESSAGE),
   stock: quantityField(STOCK_MESSAGE).default(0),
-  reserved: withinStock(quantityField(RESERVED_MESSAGE).default(0)),
   warehouse_id: positiveIntegerField(WAREHOUSE_ID_MESSAGE),
   shelf_id: positiveIntegerField(SHELF_ID_MESSAGE),
   section_id: positiveIntegerField(SECTION_ID_MESSAGE),
@@ -154,7 +153,6 @@ const updateLotSchema = yup.object({
   expiration_date: expirationDateField(true),
   item_state_id: positiveIntegerField(ITEM_STATE_ID_MESSAGE),
   stock: quantityField(STOCK_MESSAGE, true),
-  reserved: withinStock(quantityField(RESERVED_MESSAGE, true)),
   warehouse_id: positiveIntegerField(WAREHOUSE_ID_MESSAGE),
   shelf_id: positiveIntegerField(SHELF_ID_MESSAGE),
   section_id: positiveIntegerField(SECTION_ID_MESSAGE),
@@ -165,6 +163,7 @@ module.exports = {
   EXPIRATION_DATE_MESSAGE,
   EXPIRING_BEFORE_MESSAGE,
   ITEM_STATE_ID_MESSAGE,
+  LOCATION_STATUS_MESSAGE,
   MAX_NUMBER_LENGTH,
   MAX_QUANTITY,
   NUMBER_FILTER_MESSAGE,

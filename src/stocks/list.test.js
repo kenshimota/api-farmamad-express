@@ -6,6 +6,7 @@ jest.mock("../models/stock", () => ({
 }));
 jest.mock("../models/item-state", () => ({}));
 jest.mock("../models/cost", () => ({}));
+jest.mock("../models/lot", () => ({ findAll: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");

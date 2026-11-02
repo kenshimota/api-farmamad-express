@@ -24,11 +24,18 @@ describe("Lot model", () => {
     expect(attributes.reserved.allowNull).toBe(false);
     expect(attributes.reserved.defaultValue).toBe(0);
     expect(attributes.warehouse_id.type.key).toBe("INTEGER");
-    expect(attributes.warehouse_id.allowNull).toBe(false);
+    expect(attributes.warehouse_id.allowNull).toBe(true);
     expect(attributes.shelf_id.type.key).toBe("INTEGER");
-    expect(attributes.shelf_id.allowNull).toBe(false);
+    expect(attributes.shelf_id.allowNull).toBe(true);
     expect(attributes.section_id.type.key).toBe("INTEGER");
-    expect(attributes.section_id.allowNull).toBe(false);
+    expect(attributes.section_id.allowNull).toBe(true);
+    expect(attributes.location_status.type.toString()).toBe("VARCHAR(20)");
+    expect(attributes.location_status.allowNull).toBe(false);
+    expect(attributes.location_status.defaultValue).toBe("located");
+    expect(attributes.location_started_at.type.key).toBe("DATE");
+    expect(attributes.location_started_by.type.key).toBe("INTEGER");
+    expect(attributes.located_at.type.key).toBe("DATE");
+    expect(attributes.located_by.type.key).toBe("INTEGER");
   });
 
   it("uses the documented model and table names", () => {

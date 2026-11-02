@@ -3,6 +3,7 @@ const Stock = require("../models/stock");
 const ItemState = require("../models/item-state");
 const Cost = require("../models/cost");
 const Currency = require("../models/currency");
+const Lot = require("../models/lot");
 const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 const { createPurchaseStockService } = require("./purchase-service");
 
@@ -27,6 +28,7 @@ const PRODUCT_LIST_ORDER = Object.freeze([["item_state_id", "ASC"]]);
  * @param {object} [costModel] - Cost model joined by the available view.
  * @param {object} [purchaseService] - Service that applies purchase items.
  * @param {object} [currencyModel] - Currency model nested in the current cost.
+ * @param {object} [lotModel] - Lot model used to aggregate located stock.
  * @returns {object} Stock repository.
  */
 function createStockRepository(
@@ -35,6 +37,7 @@ function createStockRepository(
   costModel = Cost,
   purchaseService = createPurchaseStockService(model),
   currencyModel = Currency,
+  lotModel = Lot,
 ) {
   const itemStateInclude = {
     model: itemStateModel,
@@ -147,6 +150,29 @@ function createStockRepository(
           },
         ],
       });
+    },
+
+    /**
+     * Aggregates the located stock of one product per item state. Only lots
+     * with `location_status = 'located'` are sellable; pending or in-progress
+     * lots never contribute to this map.
+     * @param {number} productId - Product id.
+     * @returns {Promise<Map<number, number>>} Item state id to located units.
+     */
+    async getLocatedQuantities(productId) {
+      const rows = await lotModel.findAll({
+        attributes: [
+          "item_state_id",
+          [Sequelize.fn("SUM", Sequelize.col("stock")), "total"],
+        ],
+        where: { product_id: productId, location_status: "located" },
+        group: ["item_state_id"],
+        raw: true,
+      });
+
+      return new Map(
+        rows.map((row) => [Number(row.item_state_id), Number(row.total)]),
+      );
     },
 
     /**

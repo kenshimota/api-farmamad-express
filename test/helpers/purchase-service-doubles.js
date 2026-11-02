@@ -39,6 +39,7 @@ function itemRepositoryDouble(overrides = {}) {
     list: jest.fn().mockResolvedValue([]),
     findById: jest.fn(),
     findByCombination: jest.fn().mockResolvedValue(null),
+    findByLotNumber: jest.fn().mockResolvedValue(null),
     update: jest.fn(async (item, values) => {
       Object.assign(item, values);
       return item;
@@ -60,9 +61,22 @@ function stocksDouble(overrides = {}) {
   };
 }
 
+/**
+ * Builds the lot receiving service double.
+ * @param {object} [overrides] - Method overrides.
+ * @returns {object} The lot service double.
+ */
+function lotsDouble(overrides = {}) {
+  return {
+    receiveLine: jest.fn(async () => ({ id: 40 })),
+    ...overrides,
+  };
+}
+
 module.exports = {
   TRANSACTION,
   itemRepositoryDouble,
+  lotsDouble,
   repositoryDouble,
   stocksDouble,
 };

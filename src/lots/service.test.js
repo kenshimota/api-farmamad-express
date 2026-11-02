@@ -75,9 +75,15 @@ describe("lot service", () => {
 
     await expect(service.createLot(values())).resolves.toEqual({ id: 9 });
     expect(repository.transaction).toHaveBeenCalledTimes(1);
-    expect(repository.create).toHaveBeenCalledWith(values(), {
-      transaction: { id: "tx" },
-    });
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...values(),
+        reserved: 0,
+        location_status: "located",
+        located_at: expect.any(Date),
+      }),
+      { transaction: { id: "tx" } },
+    );
   });
 
   it("updates a lot inside a transaction excluding itself from duplicates", async () => {
@@ -93,17 +99,24 @@ describe("lot service", () => {
       { productId: 1, number: "L-1", excludeId: 9 },
       { transaction: { id: "tx" } },
     );
-    expect(repository.update).toHaveBeenCalledWith(lot, values(), {
+    const expected = { ...values() };
+
+    delete expected.reserved;
+
+    expect(repository.update).toHaveBeenCalledWith(lot, expected, {
       transaction: { id: "tx" },
     });
   });
 
-  it("rejects reserved above stock before opening a transaction", async () => {
+  it("keeps reserved immutable and rejects a stock below it", async () => {
     const repository = repositoryDouble();
     const service = createLotService({ repository });
+    const lot = { id: 9, reserved: 5 };
+
+    validReferences(repository);
 
     await expect(
-      service.createLot(values({ stock: 1, reserved: 2 })),
+      service.updateLot(lot, values({ stock: 3 })),
     ).rejects.toMatchObject({
       status: 422,
       body: { errors: { reserved: "reserved cannot exceed stock" } },

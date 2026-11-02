@@ -80,6 +80,8 @@ function line(refs) {
     quantity: 2,
     unit_cost: 10,
     tax_amount: 1.6,
+    lot_number: `CUR-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+    expiration_date: "2027-03-31",
   };
 }
 

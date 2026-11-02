@@ -44,7 +44,6 @@ const BODY = {
   expiration_date: "2027-03-31",
   item_state_id: 1,
   stock: 100,
-  reserved: 10,
   warehouse_id: 1,
   shelf_id: 1,
   section_id: 2,
@@ -119,8 +118,10 @@ beforeEach(() => {
 
 describe("PUT /lots/:id", () => {
   it("replaces the editable fields and answers 202 with available", async () => {
-    const lot = storedLot();
-    Lot.findByPk.mockResolvedValueOnce(lot).mockResolvedValueOnce(storedLot());
+    const lot = storedLot({ reserved: 10 });
+    Lot.findByPk
+      .mockResolvedValueOnce(lot)
+      .mockResolvedValueOnce(storedLot({ reserved: 10 }));
 
     const response = await call("put", "/lots/1", BODY);
 
@@ -163,12 +164,14 @@ describe("PUT /lots/:id", () => {
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
       message:
-        "number, product_id, expiration_date, item_state_id, stock, reserved, warehouse_id, shelf_id and section_id are required",
+        "number, product_id, expiration_date, item_state_id, stock, warehouse_id, shelf_id and section_id are required",
     });
     expect(Lot.findByPk).not.toHaveBeenCalled();
   });
 
-  it("responds 422 when reserved exceeds stock", async () => {
+  it("preserves reserved and rejects a stock below it", async () => {
+    Lot.findByPk.mockResolvedValue(storedLot({ reserved: 10 }));
+
     const response = await call("put", "/lots/1", {
       ...BODY,
       stock: 5,

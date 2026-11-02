@@ -2,6 +2,7 @@ const sequelize = require("../../src/database");
 const Invoice = require("../../src/models/invoice");
 const InvoiceItem = require("../../src/models/invoice-item");
 const Payment = require("../../src/models/payment");
+const PaymentStatusHistory = require("../../src/models/payment-status-history");
 const PaymentAllocation = require("../../src/models/payment-allocation");
 const CustomerWallet = require("../../src/models/customer-wallet");
 const WalletTransaction = require("../../src/models/wallet-transaction");
@@ -12,6 +13,21 @@ const User = require("../../src/models/user");
 const { createInvoice } = require("./invoices");
 const { buildFixture, createCurrency, createPayment } = require("./payments");
 const { ensureDefaultTransactionCurrency } = require("./currency-default");
+const { truncateModels } = require("./database");
+
+const INVOICE_PAYMENT_TABLES = Object.freeze([
+  PaymentStatusHistory,
+  WalletTransaction,
+  PaymentAllocation,
+  Payment,
+  CustomerWallet,
+  InvoiceItem,
+  Invoice,
+  MethodPayment,
+  MethodPaymentType,
+  User,
+  Customer,
+]);
 
 /**
  * Builds a customer with its tokens, a wallet funded through the payments API
@@ -51,66 +67,7 @@ async function buildInvoicePaymentFixture(options = {}) {
  * @returns {Promise<void>} Resolves once the tables are clean.
  */
 async function resetDatabase() {
-  await WalletTransaction.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await PaymentAllocation.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Payment.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await CustomerWallet.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await InvoiceItem.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Invoice.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await MethodPayment.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await MethodPaymentType.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await User.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
-  await Customer.destroy({
-    where: {},
-    truncate: true,
-    cascade: true,
-    restartIdentity: true,
-  });
+  await truncateModels(INVOICE_PAYMENT_TABLES);
   await sequelize.query("ALTER SEQUENCE invoices_number_seq RESTART WITH 1");
   await ensureDefaultTransactionCurrency();
 }

@@ -7,7 +7,7 @@ const WalletTransaction = require("../models/wallet-transaction");
 const Invoice = require("../models/invoice");
 const Payment = require("../models/payment");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
-const { as } = require("../../test/helpers/payments");
+const { as, tokenFor } = require("../../test/helpers/payments");
 const {
   buildInvoicePaymentFixture,
   resetDatabase,
@@ -124,6 +124,7 @@ describe("POST /invoices/:id/payments with a real database", () => {
       currency_id: fixture.currency.id,
       amount: 50,
       paid_at: new Date(),
+      status: "conciliated",
       created_by_user_id: fixture.admin.user.id,
     });
 
@@ -170,6 +171,7 @@ describe("POST /invoices/:id/payments with a real database", () => {
       currency_id: fixture.currency.id,
       amount: 100,
       paid_at: new Date(),
+      status: "conciliated",
       created_by_user_id: fixture.admin.user.id,
     });
     await CustomerWallet.create({
@@ -278,7 +280,9 @@ describe("POST /invoices/:id/payments with a real database", () => {
     async (role) => {
       const fixture = await buildInvoicePaymentFixture();
       const token =
-        role === "customer" ? fixture.customerToken : await tokenForRole(role);
+        role === "customer"
+          ? fixture.customerToken
+          : (await tokenFor(role)).token;
 
       const response = await applyPayment(fixture, {}, token);
 
@@ -287,14 +291,3 @@ describe("POST /invoices/:id/payments with a real database", () => {
     },
   );
 });
-
-/**
- * Creates a token for another non-staff role.
- * @param {string} role - Role name.
- * @returns {Promise<string>} The token.
- */
-async function tokenForRole(role) {
-  const { tokenFor } = require("../../test/helpers/payments");
-
-  return (await tokenFor(role)).token;
-}

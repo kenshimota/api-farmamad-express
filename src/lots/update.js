@@ -15,11 +15,12 @@ const router = Router();
  *     summary: Replaces the editable fields of a lot; write roles
  *     description: >
  *       Requires `number`, `product_id`, `expiration_date`, `item_state_id`,
- *       `stock`, `reserved`, `warehouse_id`, `shelf_id` and `section_id`.
- *       References and location coherence are revalidated, `reserved` cannot
- *       exceed `stock` and the new `(product_id, number)` pair must stay
- *       unique. `id`, `available` and the audit timestamps are ignored. A
- *       successful update answers 202 with `available = stock - reserved`.
+ *       `stock`, `warehouse_id`, `shelf_id` and `section_id`. References and
+ *       location coherence are revalidated and the new `(product_id, number)`
+ *       pair must stay unique. `reserved` is read-only and ignored; a stock
+ *       below the current reservation answers 422. `id`, `available` and the
+ *       audit timestamps are ignored. A successful update answers 202 with
+ *       `available = stock - reserved`.
  *     tags:
  *       - Lots
  *     security:
@@ -42,7 +43,6 @@ const router = Router();
  *               - expiration_date
  *               - item_state_id
  *               - stock
- *               - reserved
  *               - warehouse_id
  *               - shelf_id
  *               - section_id
@@ -52,7 +52,6 @@ const router = Router();
  *               expiration_date: { type: string, format: date, example: '2027-03-31' }
  *               item_state_id: { type: integer, minimum: 1, example: 1 }
  *               stock: { type: integer, minimum: 0, maximum: 1000000000, example: 100 }
- *               reserved: { type: integer, minimum: 0, maximum: 1000000000, example: 10 }
  *               warehouse_id: { type: integer, minimum: 1, example: 1 }
  *               shelf_id: { type: integer, minimum: 1, example: 1 }
  *               section_id: { type: integer, minimum: 1, example: 2 }

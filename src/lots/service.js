@@ -15,6 +15,10 @@ const {
  * @throws {Error} 422 when reserved is greater than stock.
  */
 function assertQuantities(values) {
+  if (values.reserved === undefined || values.stock === undefined) {
+    return;
+  }
+
   if (Number(values.reserved) > Number(values.stock)) {
     throw reservedExceedsStock();
   }
@@ -27,7 +31,10 @@ function assertQuantities(values) {
  * @param {object} [dependencies.repository] - Lot repository.
  * @returns {object} The lots service.
  */
-function createLotService({ repository = lotRepository } = {}) {
+function createLotService({
+  repository = lotRepository,
+  clock = () => new Date(),
+} = {}) {
   /**
    * Loads every referenced row inside the transaction and validates both the
    * existence of the references and the physical location coherence.
@@ -142,9 +149,16 @@ function createLotService({ repository = lotRepository } = {}) {
      * @throws {Error} 409 when the pair already exists.
      */
     async createLot(values) {
-      return writeAtomically(values, {
+      const located = {
+        ...values,
+        reserved: 0,
+        location_status: "located",
+        located_at: clock(),
+      };
+
+      return writeAtomically(located, {
         write: async (transaction) => {
-          const created = await repository.create(values, { transaction });
+          const created = await repository.create(located, { transaction });
 
           return created.id;
         },
@@ -161,10 +175,21 @@ function createLotService({ repository = lotRepository } = {}) {
      * @throws {Error} 409 when the pair belongs to another lot.
      */
     async updateLot(lot, values) {
-      return writeAtomically(values, {
+      if (
+        values.stock !== undefined &&
+        Number(values.stock) < Number(lot.reserved ?? 0)
+      ) {
+        throw reservedExceedsStock();
+      }
+
+      const changes = { ...values };
+
+      delete changes.reserved;
+
+      return writeAtomically(changes, {
         excludeId: lot.id,
         write: async (transaction) => {
-          await repository.update(lot, values, { transaction });
+          await repository.update(lot, changes, { transaction });
 
           return lot.id;
         },

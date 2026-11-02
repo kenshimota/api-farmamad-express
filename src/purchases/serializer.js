@@ -19,7 +19,8 @@ function toMoneyNumber(value) {
  * @param {object} item - Purchase item instance or plain object.
  * @returns {{ id: number, product_id: number, item_state_id: number,
  *   quantity: number, unit_cost: number|null, subtotal: number|null,
- *   tax_amount: number|null, total: number|null }} Public line data.
+ *   tax_amount: number|null, total: number|null, lot_number: string|null,
+ *   expiration_date: string|null, received_lot_id: number|null }} Public data.
  */
 function toPublicPurchaseItem(item) {
   const subtotal = toMoneyNumber(readField(item, "subtotal"));
@@ -38,6 +39,9 @@ function toPublicPurchaseItem(item) {
     subtotal,
     tax_amount: taxAmount,
     total,
+    lot_number: readField(item, "lot_number") ?? null,
+    expiration_date: readField(item, "expiration_date") ?? null,
+    received_lot_id: readField(item, "received_lot_id") ?? null,
   };
 }
 

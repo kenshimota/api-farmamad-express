@@ -76,16 +76,22 @@ function createServiceSupport({ repository, itemRepository }) {
     },
 
     /**
-     * Rejects duplicated product/item state pairs in the same request.
+     * Rejects duplicated lines in the same request. When the line carries a lot
+     * number the key is product + lowercased lot, so the same product/state can
+     * repeat with different lots but the same lot can never repeat even when
+     * the item state changes. Historical lines without a lot keep the old
+     * product/item state rule.
      * @param {object[]} lines - Requested lines.
      * @returns {void}
-     * @throws {Error} 409 HTTP error when a pair repeats.
+     * @throws {Error} 409 HTTP error when a key repeats.
      */
     assertNoDuplicates(lines) {
       const seen = new Set();
 
       for (const line of lines) {
-        const key = `${line.product_id}:${line.item_state_id}`;
+        const key = line.lot_number
+          ? `${line.product_id}:${String(line.lot_number).toLowerCase()}`
+          : `${line.product_id}:${line.item_state_id}`;
 
         if (seen.has(key)) {
           throw itemAlreadyExists();
@@ -93,6 +99,44 @@ function createServiceSupport({ repository, itemRepository }) {
 
         seen.add(key);
       }
+    },
+
+    /**
+     * Finds the line that would collide with the requested one. The uniqueness
+     * key is the product plus its lot number when present; historical lines
+     * without a lot keep the old product/item state key.
+     * @param {object} lookup - Lookup values.
+     * @param {number} lookup.purchaseId - Purchase id.
+     * @param {number} lookup.productId - Product id.
+     * @param {number} lookup.itemStateId - Item state id.
+     * @param {string} [lookup.lotNumber] - Lot number, when present.
+     * @param {number} [lookup.excludeId] - Line id to ignore.
+     * @param {object} [lookup.transaction] - Open transaction.
+     * @returns {Promise<object|null>} The duplicated line or null.
+     */
+    findDuplicateLine({
+      purchaseId,
+      productId,
+      itemStateId,
+      lotNumber,
+      excludeId,
+      transaction,
+    }) {
+      const options = { excludeId, transaction };
+
+      return lotNumber
+        ? itemRepository.findByLotNumber(
+            purchaseId,
+            productId,
+            lotNumber,
+            options,
+          )
+        : itemRepository.findByCombination(
+            purchaseId,
+            productId,
+            itemStateId,
+            options,
+          );
     },
 
     /**

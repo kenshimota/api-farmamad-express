@@ -84,6 +84,11 @@ const swaggerSpec = swaggerJsdoc({
           "Physical product lots with expiration date, item state, stock, reservations and their warehouse, shelf and section location.",
       },
       {
+        name: "Warehouse inbox",
+        description:
+          "Lots received by a confirmed purchase that still need a warehouse, shelf and section, plus the pending -> in_progress -> located lifecycle.",
+      },
+      {
         name: "Customer sellers",
         description:
           "Assignment of each customer to the seller responsible for it, with one seller per customer and many customers per seller.",
@@ -106,7 +111,7 @@ const swaggerSpec = swaggerJsdoc({
       {
         name: "Payments",
         description:
-          "Received payments that credit a customer wallet and append a deposit movement, including their metadata updates and deletion.",
+          "Received payments: pending creation with an optional reference image, conciliation/rejection with the wallet deposit, append-only status history, metadata updates and deletion.",
       },
       {
         name: "Customer wallets",

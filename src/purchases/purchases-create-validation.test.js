@@ -19,6 +19,8 @@ describe("POST /purchases validation", () => {
           quantity: 0,
           unit_cost: 10,
           tax_amount: 0,
+          lot_number: "LOTE-1",
+          expiration_date: "2027-03-31",
         },
       ],
     },
@@ -31,6 +33,8 @@ describe("POST /purchases validation", () => {
           quantity: 1,
           unit_cost: 12.345,
           tax_amount: 0,
+          lot_number: "LOTE-2",
+          expiration_date: "2027-03-31",
         },
       ],
     },
@@ -43,6 +47,8 @@ describe("POST /purchases validation", () => {
           quantity: 1,
           unit_cost: 10,
           tax_amount: -1,
+          lot_number: "LOTE-3",
+          expiration_date: "2027-03-31",
         },
       ],
     },
@@ -55,6 +61,8 @@ describe("POST /purchases validation", () => {
           quantity: 1,
           unit_cost: 10,
           tax_amount: 1.234,
+          lot_number: "LOTE-4",
+          expiration_date: "2027-03-31",
         },
       ],
     },
@@ -66,10 +74,40 @@ describe("POST /purchases validation", () => {
     expect(purchaseService.createPurchase).not.toHaveBeenCalled();
   });
 
+  it("responds 400 when a line omits its lot data", async () => {
+    const response = await send("post", "/purchases", {
+      supplier_id: 2,
+      items: [
+        {
+          product_id: 15,
+          item_state_id: 1,
+          quantity: 1,
+          unit_cost: 10,
+          tax_amount: 0,
+        },
+      ],
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      message: "lot_number and expiration_date are required",
+    });
+    expect(purchaseService.createPurchase).not.toHaveBeenCalled();
+  });
+
   it("responds 422 with the nested path when a line omits tax_amount", async () => {
     const response = await send("post", "/purchases", {
       supplier_id: 2,
-      items: [{ product_id: 15, item_state_id: 1, quantity: 1, unit_cost: 10 }],
+      items: [
+        {
+          product_id: 15,
+          item_state_id: 1,
+          quantity: 1,
+          unit_cost: 10,
+          lot_number: "LOTE-1",
+          expiration_date: "2027-03-31",
+        },
+      ],
     });
 
     expect(response.status).toBe(422);

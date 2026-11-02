@@ -13,13 +13,15 @@ const router = Router();
  *   post:
  *     summary: Confirms a draft purchase; only administrators and sellers can do it
  *     description: >
- *       In one transaction recalculates the totals from the line subtotals
- *       and taxes, upserts the current `costs` of every line using the
- *       tax-free `unit_cost` (inheriting `purchase.currency_id`), increments
- *       `stocks` and sets `confirmed` plus `confirmed_at`. No amount is
- *       converted. A purchase without lines answers 422 and any failure
- *       rolls back costs and stocks. Confirming twice answers 409 and is not
- *       idempotent by design.
+ *       In one transaction validates the lot data of every line, creates or
+ *       reuses its lot (new lots start pending and unlocked for sale), stores
+ *       `received_lot_id`, recalculates the totals, upserts the current
+ *       `costs` of every line using the tax-free `unit_cost` (inheriting
+ *       `purchase.currency_id`), increments `stocks` and sets `confirmed` plus
+ *       `confirmed_at`. No amount is converted. A line without lot data
+ *       answers 422, an existing lot with different state/expiration answers
+ *       409 and any failure rolls back lots, costs and stocks. Confirming
+ *       twice answers 409 and is not idempotent by design.
  *     tags:
  *       - Purchases
  *     security:

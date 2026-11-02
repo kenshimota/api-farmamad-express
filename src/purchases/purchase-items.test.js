@@ -64,6 +64,9 @@ const ITEM = {
   unit_cost: "10.00",
   subtotal: "20.00",
   tax_amount: "3.20",
+  lot_number: "LOTE-1",
+  expiration_date: "2027-03-31",
+  received_lot_id: null,
 };
 const PURCHASE = {
   id: 1,
@@ -82,6 +85,8 @@ const BODY = {
   quantity: 2,
   unit_cost: 10,
   tax_amount: 3.2,
+  lot_number: "LOTE-1",
+  expiration_date: "2027-03-31",
 };
 
 /**
@@ -140,6 +145,9 @@ describe("GET /purchases/:id/items", () => {
         subtotal: 20,
         tax_amount: 3.2,
         total: 23.2,
+        lot_number: "LOTE-1",
+        expiration_date: "2027-03-31",
+        received_lot_id: null,
       },
     ]);
     expect(purchaseService.listItems).toHaveBeenCalledWith(1);
@@ -193,7 +201,7 @@ describe("POST /purchases/:id/items", () => {
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
       message:
-        "product_id, item_state_id, quantity, unit_cost and tax_amount are required",
+        "product_id, item_state_id, quantity, unit_cost, tax_amount, lot_number and expiration_date are required",
     });
     expect(purchaseService.addItem).not.toHaveBeenCalled();
   });
@@ -206,7 +214,7 @@ describe("POST /purchases/:id/items", () => {
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
       message:
-        "product_id, item_state_id, quantity, unit_cost and tax_amount are required",
+        "product_id, item_state_id, quantity, unit_cost, tax_amount, lot_number and expiration_date are required",
     });
     expect(purchaseService.addItem).not.toHaveBeenCalled();
   });

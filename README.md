@@ -2869,7 +2869,10 @@ curl http://localhost:3001/stocks/product/15 \
 
 Protegido para `admin`, `seller` y `manager_warehouse`. Requiere
 `?product_id=` y devuelve solo las filas con `quantity > 0` cuyo estado tiene
-`is_sellable = true`, ordenadas por `item_state.name`. Cada fila incluye el
+`is_sellable = true`, ordenadas por `item_state.name`. `quantity` sigue siendo
+el total físico; `located_quantity` suma únicamente `lots.stock` de los lotes
+con `location_status = 'located'` y es **la única cantidad vendible**. El stock
+`pending` o `in_progress` nunca se cuenta como disponible. Cada fila incluye el
 costo vigente de `costs` para la misma combinación o `cost: null` si no existe;
 también incluye `currency_id` y `currency` del costo, o ambos en `null` cuando
 no hay costo. La fila **no se oculta** para que el faltante sea visible. La
@@ -2972,13 +2975,13 @@ Protegido para `admin` y `seller`. `supplier_id` es obligatorio; `currency_id`,
 `notes` e `items` son opcionales. `currency_id` toma la moneda por defecto
 (`USD_BCV`) cuando se omite, debe existir y estar activa si se envía, y todos
 los montos de la compra y de sus líneas quedan expresados en ella. Cada línea
-requiere `product_id`, `item_state_id`, `quantity`, `unit_cost` y un
-`tax_amount` absoluto (`>= 0`, máximo 2 decimales y 10 dígitos enteros); si
-falta el impuesto responde `422` con
-`{ "errors": { "items.0.tax_amount": "tax_amount is required" } }`. Las líneas
-se validan contra `products` e `item_states` y no se repite
-`(product_id, item_state_id)` en una misma compra (`409`). Responde `201` con la
-compra, su moneda y sus líneas.
+requiere `product_id`, `item_state_id`, `quantity`, `unit_cost`, un
+`tax_amount` absoluto (`>= 0`, máximo 2 decimales y 10 dígitos enteros),
+`lot_number` (1–100 caracteres) y `expiration_date` (`YYYY-MM-DD`). Las líneas
+se validan contra `products` e `item_states` y el mismo producto puede repetirse
+con lotes distintos; repetir `(product_id, LOWER(lot_number))` responde `409`.
+Responde `201` con la compra, su moneda y sus líneas, incluyendo
+`lot_number`, `expiration_date` y `received_lot_id` (null hasta confirmar).
 
 ```bash
 curl -X POST http://localhost:3001/purchases \
@@ -2993,14 +2996,18 @@ curl -X POST http://localhost:3001/purchases \
         "item_state_id": 1,
         "quantity": 40,
         "unit_cost": 20.0,
-        "tax_amount": 128.0
+        "tax_amount": 128.0,
+        "lot_number": "LOTE-1",
+        "expiration_date": "2027-03-31"
       },
       {
         "product_id": 15,
         "item_state_id": 2,
         "quantity": 3,
         "unit_cost": 12.5,
-        "tax_amount": 6.0
+        "tax_amount": 6.0,
+        "lot_number": "LOTE-2",
+        "expiration_date": "2027-06-30"
       }
     ]
   }'
@@ -3034,7 +3041,10 @@ Respuesta `201`:
       "unit_cost": 20,
       "subtotal": 800,
       "tax_amount": 128,
-      "total": 928
+      "total": 928,
+      "lot_number": "LOTE-1",
+      "expiration_date": "2027-03-31",
+      "received_lot_id": null
     },
     {
       "id": 2,
@@ -3044,7 +3054,10 @@ Respuesta `201`:
       "unit_cost": 12.5,
       "subtotal": 37.5,
       "tax_amount": 6,
-      "total": 43.5
+      "total": 43.5,
+      "lot_number": "LOTE-2",
+      "expiration_date": "2027-06-30",
+      "received_lot_id": null
     }
   ]
 }
@@ -3066,7 +3079,9 @@ curl -X POST http://localhost:3001/purchases \
         "item_state_id": 1,
         "quantity": 40,
         "unit_cost": 20.0,
-        "tax_amount": 128.0
+        "tax_amount": 128.0,
+        "lot_number": "LOTE-USD",
+        "expiration_date": "2027-03-31"
       }
     ]
   }'
@@ -3116,12 +3131,13 @@ curl -X POST http://localhost:3001/purchases/1/cancel \
 
 - `GET /purchases/:id/items` lista las líneas de un borrador.
 - `POST /purchases/:id/items` agrega una línea (`product_id`,
-  `item_state_id`, `quantity`, `unit_cost` y `tax_amount`) y responde `201`.
-  Sin `tax_amount` responde `400` con
-  `{ "message": "product_id, item_state_id, quantity, unit_cost and tax_amount are required" }`.
+  `item_state_id`, `quantity`, `unit_cost`, `tax_amount`, `lot_number` y
+  `expiration_date`) y responde `201`. Sin los campos obligatorios responde
+  `400` con la lista de campos faltantes.
 - `PUT /purchases/:purchase_id/items/:item_id` actualiza cualquier combinación
-  de esos cinco campos y responde `202`; si omite `tax_amount` conserva el
-  valor actual.
+  de esos campos y responde `202`; si omite `tax_amount` conserva el valor
+  actual y siempre exige que la línea quede con `lot_number` y
+  `expiration_date`.
 - `DELETE /purchases/:purchase_id/items/:item_id` elimina la línea y responde
   `204`.
 
@@ -3129,9 +3145,10 @@ Las líneas **no** llevan `currency_id`: todos sus montos se expresan en la
 moneda de la compra padre. Si el cliente envía `currency_id` dentro de una línea,
 se ignora. Cada alta, edición o baja recalcula la cabecera; al borrar la última
 línea los totales quedan en `0`. Solo se permiten sobre borradores. Si la línea no
-pertenece a la compra responde `404` con `{ "message": "Item not found" }` y un
-producto/estado repetido responde `409` con
-`{ "message": "Item already exists" }`.
+pertenece a la compra responde `404` con `{ "message": "Item not found" }`. El
+mismo producto puede repetirse con lotes distintos, pero repetir
+`(product_id, lot_number)` en la misma compra responde `409` con
+`{ "message": "Item already exists" }` aunque cambie `item_state_id`.
 
 ```bash
 curl -X POST http://localhost:3001/purchases/1/items \
@@ -3150,13 +3167,20 @@ curl -X DELETE http://localhost:3001/purchases/1/items/1 \
 
 ### `POST /purchases/:id/confirm`
 
-Protegido para `admin` y `seller`. En **una sola transacción** recalcula los
-totales sumando subtotales e impuestos de las líneas, hace _upsert_ en `costs`
+Protegido para `admin` y `seller`. En **una sola transacción** valida que
+todas las líneas tengan `lot_number` y `expiration_date`, busca o crea el lote
+por `(product_id, LOWER(lot_number))` con `FOR UPDATE`, guarda
+`received_lot_id` en la línea, recalcula los totales, hace _upsert_ en `costs`
 por `(product_id, item_state_id)` usando `unit_cost` sin impuesto (la última
 compra confirmada gana), incrementa `stocks.quantity` con
 `stockRepository.applyPurchaseItems(items, { transaction })` y marca
-`status = confirmed` con `confirmed_at`. Si cualquier paso falla se revierte
-todo: ni costos ni stocks cambian. El _upsert_ de `costs` hereda
+`status = confirmed` con `confirmed_at`. Los lotes nuevos nacen
+`location_status = 'pending'` con `stock = quantity` y `reserved = 0`; un lote
+existente solo se reutiliza si coinciden estado de ítem y vencimiento, si no
+responde `409 Lot already exists with different data`. Si cualquier paso falla
+se revierte todo: ni lotes, ni costos, ni stocks cambian. Sin datos de lote
+responde `422` con
+`{ "errors": { "items": "Every item requires lot_number and expiration_date" } }`. El _upsert_ de `costs` hereda
 `currency_id` de la compra; si la moneda fue desactivada después de crear la
 compra, la confirmación se permite porque la referencia es histórica. Sin líneas
 responde `422` con `{ "message": "Purchase has no items" }`; si ya estaba
@@ -3701,8 +3725,14 @@ Reglas de negocio:
   ya vencida porque el lote sigue existiendo en inventario.
 - `stock` y `reserved` son enteros entre `0` y `1 000 000 000`, con `0` por
   defecto al crear. La base de datos impone `stock >= 0`, `reserved >= 0` y
-  `reserved <= stock`.
-- `available = stock - reserved` se calcula al serializar y nunca se almacena.
+  `reserved <= stock`. **`reserved` es de solo lectura**: `POST /lots` y
+  `PUT /lots/:id` lo ignoran y conservan el valor actual (en la creación nace
+  en `0`); solo el ciclo de pedidos confirmados lo modifica.
+- `available = stock - reserved` cuando el lote está `located`; vale `0`
+  mientras está `pending` o `in_progress` y nunca se almacena.
+- `location_status` sigue el ciclo `pending → in_progress → located`. Las tres
+  columnas de ubicación (`warehouse_id`, `shelf_id`, `section_id`) son
+  opcionales como bloque: o las tres son nulas o las tres están presentes.
 - El estante debe pertenecer a la bodega y la sección al estante; si no, la API
   responde `422`. Estas comprobaciones y la escritura ocurren en una
   transacción.
@@ -3726,15 +3756,16 @@ Roles:
 ### `POST /lots`
 
 Requiere `number`, `product_id`, `expiration_date`, `item_state_id`,
-`warehouse_id`, `shelf_id` y `section_id`; `stock` y `reserved` son opcionales
-y valen `0` por defecto. Todas las referencias deben existir y la ubicación debe
-ser coherente.
+`warehouse_id`, `shelf_id` y `section_id`; `stock` es opcional y vale `0` por
+defecto. `reserved` se ignora y el lote nace con `reserved = 0` y
+`location_status = 'located'`. Todas las referencias deben existir y la
+ubicación debe ser coherente.
 
 ```bash
 curl -X POST http://localhost:3001/lots \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":120,"reserved":15,"warehouse_id":1,"shelf_id":1,"section_id":2}'
+  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":120,"warehouse_id":1,"shelf_id":1,"section_id":2}'
 ```
 
 Respuesta `201`:
@@ -3747,11 +3778,14 @@ Respuesta `201`:
   "expiration_date": "2027-03-31",
   "item_state_id": 1,
   "stock": 120,
-  "reserved": 15,
-  "available": 105,
+  "reserved": 0,
+  "available": 120,
   "warehouse_id": 1,
   "shelf_id": 1,
   "section_id": 2,
+  "location_status": "located",
+  "location_started_at": null,
+  "located_at": "2026-11-02T15:10:00.000Z",
   "product": { "id": 15, "name": "Ibuprofeno 800 mg", "reference": "IBU-800" },
   "item_state": {
     "id": 1,
@@ -3781,6 +3815,7 @@ Filtros opcionales:
 | `shelf_id`        | Estante exacto.                                                  |
 | `section_id`      | Sección exacta.                                                  |
 | `number`          | Número de lote exacto, sin distinguir mayúsculas/minúsculas.     |
+| `location_status` | `pending`, `in_progress` o `located`.                            |
 | `expired`         | `true` para `expiration_date < CURRENT_DATE`; `false` para `>=`. |
 | `expiring_before` | Fecha máxima inclusive `YYYY-MM-DD`.                             |
 
@@ -3803,6 +3838,9 @@ curl "http://localhost:3001/lots?product_id=15&warehouse_id=1&expired=false&expi
     "warehouse_id": 1,
     "shelf_id": 1,
     "section_id": 2,
+    "location_status": "located",
+    "location_started_at": null,
+    "located_at": "2026-11-02T15:10:00.000Z",
     "product": {
       "id": 15,
       "name": "Ibuprofeno 800 mg",
@@ -3834,24 +3872,119 @@ curl http://localhost:3001/lots/1 -H "Authorization: Bearer <jwt>"
 
 Reemplaza todos los campos editables y responde `202` con el lote actualizado.
 Exige `number`, `product_id`, `expiration_date`, `item_state_id`, `stock`,
-`reserved`, `warehouse_id`, `shelf_id` y `section_id`. Vuelve a validar las
-referencias y la coherencia de ubicación, y rechaza `reserved > stock` con
-`422`. Los campos `id`, `available`, `createdAt` y `updatedAt` se ignoran.
+`warehouse_id`, `shelf_id` y `section_id`. `reserved` se ignora y conserva su
+valor actual; si el nuevo `stock` queda por debajo de la reserva responde
+`422`. Vuelve a validar las referencias y la coherencia de ubicación. Los
+campos `id`, `available`, `createdAt` y `updatedAt` se ignoran.
 
 ```bash
 curl -X PUT http://localhost:3001/lots/1 \
   -H "Authorization: Bearer <jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":100,"reserved":10,"warehouse_id":1,"shelf_id":1,"section_id":2}'
+  -d '{"number":"L-2026-001","product_id":15,"expiration_date":"2027-03-31","item_state_id":1,"stock":100,"warehouse_id":1,"shelf_id":1,"section_id":2}'
 ```
 
-Respuesta `202` con `"available": 90`.
+Respuesta `202` con el `reserved` conservado y `available = stock - reserved`.
 
 ### `DELETE /lots/:id`
 
 Elimina un lote y responde `204` sin cuerpo. Solo se permite cuando
 `stock = 0` y `reserved = 0`; en caso contrario responde `409 Lot has stock or
 reservations` y no borra nada.
+
+## Bandeja de almacén (warehouse-inbox)
+
+Los lotes creados al confirmar una compra nacen `pending` y no se pueden vender
+ni reservar hasta que un responsable de almacén les asigne bodega, estante y
+sección. Este módulo expone el flujo `pending → in_progress → located`.
+
+Roles:
+
+| Endpoint                                        | `admin` | `seller` | `manager_warehouse` | `dispatcher` | `support` | `customer` |
+| ----------------------------------------------- | ------- | -------- | ------------------- | ------------ | --------- | ---------- |
+| `GET /warehouse-inbox/lots`                     | ✅      | ✅       | ✅                  | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+| `GET /warehouse-inbox/products/:product_id/lots`| ✅      | ✅       | ✅                  | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+| `POST /warehouse-inbox/lots/:id/start`          | ✅      | ❌ `403` | ✅                  | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+| `PUT /warehouse-inbox/lots/:id/location`        | ✅      | ❌ `403` | ✅                  | ❌ `403`     | ❌ `403`  | ❌ `403`   |
+
+### `GET /warehouse-inbox/lots`
+
+Lista los lotes `pending` e `in_progress` ordenados por `createdAt` e `id`
+ascendente. Sin `status` aplica ese filtro por defecto. Filtros opcionales:
+`product_id`, `purchase_id`, `lot_number`, `status`
+(`pending|in_progress|located|all`) y `expiring_before=YYYY-MM-DD`. Cada fila
+incluye producto, estado de ítem, compra, `purchase_item_id`, `stock`,
+`reserved`, `available` (`0` si no está ubicado) y los usuarios de auditoría.
+`GET /warehouse-inbox/products/:product_id/lots` es el alias filtrado por
+producto.
+
+```bash
+curl "http://localhost:3001/warehouse-inbox/lots?product_id=15" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+```json
+[
+  {
+    "id": 40,
+    "number": "LOTE-1",
+    "product_id": 15,
+    "expiration_date": "2027-03-31",
+    "item_state_id": 1,
+    "stock": 100,
+    "reserved": 0,
+    "available": 0,
+    "warehouse_id": null,
+    "shelf_id": null,
+    "section_id": null,
+    "location_status": "pending",
+    "location_started_at": null,
+    "located_at": null,
+    "created_at": "2026-11-02T15:00:00.000Z",
+    "product": { "id": 15, "name": "Ibuprofeno 400 mg", "reference": "IBU-400" },
+    "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
+    "purchase": { "id": 1, "number": 1, "supplier_id": 1 },
+    "purchase_item_id": 1,
+    "started_by": null,
+    "located_by": null
+  }
+]
+```
+
+### `POST /warehouse-inbox/lots/:id/start`
+
+Solo `admin` y `manager_warehouse`. Bloquea el lote con `FOR UPDATE` y pasa
+`pending → in_progress`, guardando `location_started_at` y
+`location_started_by`. Repetirlo con el mismo usuario responde `200` sin
+cambios; otro usuario recibe `409 Lot is being located by another user` y un
+lote ya ubicado `409 Lot is already located`.
+
+```bash
+curl -X POST http://localhost:3001/warehouse-inbox/lots/40/start \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### `PUT /warehouse-inbox/lots/:id/location`
+
+Solo `admin` y `manager_warehouse`. Exige
+`{ "warehouse_id": 1, "shelf_id": 2, "section_id": 3 }`, valida que las tres
+referencias existan y que el estante pertenezca a la bodega y la sección al
+estante. Deja el lote `located`, guarda `located_at` y `located_by`, conserva
+`location_started_at`/`location_started_by` y responde `202` con
+`available = stock - reserved`. Una ubicación incoherente responde `422`; un
+lote ya ubicado o reclamado por otro usuario responde `409`.
+
+```bash
+curl -X PUT http://localhost:3001/warehouse-inbox/lots/40/location \
+  -H "Authorization: Bearer <jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"warehouse_id":1,"shelf_id":2,"section_id":3}'
+```
+
+Errores propios: `400` cuando faltan los tres ids, `404 Lot not found`, `409`
+para lote ya ubicado o reclamado y `422` para referencias inexistentes o
+incoherentes. La reserva de pedidos y el catálogo de tienda solo consideran
+lotes `located`; `lots.reserved` sigue siendo inmutable desde esta bandeja.
 
 ```bash
 curl -X DELETE http://localhost:3001/lots/1 \
@@ -5256,10 +5389,12 @@ columnas de auditoría.
 | `422`  | Término requerido o inválido        | `{ "errors": { "payment_term_id": "..." } }`      |
 | `500`  | Error interno                       | Manejador global existente                        |
 
-## Billetera del cliente y pagos recibidos (HU-42)
+## Billetera del cliente y pagos recibidos (HU-42, modificado por HU-47)
 
 Registro de los depósitos que recibe la empresa y del saldo disponible de cada
-cliente (HU-42). Reutiliza `customers`, `currencies`, `method_payments`,
+cliente (HU-42). Desde HU-47 un pago nace `pending` y la billetera solo se
+acredita al conciliarlo; los pagos históricos se migran como `conciliated`.
+Reutiliza `customers`, `currencies`, `method_payments`,
 `method_payment_types` y `users`; no crea métodos de pago ni monedas nuevas.
 
 Tablas nuevas, todas con migración reversible:
@@ -5277,18 +5412,19 @@ billetera y pagos.
 
 Reglas de negocio:
 
-- La primera vez que se registra un pago se crea automáticamente la billetera
-  del cliente y la moneda del método. Una segunda recarga reutiliza la misma
-  billetera.
+- Un pago nuevo queda en `pending` y **no** modifica la billetera. La
+  billetera se crea o reutiliza recién al conciliar (`conciliated`), cuando se
+  acredita el saldo y se agrega el movimiento `deposit`.
 - `currency_id` no se acepta en el cuerpo: se copia de
   `method_payment_types.currency_id`. El método, su tipo y su moneda deben
   existir y estar activos.
 - `amount` debe ser numérico, mayor que `0` y tener como máximo dos decimales.
   `reference` y `notes` se recortan y un texto vacío se guarda como `null`.
-- El depósito es atómico: se bloquea o crea la billetera, se incrementa el
-  saldo, se crea el pago y se agrega el movimiento `deposit` con
-  `balance_after` dentro de la misma transacción. Dos depósitos simultáneos no
-  pierden movimientos.
+- La creación del pago, la imagen opcional y el evento inicial del historial son
+  atómicos. La conciliación bloquea el pago con `FOR UPDATE`, crea o bloquea la
+  billetera, incrementa el saldo, agrega el movimiento `deposit` con
+  `balance_after` y actualiza el estado en la misma transacción. Dos
+  conciliaciones simultáneas del mismo pago: solo una acredita.
 - `wallet_transactions` es append-only: la API no permite editar ni borrar
   movimientos. `payments` solo permite editar `reference`, `notes` y `paid_at`;
   `customer_id`, `method_payment_id`, `currency_id` y `amount` son inmutables.
@@ -5304,6 +5440,8 @@ Reglas de negocio:
 | `GET /payments`                          | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
 | `GET /payments/:id`                      | Solo propio  | ✅      | ✅       | ❌ `403`    |
 | `PUT /payments/:id`                      | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
+| `PUT /payments/:id/status`               | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
+| `GET /payments/:id/history`              | ❌ `403`     | ✅      | ✅       | ❌ `403`    |
 | `DELETE /payments/:id`                   | ❌ `403`     | ✅      | ❌ `403` | ❌ `403`    |
 | `GET /customer-wallets`                  | Solo propias | ✅      | ✅       | ❌ `403`    |
 | `GET /customer-wallets/:id`              | Solo propia  | ✅      | ✅       | ❌ `403`    |
@@ -5318,6 +5456,9 @@ de otro cliente responde `404` para ocultar su existencia.
 
 Solo `admin` y `seller`. Requiere `customer_id`, `method_payment_id` y
 `amount`; `paid_at` (por defecto ahora), `reference` y `notes` son opcionales.
+Acepta `application/json` o `multipart/form-data` con el archivo opcional
+`image` (JPEG, PNG o WebP, máximo 5 MB). La respuesta es `201` y el pago queda
+`pending` con `wallet: null`.
 
 ```bash
 curl -X POST http://localhost:3001/payments \
@@ -5340,8 +5481,22 @@ Respuesta `201`:
   "paid_at": "2026-11-01T12:00:00.000Z",
   "reference": "TRX-123",
   "notes": "Depósito Binance",
-  "wallet": { "id": 5, "customer_id": 8, "currency_id": 2, "balance": 100 }
+  "status": "pending",
+  "status_name": "Pendiente",
+  "rejection_reason": null,
+  "reference_image_id": null,
+  "reference_image": null,
+  "wallet": null
 }
+```
+
+Para adjuntar la imagen:
+
+```bash
+curl -X POST http://localhost:3001/payments \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -F customer_id=8 -F method_payment_id=3 -F amount=100 \
+  -F reference=TRX-123 -F image=@comprobante.jpg
 ```
 
 ### `GET /payments` y `GET /payments/:id`
@@ -5359,10 +5514,14 @@ curl "http://localhost:3001/payments?customer_id=8&paid_from=2026-11-01" \
 
 ### `PUT /payments/:id` y `DELETE /payments/:id`
 
-`PUT` (solo `admin` y `seller`) actualiza `reference`, `notes` y `paid_at`, y
-responde `202`. Enviar otro `customer_id`, `method_payment_id`, `currency_id` o
-`amount` responde `422`. `DELETE` (solo `admin`) responde `204` y revierte el
-saldo. Ambos responden `409` si el pago ya tiene asignaciones.
+`PUT` (solo `admin` y `seller`) actualiza `reference`, `notes` y `paid_at` y
+responde `202`. También acepta `multipart/form-data` con `image`; la nueva
+imagen reemplaza `reference_image_id` y la anterior se conserva en `images`
+para auditoría. Enviar otro `customer_id`, `method_payment_id`, `currency_id`,
+`amount`, `image_id` o `reference_image_id` no cambia esos valores. `DELETE`
+(solo `admin`) responde `204`: un pago `pending`/`rejected` se borra sin tocar
+la billetera y uno `conciliated` revierte el depósito. Ambos responden `409` si
+el pago ya tiene asignaciones.
 
 ```bash
 curl -X PUT http://localhost:3001/payments/1 \
@@ -5445,6 +5604,122 @@ curl "http://localhost:3001/customer-wallets/5/transactions" \
 | `422`  | `{ "errors": { "id": "Invalid wallet id" } }`                                      |
 | `500`  | Error interno manejado por el handler global                                       |
 
+## Conciliación de pagos, imagen e historial (HU-47)
+
+Cambia el flujo de HU-42: `POST /payments` deja el pago en `pending` y no
+acredita la billetera. Solo `PUT /payments/:id/status` con `conciliated`
+acredita el saldo, exactamente una vez. `rejected` exige un motivo y nunca
+acredita. Los pagos existentes al aplicar la migración se marcan
+`conciliated` y conservan su depósito.
+
+Tablas nuevas y cambios:
+
+| Tabla / columna | Contenido |
+| --- | --- |
+| `payment_statuses` | Catálogo `pending`/`conciliated`/`rejected` con nombre, orden e `is_system`. |
+| `payment_status_history` | Eventos append-only con estado anterior/nuevo, motivo, actor (`actor_user_id`) y fecha. |
+| `payments.status` | FK a `payment_statuses.code`, por defecto `pending`, con índice. |
+| `payments.rejection_reason` | Motivo de rechazo, obligatorio solo cuando `status = 'rejected'`. |
+| `payments.reference_image_id` | Imagen opcional en `images` con FK restrictiva e índice. |
+
+La semilla `seeders/20260910000009-payment-statuses.js` es idempotente por
+`code`. La migración también inserta los estados porque necesita `conciliated`
+para el backfill. `payment_status_history` se elimina en cascada con el pago.
+
+### Flujo de conciliación
+
+1. `POST /payments` crea el pago `pending`, el evento inicial
+   (`from_status: null`, `to_status: 'pending'`, actor autenticado) y,
+   opcionalmente, la imagen. No crea billetera ni movimiento.
+2. `PUT /payments/:id/status` con `{ "status": "conciliated", "reason": "..." }`
+   bloquea el pago, valida `pending → conciliated`, acredita la billetera,
+   agrega un único `deposit` y actualiza el estado en la misma transacción.
+3. `PUT /payments/:id/status` con `{ "status": "rejected", "reason": "..." }`
+   exige un motivo de 3–500 caracteres, guarda `rejection_reason` y no toca la
+   billetera.
+4. `conciliated` y `rejected` son terminales. Repetir el estado o intentar otra
+   transición responde `422 { "errors": { "status": "Invalid status transition" } }`.
+
+```bash
+curl -X PUT http://localhost:3001/payments/10/status \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"conciliated","reason":"Transferencia verificada en el banco"}'
+```
+
+Respuesta `202` (fragmento):
+
+```json
+{
+  "id": 10,
+  "status": "conciliated",
+  "status_name": "Conciliado",
+  "rejection_reason": null,
+  "wallet": { "id": 5, "customer_id": 8, "currency_id": 2, "balance": 100 }
+}
+```
+
+```bash
+curl -X PUT http://localhost:3001/payments/10/status \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"rejected","reason":"El monto no coincide con el comprobante"}'
+```
+
+Respuesta `202` (fragmento):
+
+```json
+{
+  "id": 10,
+  "status": "rejected",
+  "status_name": "Rechazado",
+  "rejection_reason": "El monto no coincide con el comprobante",
+  "wallet": null
+}
+```
+
+La lista y el detalle incluyen `status`, `status_name`, `rejection_reason`,
+`reference_image_id` y `reference_image` (`{ id, url, pathname, reference,
+thumbnail }` o `null`). La lista acepta `?status=pending|conciliated|rejected`.
+El detalle incluye `history` solo para `admin` y `seller`; el `customer` dueño
+ve estado, motivo e imagen, pero nunca el actor.
+
+### Historial
+
+`GET /payments/:id/history` (solo `admin` y `seller`) devuelve los eventos por
+`createdAt` e `id` ascendente. Cada evento tiene `from_status`, `to_status`,
+`reason`, `created_at` y `actor` (`{ id, username, email }`). No existen
+endpoints para editar ni borrar eventos.
+
+```bash
+curl http://localhost:3001/payments/10/history \
+  -H "Authorization: Bearer <jwt-seller>"
+```
+
+### Reemplazar la imagen
+
+```bash
+curl -X PUT http://localhost:3001/payments/10 \
+  -H "Authorization: Bearer <jwt-seller>" \
+  -F notes="Comprobante corregido" \
+  -F image=@comprobante-corregido.jpg
+```
+
+Responde `202` con el nuevo `reference_image_id`; la fila y los archivos de la
+imagen anterior no se borran. Al eliminar el pago, si la imagen ya no está
+referenciada se elimina la fila y sus archivos de forma best-effort.
+
+### Errores de HU-47
+
+| Código | Cuerpo esperado |
+| --- | --- |
+| `400` | `{ "message": "status is required" }` o archivo en campo inesperado |
+| `409` | `{ "message": "Payment has allocations" }` |
+| `413` | `{ "message": "Image too large" }` |
+| `422` | `{ "errors": { "status": "Invalid status transition" } }` |
+| `422` | `{ "errors": { "reason": "reason is required when the payment is rejected" } }` |
+| `422` | `{ "errors": { "image": "Invalid image" } }` |
+
 ## Aplicación de pagos a facturas y estado de pago (HU-43)
 
 Permite aplicar el saldo de una billetera a una factura, consultar el historial
@@ -5466,6 +5741,9 @@ Reglas de negocio:
 - Un pago no se puede aplicar dos veces a la misma factura: la pareja
   `(payment_id, invoice_id)` es única y un duplicado responde
   `409 Payment already allocated to this invoice`.
+- Solo se aceptan pagos `conciliated` (HU-47). Un pago `pending` o `rejected`
+  responde `422` con
+  `{ "errors": { "payment_id": "Payment is not conciliated" } }`.
 - El pago debe pertenecer al mismo cliente que la factura. Si no, responde
   `422` con `{ "errors": { "payment_id": "Payment does not belong to invoice customer" } }`.
 - `amount` se descuenta de la billetera en la moneda del pago y debe ser mayor

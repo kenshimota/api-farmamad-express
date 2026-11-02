@@ -60,6 +60,8 @@ describe("line CRUD with a real database", () => {
       quantity: 4,
       unit_cost: 25,
       tax_amount: 16,
+      lot_number: "ITEM-LOT-1",
+      expiration_date: "2027-03-31",
     });
 
     expect(created.status).toBe(201);
@@ -148,6 +150,8 @@ describe("line CRUD with a real database", () => {
       quantity: 1,
       unit_cost: 1,
       tax_amount: 0,
+      lot_number: item.lot_number,
+      expiration_date: item.expiration_date,
     });
     expect(duplicated.status).toBe(409);
     expect(duplicated.body).toEqual({ message: "Item already exists" });
@@ -162,6 +166,8 @@ describe("line CRUD with a real database", () => {
       quantity: 1,
       unit_cost: 1,
       tax_amount: 0,
+      lot_number: "ITEM-LOT-MISSING-PRODUCT",
+      expiration_date: "2027-03-31",
     });
     expect(missingProduct.status).toBe(422);
 
@@ -175,6 +181,8 @@ describe("line CRUD with a real database", () => {
       quantity: 1,
       unit_cost: 1,
       tax_amount: 0,
+      lot_number: "ITEM-LOT-MISSING-STATE",
+      expiration_date: "2027-03-31",
     });
     expect(missingState.status).toBe(422);
   });
@@ -202,6 +210,8 @@ describe("line CRUD with a real database", () => {
     ).send({
       product_id: anotherLine.product_id,
       item_state_id: anotherLine.item_state_id,
+      lot_number: anotherLine.lot_number,
+      expiration_date: anotherLine.expiration_date,
     });
     expect(duplicate.status).toBe(409);
   });

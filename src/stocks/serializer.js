@@ -41,13 +41,15 @@ function toPublicStock(stock, itemState = readField(stock, "item_state")) {
 /**
  * Builds the public representation of an available stock row. The current cost
  * and its currency are exposed as null when the combination has no registered
- * cost, so the missing value stays visible to the client.
+ * cost, so the missing value stays visible to the client. `quantity` is the
+ * physical total and `located_quantity` is the sellable part.
  * @param {object} stock - Stock instance or plain object with its cost.
+ * @param {number} [locatedQuantity] - Units stored in located lots.
  * @returns {{ product_id: number, item_state_id: number, quantity: number,
- *   cost: number|null, currency_id: number|null, currency: object|null,
- *   item_state: object|null }} Public data.
+ *   located_quantity: number, cost: number|null, currency_id: number|null,
+ *   currency: object|null, item_state: object|null }} Public data.
  */
-function toAvailableStock(stock) {
+function toAvailableStock(stock, locatedQuantity = 0) {
   const cost = readField(stock, "cost");
   const currency = cost ? readField(cost, "currency") : null;
   const itemState = readField(stock, "item_state");
@@ -56,6 +58,7 @@ function toAvailableStock(stock) {
     product_id: readField(stock, "product_id"),
     item_state_id: readField(stock, "item_state_id"),
     quantity: readField(stock, "quantity"),
+    located_quantity: Number(locatedQuantity),
     cost: cost ? toCostNumber(readField(cost, "cost")) : null,
     currency_id: cost ? (readField(cost, "currency_id") ?? null) : null,
     currency: currency ? toPublicCurrencySummary(currency) : null,

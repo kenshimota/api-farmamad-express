@@ -21,6 +21,8 @@ const VALID_ITEM = {
   quantity: 1,
   unit_cost: 10,
   tax_amount: 1.6,
+  lot_number: "LOTE-1",
+  expiration_date: "2027-03-31",
 };
 
 describe("createPurchaseSchema", () => {
@@ -60,6 +62,8 @@ describe("createPurchaseSchema", () => {
           quantity: 1,
           unit_cost: 20,
           tax_amount: 1.6,
+          lot_number: "LOTE-1",
+          expiration_date: "2027-03-31",
         },
       ],
     });
@@ -74,7 +78,7 @@ describe("createPurchaseSchema", () => {
     await expect(validate(createPurchaseSchema, body)).rejects.toThrow();
   });
 
-  it("requires tax_amount on every line with the nested error path", async () => {
+  it("requires lot data and tax_amount on every line with nested error paths", async () => {
     const { tax_amount, ...withoutTax } = VALID_ITEM;
 
     await expect(
@@ -83,12 +87,26 @@ describe("createPurchaseSchema", () => {
         items: [withoutTax],
       }),
     ).rejects.toMatchObject({
-      inner: [
+      inner: expect.arrayContaining([
         expect.objectContaining({
           path: "items[0].tax_amount",
           message: "tax_amount is required",
         }),
-      ],
+      ]),
+    });
+
+    const { lot_number, expiration_date, ...withoutLot } = VALID_ITEM;
+
+    await expect(
+      validate(createPurchaseSchema, {
+        supplier_id: 2,
+        items: [withoutLot],
+      }),
+    ).rejects.toMatchObject({
+      inner: expect.arrayContaining([
+        expect.objectContaining({ path: "items[0].lot_number" }),
+        expect.objectContaining({ path: "items[0].expiration_date" }),
+      ]),
     });
   });
 
@@ -119,6 +137,10 @@ describe("purchase item schemas", () => {
     [{ tax_amount: null }, "tax_amount"],
     [{ tax_amount: "" }, "tax_amount"],
     [{ tax_amount: "abc" }, "tax_amount"],
+    [{ lot_number: "" }, "lot_number"],
+    [{ lot_number: "x".repeat(101) }, "lot_number"],
+    [{ expiration_date: "2026-02-30" }, "expiration_date"],
+    [{ expiration_date: "31-03-2027" }, "expiration_date"],
   ])("rejects invalid line %p", async (overrides) => {
     const body = { ...VALID_ITEM, ...overrides };
 

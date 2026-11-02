@@ -46,11 +46,14 @@ describe("POST /lots with a real database", () => {
       expiration_date: "2027-03-31",
       item_state_id: references.itemState.id,
       stock: 120,
-      reserved: 15,
-      available: 105,
+      reserved: 0,
+      available: 120,
       warehouse_id: references.warehouse.id,
       shelf_id: references.shelf.id,
       section_id: references.section.id,
+      location_status: "located",
+      location_started_at: null,
+      located_at: expect.any(String),
       product: {
         id: references.product.id,
         name: "Ibuprofeno 400 mg",
@@ -137,21 +140,16 @@ describe("POST /lots with a real database", () => {
     });
   });
 
-  it.each([
-    ["2026-02-30", "expiration_date"],
-    ["2027-03-31", "reserved"],
-  ])("responds 422 for invalid %s", async (value, field) => {
+  it("responds 422 for an invalid expiration date", async () => {
     const references = await createReferences();
     const token = await tokenFor("admin");
-    const body =
-      field === "expiration_date"
-        ? lotBody(references, { expiration_date: value })
-        : lotBody(references, { stock: 10, reserved: 11 });
 
-    const response = await as("post", "/lots", token).send(body);
+    const response = await as("post", "/lots", token).send(
+      lotBody(references, { expiration_date: "2026-02-30" }),
+    );
 
     expect(response.status).toBe(422);
-    expect(response.body.errors).toHaveProperty(field);
+    expect(response.body.errors).toHaveProperty("expiration_date");
   });
 
   it("responds 422 for an unknown reference", async () => {

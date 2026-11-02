@@ -98,6 +98,65 @@ const schemas = {
       },
       reference: { type: "string", nullable: true, example: "TRX-123" },
       notes: { type: "string", nullable: true, example: "Depósito Binance" },
+      status: {
+        type: "string",
+        enum: ["pending", "conciliated", "rejected"],
+        example: "pending",
+      },
+      status_name: { type: "string", example: "Pendiente" },
+      rejection_reason: {
+        type: "string",
+        nullable: true,
+        example: null,
+        description: "Only set when status is rejected",
+      },
+      reference_image_id: {
+        type: "integer",
+        nullable: true,
+        example: 20,
+      },
+      reference_image: {
+        allOf: [{ $ref: "#/components/schemas/Image" }],
+        nullable: true,
+      },
+    },
+  },
+  PaymentHistoryEvent: {
+    type: "object",
+    description:
+      "One append-only payment status change with its actor and timestamp",
+    properties: {
+      id: { type: "integer", example: 1 },
+      from_status: {
+        type: "string",
+        nullable: true,
+        enum: ["pending", "conciliated", "rejected"],
+        example: null,
+      },
+      to_status: {
+        type: "string",
+        enum: ["pending", "conciliated", "rejected"],
+        example: "pending",
+      },
+      reason: { type: "string", nullable: true, example: null },
+      created_at: {
+        type: "string",
+        format: "date-time",
+        example: "2026-11-02T15:00:00.000Z",
+      },
+      actor: {
+        type: "object",
+        nullable: true,
+        properties: {
+          id: { type: "integer", example: 1 },
+          username: { type: "string", example: "admin" },
+          email: {
+            type: "string",
+            format: "email",
+            example: "admin@farmamad.com",
+          },
+        },
+      },
     },
   },
   PaymentWithWallet: {
@@ -106,7 +165,11 @@ const schemas = {
       {
         type: "object",
         properties: {
-          wallet: { $ref: "#/components/schemas/CustomerWallet" },
+          wallet: {
+            allOf: [{ $ref: "#/components/schemas/CustomerWallet" }],
+            nullable: true,
+            description: "Null while the payment is pending or rejected",
+          },
         },
       },
     ],

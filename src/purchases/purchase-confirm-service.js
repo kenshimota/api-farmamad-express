@@ -1,5 +1,6 @@
 const {
   httpError,
+  missingLotData,
   notEditable,
   purchaseHasNoItems,
   purchaseNotFound,
@@ -12,6 +13,7 @@ const { calculateTotals, toTotalsAmounts } = require("./money");
  * @param {object} dependencies.repository - Purchase repository.
  * @param {object} dependencies.itemRepository - Purchase item repository.
  * @param {object} dependencies.stocks - Stock purchase service.
+ * @param {object} dependencies.lots - Lot receiving service.
  * @param {object} dependencies.support - Shared service helpers.
  * @param {function(): Date} dependencies.clock - Clock for confirmed_at.
  * @returns {object} The confirmation operation.
@@ -20,15 +22,17 @@ function createPurchaseConfirmOperations({
   repository,
   itemRepository,
   stocks,
+  lots,
   support,
   clock,
 }) {
   return {
     /**
-     * Confirms a draft atomically: recalculates the totals from the line
-     * subtotals and taxes, upserts `costs` with the tax-free `unit_cost`,
-     * increments `stocks` through the stock purchase service and marks the
-     * purchase as confirmed. Any failure rolls the whole transaction back.
+     * Confirms a draft atomically: validates the lot data of every line,
+     * creates or reuses its lot (pending until located), recalculates the
+     * totals, upserts `costs` with the tax-free `unit_cost`, increments
+     * `stocks` and marks the purchase as confirmed. Any failure rolls the
+     * whole transaction back.
      * @param {number} id - Purchase id.
      * @returns {Promise<object>} The confirmed purchase.
      */
@@ -54,6 +58,10 @@ function createPurchaseConfirmOperations({
           throw purchaseHasNoItems();
         }
 
+        if (lines.some((line) => !line.lot_number || !line.expiration_date)) {
+          throw missingLotData();
+        }
+
         await support.assertSupplier(purchase.supplier_id);
         await support.assertItemReferences(lines, "items");
 
@@ -64,6 +72,14 @@ function createPurchaseConfirmOperations({
         });
 
         for (const line of lines) {
+          const lot = await lots.receiveLine(line, transaction);
+
+          await itemRepository.update(
+            line,
+            { received_lot_id: lot.id },
+            { transaction },
+          );
+
           await repository.upsertCost(
             {
               product_id: line.product_id,

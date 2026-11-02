@@ -119,6 +119,7 @@ describe("order repository", () => {
       where: {
         product_id: 15,
         item_state_id: 1,
+        location_status: "located",
         stock: { [Symbol.for("gt")]: expect.anything() },
       },
       order: [

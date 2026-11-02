@@ -18,10 +18,12 @@ const router = Router();
  *     summary: Creates a lot; admin, seller and manager_warehouse
  *     description: >
  *       `number`, `product_id`, `expiration_date`, `item_state_id`,
- *       `warehouse_id`, `shelf_id` and `section_id` are required; `stock` and
- *       `reserved` default to 0. References must exist and the shelf must
- *       belong to the warehouse while the section must belong to the shelf.
- *       `(product_id, number)` is unique ignoring case. The response includes
+ *       `warehouse_id`, `shelf_id` and `section_id` are required; `stock`
+ *       defaults to 0. `reserved` is read-only and ignored: the lot is created
+ *       with `reserved = 0`, `location_status = 'located'` and `located_at`
+ *       set. References must exist and the shelf must belong to the warehouse
+ *       while the section must belong to the shelf. `(product_id, number)` is
+ *       unique ignoring case. The response includes
  *       `available = stock - reserved` and the nested relations.
  *     tags:
  *       - Lots
@@ -47,7 +49,6 @@ const router = Router();
  *               expiration_date: { type: string, format: date, example: '2027-03-31' }
  *               item_state_id: { type: integer, minimum: 1, example: 1 }
  *               stock: { type: integer, minimum: 0, maximum: 1000000000, example: 120 }
- *               reserved: { type: integer, minimum: 0, maximum: 1000000000, example: 15 }
  *               warehouse_id: { type: integer, minimum: 1, example: 1 }
  *               shelf_id: { type: integer, minimum: 1, example: 1 }
  *               section_id: { type: integer, minimum: 1, example: 2 }

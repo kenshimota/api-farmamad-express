@@ -6,12 +6,14 @@ jest.mock("../models/stock", () => ({
 }));
 jest.mock("../models/item-state", () => ({}));
 jest.mock("../models/cost", () => ({}));
+jest.mock("../models/lot", () => ({ findAll: jest.fn() }));
 jest.mock("../models/user", () => ({ findByPk: jest.fn() }));
 
 const express = require("express");
 const request = require("supertest");
 const jwt = require("jsonwebtoken");
 const Stock = require("../models/stock");
+const Lot = require("../models/lot");
 const User = require("../models/user");
 const stocksRouter = require("./index");
 
@@ -39,6 +41,8 @@ function tokenFor(role = "admin") {
 beforeEach(() => {
   Stock.findAll.mockReset();
   Stock.findByPk.mockReset();
+  Lot.findAll.mockReset();
+  Lot.findAll.mockResolvedValue([]);
   User.findByPk.mockReset();
   User.findByPk.mockResolvedValue({
     id: 1,

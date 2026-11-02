@@ -13,11 +13,6 @@ const CURRENCY = {
   symbol: "$",
 };
 
-/**
- * Builds the service with fresh doubles.
- * @param {object} [overrides] - Dependency overrides.
- * @returns {object} The service and its doubles.
- */
 function setup(overrides = {}) {
   const repository = overrides.repository ?? repositoryDouble();
   const itemRepository = overrides.itemRepository ?? itemRepositoryDouble();
@@ -33,11 +28,6 @@ function setup(overrides = {}) {
   return { service, repository, itemRepository, stocks, clock };
 }
 
-/**
- * Builds a stored purchase.
- * @param {object} [overrides] - Attribute overrides.
- * @returns {object} Purchase double.
- */
 function purchase(overrides = {}) {
   return {
     id: 1,
@@ -84,6 +74,8 @@ describe("createPurchase", () => {
           quantity: 40,
           unit_cost: 20,
           tax_amount: 128,
+          lot_number: "LOTE-1",
+          expiration_date: "2027-03-31",
         },
         {
           product_id: 15,
@@ -91,6 +83,8 @@ describe("createPurchase", () => {
           quantity: 3,
           unit_cost: 12.5,
           tax_amount: 6,
+          lot_number: "LOTE-2",
+          expiration_date: "2027-06-30",
         },
       ],
     });
@@ -120,6 +114,8 @@ describe("createPurchase", () => {
           unit_cost: "20.00",
           subtotal: "800.00",
           tax_amount: "128.00",
+          lot_number: "LOTE-1",
+          expiration_date: "2027-03-31",
         },
         {
           purchase_id: 1,
@@ -129,6 +125,8 @@ describe("createPurchase", () => {
           unit_cost: "12.50",
           subtotal: "37.50",
           tax_amount: "6.00",
+          lot_number: "LOTE-2",
+          expiration_date: "2027-06-30",
         },
       ],
       { transaction: TRANSACTION },

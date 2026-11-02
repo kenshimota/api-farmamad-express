@@ -35,6 +35,7 @@ const PAYMENT = Object.freeze({
   customer_id: 8,
   currency_id: 2,
   amount: "100.00",
+  status: "conciliated",
   currency: CURRENCY,
 });
 const WALLET = Object.freeze({
