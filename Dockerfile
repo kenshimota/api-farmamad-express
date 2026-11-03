@@ -12,6 +12,8 @@ RUN npm ci --omit=dev
 
 COPY . .
 
+RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
+
 USER node
 
 EXPOSE 3000

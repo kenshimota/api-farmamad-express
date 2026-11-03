@@ -95,6 +95,8 @@ jobs:
             printf 'JWT_EXPIRES_IN=%s\n' "$JWT_EXPIRES_IN"
             printf 'GMAIL_USERNAME=%s\n' "$GMAIL_USERNAME"
             printf 'GMAIL_TOKEN=%s\n' "$GMAIL_TOKEN"
+            printf 'UPLOAD_DIR=%s\n' "/app/uploads"
+            printf 'PUBLIC_BASE_URL=%s\n' "https://farmamed.strixcryptoapp.site/api/v1"
           } > "$RUNNER_TEMP/farmamad.env"
 
       - name: Build image
@@ -120,6 +122,7 @@ jobs:
             --restart unless-stopped \
             --env-file "$RUNNER_TEMP/farmamad.env" \
             --network "$NETWORK" \
+            -v farmamad-uploads:/app/uploads \
             -p "127.0.0.1:${HOST_PORT}:3001" \
             "$IMAGE:${{ github.ref_name }}"
 
