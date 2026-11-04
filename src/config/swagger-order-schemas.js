@@ -53,8 +53,30 @@ const orderSchemas = {
       },
       subtotal: {
         type: "number",
-        description: "quantity × unit_price",
+        description: "quantity × unit_price (pre-tax)",
         example: 25.0,
+      },
+      tax_id: { type: "integer", nullable: true, example: 2 },
+      tax_code: { type: "string", nullable: true, example: "IVA" },
+      tax_name: {
+        type: "string",
+        nullable: true,
+        example: "Impuesto al Valor Agregado",
+      },
+      tax_rate: {
+        type: "number",
+        description: "Snapshot percentage, 16 means 16 %",
+        example: 16,
+      },
+      tax_amount: {
+        type: "number",
+        description: "subtotal × tax_rate ÷ 100",
+        example: 4.0,
+      },
+      total: {
+        type: "number",
+        description: "subtotal + tax_amount",
+        example: 29.0,
       },
       product: { $ref: "#/components/schemas/OrderProductSummary" },
     },
@@ -126,8 +148,21 @@ const orderSchemas = {
         nullable: true,
         allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
       },
-      subtotal: { type: "number", example: 25.0 },
-      total: { type: "number", example: 25.0 },
+      subtotal: {
+        type: "number",
+        description: "Pre-tax subtotal",
+        example: 25.0,
+      },
+      tax_amount: {
+        type: "number",
+        description: "Sum of line taxes",
+        example: 4.0,
+      },
+      total: {
+        type: "number",
+        description: "subtotal + tax_amount",
+        example: 29.0,
+      },
       delivery_address: {
         type: "string",
         example: "Av. Monseñor Rivero 123",
@@ -161,8 +196,21 @@ const orderSchemas = {
         nullable: true,
         allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
       },
-      subtotal: { type: "number", example: 25.0 },
-      total: { type: "number", example: 25.0 },
+      subtotal: {
+        type: "number",
+        description: "Pre-tax subtotal",
+        example: 25.0,
+      },
+      tax_amount: {
+        type: "number",
+        description: "Sum of line taxes",
+        example: 4.0,
+      },
+      total: {
+        type: "number",
+        description: "subtotal + tax_amount",
+        example: 29.0,
+      },
       delivery_address: {
         type: "string",
         example: "Av. Monseñor Rivero 123",

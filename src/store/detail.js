@@ -82,6 +82,7 @@ async function getProductDetail({
       toStoreDetailVariant({
         itemState,
         price,
+        tax: readField(product, "tax"),
         currency: transactionCurrency,
         available: Boolean(lots && lots.available),
       }),

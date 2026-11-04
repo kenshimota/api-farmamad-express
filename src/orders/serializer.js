@@ -128,6 +128,12 @@ function toPublicOrderItem(item) {
     quantity: readField(item, "quantity"),
     unit_price: toMoneyNumber(readField(item, "unit_price")),
     subtotal: toMoneyNumber(readField(item, "subtotal")),
+    tax_id: readField(item, "tax_id"),
+    tax_code: readField(item, "tax_code"),
+    tax_name: readField(item, "tax_name"),
+    tax_rate: toDecimalNumber(readField(item, "tax_rate"), 2),
+    tax_amount: toMoneyNumber(readField(item, "tax_amount")),
+    total: toMoneyNumber(readField(item, "total")),
   };
 
   if (itemState) {
@@ -196,6 +202,7 @@ function toPublicOrder(
     user_id: readField(order, "user_id"),
     currency_id: readField(order, "currency_id"),
     subtotal: toMoneyNumber(readField(order, "subtotal")),
+    tax_amount: toMoneyNumber(readField(order, "tax_amount")),
     total: toMoneyNumber(readField(order, "total")),
     payment_term_id: readField(order, "payment_term_id"),
     delivery_address: readField(order, "delivery_address"),

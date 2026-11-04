@@ -6401,6 +6401,9 @@ resoluble, moneda activa y existencia):
     "image_id": 7,
     "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
     "price": 14.29,
+    "tax": { "id": 2, "code": "IVA", "name": "Impuesto al Valor Agregado", "rate": 16.0 },
+    "tax_amount": 2.29,
+    "total": 16.58,
     "currency_id": 3,
     "currency": {
       "id": 3,
@@ -6462,6 +6465,9 @@ Respuesta `200`:
     {
       "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
       "price": 14.29,
+      "tax": { "id": 2, "code": "IVA", "name": "Impuesto al Valor Agregado", "rate": 16.0 },
+      "tax_amount": 2.29,
+      "total": 16.58,
       "currency_id": 3,
       "currency": {
         "id": 3,
@@ -6488,6 +6494,72 @@ Errores del catálogo:
 | `422`  | Id de producto inválido | `{ "errors": { "id": "Invalid product id" } }` |
 | `422`  | `item_state_id` inválido o no vendible | `{ "errors": { "item_state_id": "Invalid item state id" } }` / `{ "errors": { "item_state_id": "Invalid item state" } }` |
 | `503`  | Sin moneda activa por defecto | `{ "message": "Default transaction currency is not configured" }` |
+
+## Impuesto por línea en pedidos, facturas y tienda — HU-53
+
+Cada producto toma la tasa de `products.tax_id` (catálogo `taxes`). El precio
+unitario y el subtotal **no** incluyen impuesto; el impuesto se calcula por
+línea y el total es la suma de ambos:
+
+- `tax_amount = round2(subtotal × tax_rate ÷ 100)`
+- `total = round2(subtotal + tax_amount)`
+- Cabecera del pedido y de la factura: `tax_amount = Σ tax_amount` y
+  `total = Σ subtotal + Σ tax_amount`.
+
+Los cálculos se hacen en centavos para evitar errores de coma flotante. Una
+tasa `0` deja `tax_amount = 0` y `total = subtotal`. La migración
+`20261103000001-add-tax-snapshot-to-orders-and-invoices` agrega las columnas y
+deja los pedidos y facturas históricos con impuesto `0`, sin recalcular importes.
+
+Cada línea de `order_items` e `invoice_items` guarda una foto del impuesto:
+`tax_id`, `tax_code`, `tax_name`, `tax_rate`, `tax_amount` y `total`. Si el
+impuesto cambia o se elimina después, la línea conserva la tasa y el nombre
+aplicados. Al facturar, cada `invoice_item` copia esos campos desde su
+`order_item`; un producto sin impuesto queda con `tax_rate = 0`,
+`tax_amount = 0`, `tax_id = null` y `total = subtotal`.
+
+Ejemplo: producto con IVA 16 %, dos unidades a `10.00`:
+
+```json
+{
+  "product_id": 15,
+  "item_state_id": 1,
+  "quantity": 2,
+  "unit_price": 10.0,
+  "subtotal": 20.0,
+  "tax_id": 2,
+  "tax_code": "IVA",
+  "tax_name": "Impuesto al Valor Agregado",
+  "tax_rate": 16.0,
+  "tax_amount": 3.2,
+  "total": 23.2
+}
+```
+
+Cabecera del pedido y de la factura:
+
+```json
+{
+  "subtotal": 20.0,
+  "tax_amount": 3.2,
+  "total": 23.2
+}
+```
+
+`GET /store/products` y `GET /store/products/:id` agregan a cada variante el
+objeto `tax` (`{ id, code, name, rate }` o `null`), `tax_amount` sobre `price` y
+`total` (`price + tax_amount`). `price` sigue siendo el precio sin impuesto. Si
+el producto no tiene impuesto, `tax` es `null`, `tax_amount` es `0` y `total`
+es igual a `price`.
+
+```json
+{
+  "price": 10.0,
+  "tax": { "id": 2, "code": "IVA", "name": "Impuesto al Valor Agregado", "rate": 16.0 },
+  "tax_amount": 1.6,
+  "total": 11.6
+}
+```
 
 ## Logs y manejo de errores
 

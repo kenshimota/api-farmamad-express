@@ -49,7 +49,14 @@ function setup(options = {}) {
   };
   const pricing = {
     priceLines: jest.fn(async (lines) =>
-      lines.map((line) => ({ ...line, unit_price: 14.29 })),
+      lines.map((line) => ({
+        ...line,
+        unit_price: 14.29,
+        tax_id: 2,
+        tax_code: "IVA",
+        tax_name: "Impuesto al Valor Agregado",
+        tax_rate: 16,
+      })),
     ),
   };
   const history = createOrderHistoryService({ repository });
@@ -85,6 +92,7 @@ describe("order draft service", () => {
       status: "draft",
       payment_term_id: null,
       subtotal: "0.00",
+      tax_amount: "0.00",
       total: "0.00",
       delivery_address: "Calle 1",
       notes: "Entregar por la tarde",
@@ -115,7 +123,8 @@ describe("order draft service", () => {
     expect(calls.created).toMatchObject({
       status: "draft",
       subtotal: "28.58",
-      total: "28.58",
+      tax_amount: "4.57",
+      total: "33.15",
     });
     expect(calls.items).toEqual([
       {
@@ -125,6 +134,12 @@ describe("order draft service", () => {
         quantity: 2,
         unit_price: "14.29",
         subtotal: "28.58",
+        tax_id: 2,
+        tax_code: "IVA",
+        tax_name: "Impuesto al Valor Agregado",
+        tax_rate: "16.00",
+        tax_amount: "4.57",
+        total: "33.15",
       },
     ]);
     expect(repository.findLotsForUpdate).toBeUndefined();

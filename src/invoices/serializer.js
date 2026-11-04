@@ -135,6 +135,12 @@ function toPublicInvoiceItem(item) {
     quantity: readField(item, "quantity"),
     unit_price: toMoneyNumber(readField(item, "unit_price")),
     subtotal: toMoneyNumber(readField(item, "subtotal")),
+    tax_id: readField(item, "tax_id"),
+    tax_code: readField(item, "tax_code"),
+    tax_name: readField(item, "tax_name"),
+    tax_rate: toDecimalNumber(readField(item, "tax_rate"), 2),
+    tax_amount: toMoneyNumber(readField(item, "tax_amount")),
+    total: toMoneyNumber(readField(item, "total")),
   };
 }
 

@@ -89,6 +89,7 @@ async function listCatalog({
         product: readField(cost, "product"),
         itemState,
         price,
+        tax: readField(readField(cost, "product"), "tax"),
         currency: transactionCurrency,
         available: true,
       }),
