@@ -4501,12 +4501,130 @@ El detalle incluye `id`, `number`, `status`, `customer_id`, `user_id`,
 expone asignaciones por lote, `lot_id`, `lots.stock`, `lots.reserved`, costos,
 bodegas ni datos de otros clientes.
 
+### Alistamiento por pedido — `GET /orders/:id/picking`
+
+Vista de **solo lectura** para preparar las cajas antes de facturar. Flujo
+recomendado: el pedido pasa a `generate` (reserva FEFO de lotes) → se consulta
+el picking → el operador arma las cajas con la cantidad indicada por cada lote
+→ el pedido pasa a `invoiced`. Después de facturar, la misma vista devuelve las
+asignaciones `consumed`, de modo que permite reconstruir qué lotes se
+empacaron.
+
+Roles permitidos: `admin`, `seller`, `manager_warehouse` y `dispatcher`.
+`customer` y `support` reciben `403 Forbidden`, incluso si el pedido pertenece
+al cliente: la ubicación de los lotes es información interna. Este guard es
+propio del alistamiento y **no** amplía los permisos de `GET /orders/:id` ni de
+los demás endpoints de pedidos.
+
+```bash
+curl "http://localhost:3001/orders/10/picking" \
+  -H "Authorization: Bearer <jwt-manager-warehouse>"
+```
+
+Respuesta `200`:
+
+```json
+{
+  "order": {
+    "id": 10,
+    "number": 10,
+    "status": "generate",
+    "customer_id": 8,
+    "delivery_address": "Av. Monseñor Rivero 123",
+    "notes": "Entregar en horario de la mañana",
+    "created_at": "2026-11-02T14:30:00.000Z"
+  },
+  "customer": {
+    "id": 8,
+    "fullName": "Cliente Demo",
+    "email": "cliente@example.com",
+    "direction": "Av. Monseñor Rivero 123"
+  },
+  "summary": {
+    "lines_count": 1,
+    "lots_count": 2,
+    "ordered_units": 10,
+    "allocated_units": 10,
+    "pending_units": 0,
+    "ready": true
+  },
+  "items": [
+    {
+      "order_item_id": 20,
+      "product_id": 15,
+      "item_state_id": 1,
+      "quantity": 10,
+      "allocated_quantity": 10,
+      "pending_quantity": 0,
+      "product": {
+        "id": 15,
+        "name": "Ibuprofeno 400 mg",
+        "reference": "IBU-400",
+        "image_id": 4
+      },
+      "item_state": { "id": 1, "name": "sellable", "label": "Vendible" },
+      "lots": [
+        {
+          "allocation_id": 31,
+          "quantity": 6,
+          "status": "reserved",
+          "lot": {
+            "id": 40,
+            "number": "LOTE-1",
+            "expiration_date": "2027-03-31",
+            "location_status": "located",
+            "stock": 100,
+            "reserved": 20,
+            "available": 80,
+            "warehouse": { "id": 1, "name": "Bodega Central" },
+            "shelf": { "id": 2, "code": "A1", "name": "Estante A1" },
+            "section": { "id": 3, "code": "A1-03", "name": "Nivel 3" }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+Reglas de la respuesta:
+
+- Por defecto se devuelven las asignaciones `reserved` y `consumed`; las
+  `released` se excluyen. Un pedido `draft`, `request` o `cancelled` sin
+  asignaciones visibles responde `200` con `lots: []` y
+  `pending_quantity = quantity`.
+- `?allocation_status=reserved|consumed|released|all` filtra las asignaciones;
+  `all` devuelve los tres estados. Cualquier otro valor responde `422` con
+  `{ "errors": { "allocation_status": "Invalid allocation_status" } }`.
+- Los ítems se ordenan por `order_item_id` ascendente y los lotes de cada ítem
+  por `expiration_date` y luego `id` ascendente (FEFO).
+- En cada asignación, `quantity` es la **cantidad a empacar** de ese lote. El
+  `available` del lote es solo la referencia del inventario restante
+  (`stock - reserved`) y no debe usarse como cantidad de alistamiento.
+- `summary.allocated_units` y `pending_units` se calculan con las mismas
+  asignaciones devueltas; `ready` es `true` solo cuando todas las líneas están
+  completamente asignadas.
+- Si el lote no tiene la ubicación completa, `warehouse`, `shelf` y `section`
+  se devuelven como `null`.
+- La consulta usa `include` de Sequelize y no genera una consulta por línea ni
+  por lote. La lectura no abre transacción, no bloquea filas y nunca modifica
+  `orders`, `order_items`, `order_item_lot_allocations`, `lots` ni `stocks`.
+- El endpoint **no reemplaza** `GET /orders/:id` (que sigue ocultando lotes) ni
+  `GET /orders/:id/invoice` (que devuelve la factura emitida).
+
+Errores: `401 Unauthorized` sin token o con token inválido/expirado,
+`403 Forbidden` para roles no permitidos, `403 User is blocked` para un usuario
+bloqueado, `404 Order not found` para un pedido inexistente, `422` con
+`{ "errors": { "id": "Invalid order id" } }` para un id inválido y `422` para
+un `allocation_status` inválido.
+
 ### Roles de pedidos
 
 | Acción                                | `customer` | `admin` | `seller`                 | Otros roles |
 | ------------------------------------- | ---------- | ------- | ------------------------ | ----------- |
 | `POST /orders`                        | Propio     | Cualquiera | Cliente asignado      | `403`       |
 | `GET /orders` y `GET /orders/:id`     | Propios    | Todos   | Todos                    | `403`       |
+| `GET /orders/:id/picking`             | `403`      | Sí      | Sí                       | `manager_warehouse` y `dispatcher`; resto `403` |
 | Ítems en `draft`                      | Propios    | Cualquiera | Cliente asignado      | `403`       |
 | `draft → request`                     | Propio     | `403`   | `403`                    | `403`       |
 | `draft → generate`, `request → generate` | `403`   | Sí      | Cliente asignado         | `403`       |
