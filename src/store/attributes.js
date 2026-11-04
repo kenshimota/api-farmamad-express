@@ -23,6 +23,7 @@ const ITEM_STATE_ATTRIBUTES = Object.freeze([
   "label",
   "is_sellable",
 ]);
+const TAX_ATTRIBUTES = Object.freeze(["id", "code", "name", "rate"]);
 const COST_ATTRIBUTES = Object.freeze([
   "product_id",
   "item_state_id",
@@ -67,6 +68,7 @@ module.exports = {
   ITEM_STATE_ATTRIBUTES,
   ORDER,
   PRODUCT_ATTRIBUTES,
+  TAX_ATTRIBUTES,
   buildOrder,
   variantKey,
 };

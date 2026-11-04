@@ -2,6 +2,7 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "integration-test-secret";
 
 const sequelize = require("../database");
 const Currency = require("../models/currency");
+const Tax = require("../models/tax");
 const { assertTestDatabase } = require("../../test/helpers/test-database");
 const {
   ensureDefaultTransactionCurrency,
@@ -141,6 +142,14 @@ describe("GET /store/products with a real database", () => {
       image_id: image.id,
       item_state: { id: first.id, name: "sellable", label: "Vendible" },
       price: 14.29,
+      tax: {
+        id: expect.any(Number),
+        code: "SIN_IVA",
+        name: "Sin IVA",
+        rate: 0,
+      },
+      tax_amount: 0,
+      total: 14.29,
       currency_id: currency.id,
       currency: publicCurrencySummary(currency),
       available: true,
@@ -159,6 +168,32 @@ describe("GET /store/products with a real database", () => {
     expect(response.body[0]).not.toHaveProperty("cost");
     expect(response.body[0]).not.toHaveProperty("lots");
     expect(Number(priceList.percentage)).toBe(30);
+  });
+
+  it("adds the tax amount and the final total to each variant", async () => {
+    const { token } = await setupCustomer();
+    const tax = await Tax.findOne({ where: { code: "IVA" } });
+    const variant = await createManualVariant({
+      productData: { tax_id: tax.id },
+      cost: 10,
+    });
+
+    const response = await as("get", "/store/products", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0]).toMatchObject({
+      id: variant.product.id,
+      price: 14.29,
+      tax: {
+        id: tax.id,
+        code: "IVA",
+        name: "Impuesto al Valor Agregado",
+        rate: 16,
+      },
+      tax_amount: 2.29,
+      total: 16.58,
+    });
   });
 
   it("filters by a sellable item_state_id", async () => {

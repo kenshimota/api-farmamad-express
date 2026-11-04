@@ -3,6 +3,7 @@ const sequelize = require("../database");
 const Invoice = require("./invoice");
 const Product = require("./product");
 const ItemState = require("./item-state");
+const Tax = require("./tax");
 
 /**
  * Sequelize model that represents one immutable invoice line. Product name,
@@ -54,6 +55,33 @@ const InvoiceItem = sequelize.define(
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
     },
+    tax_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    tax_code: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    tax_name: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    tax_rate: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    tax_amount: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    total: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     tableName: "invoice_items",
@@ -77,5 +105,8 @@ InvoiceItem.belongsTo(ItemState, {
   foreignKey: "item_state_id",
   as: "item_state",
 });
+
+InvoiceItem.belongsTo(Tax, { foreignKey: "tax_id", as: "tax" });
+Tax.hasMany(InvoiceItem, { foreignKey: "tax_id", as: "invoice_items" });
 
 module.exports = InvoiceItem;

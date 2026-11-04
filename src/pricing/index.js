@@ -2,10 +2,14 @@ const Cost = require("../models/cost");
 const Currency = require("../models/currency");
 const ItemState = require("../models/item-state");
 const PriceList = require("../models/price-list");
+const Product = require("../models/product");
+const Tax = require("../models/tax");
 const { resolveDefaultTransactionCurrency } = require("../currencies/default");
 const { createHttpError } = require("../shared/http-error");
 const { readField } = require("../shared/serializer");
 const { MAX_MONEY, round2 } = require("../purchases/money");
+const { isUsableCurrency } = require("./currency");
+const { resolveProductTax } = require("./tax");
 
 const CUSTOMER_PRICE_LIST_MESSAGE = "Customer price list is not assigned";
 const INVALID_ITEM_STATE_MESSAGE = "Invalid item state";
@@ -25,26 +29,6 @@ const DEFAULT_TRANSACTION_MESSAGE =
  */
 function valueOf(record, field) {
   return readField(record, field);
-}
-
-/**
- * Tells whether a currency can be used in the calculation: it must exist, be
- * active (when the flag is present) and have a positive rate.
- * @param {object|null|undefined} currency - Currency instance or plain object.
- * @returns {boolean} True when the currency is usable.
- */
-function isUsableCurrency(currency) {
-  if (!currency) {
-    return false;
-  }
-
-  const rate = Number(valueOf(currency, "rate"));
-
-  return (
-    valueOf(currency, "is_active") !== false &&
-    Number.isFinite(rate) &&
-    rate > 0
-  );
 }
 
 /**
@@ -169,6 +153,8 @@ function calculateMarginPrice({ cost, percentage, costRate, transactionRate }) {
  * @param {object} [options.currencyModel] - Currency model.
  * @param {object} [options.itemStateModel] - Item state model.
  * @param {object} [options.priceListModel] - Price list model.
+ * @param {object} [options.productModel] - Product model.
+ * @param {object} [options.taxModel] - Tax model.
  * @param {Function} [options.resolveTransactionCurrency] - Default transaction
  *   currency resolver.
  * @returns {Function} The `resolvePrice` function.
@@ -178,6 +164,8 @@ function createPriceResolver({
   currencyModel = Currency,
   itemStateModel = ItemState,
   priceListModel = PriceList,
+  productModel = Product,
+  taxModel = Tax,
   resolveTransactionCurrency = resolveDefaultTransactionCurrency,
 } = {}) {
   /**
@@ -189,8 +177,9 @@ function createPriceResolver({
    * @param {object} [params.transactionCurrency] - Transaction currency; the
    *   active default is used when omitted.
    * @returns {Promise<{ product_id: number, item_state_id: number,
-   *   price_list_id: number, price: number, currency: object }>} The resolved
-   *   price and the transaction currency used.
+   *   price_list_id: number, price: number, currency: object,
+   *   tax: object }>} The resolved price, the transaction currency and the
+   *   product tax snapshot.
    * @throws {Error} 403 without a price list, 422 for invalid states, missing
    *   costs and out-of-range prices, and 503 without a default currency.
    */
@@ -255,12 +244,15 @@ function createPriceResolver({
       });
     }
 
+    const tax = await resolveProductTax(productId, { productModel, taxModel });
+
     return {
       product_id: productId,
       item_state_id: itemStateId,
       price_list_id: priceListId,
       price,
       currency,
+      tax,
     };
   };
 }

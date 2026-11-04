@@ -35,6 +35,12 @@ const ITEM = {
   quantity: 2,
   unit_price: "12.50",
   subtotal: "25.00",
+  tax_id: 2,
+  tax_code: "IVA",
+  tax_name: "Impuesto al Valor Agregado",
+  tax_rate: "16.00",
+  tax_amount: "4.00",
+  total: "29.00",
   createdAt: new Date("2026-11-01T12:00:00.000Z"),
 };
 const INVOICE = {
@@ -75,6 +81,12 @@ describe("toPublicInvoiceItem", () => {
       quantity: 2,
       unit_price: 12.5,
       subtotal: 25,
+      tax_id: 2,
+      tax_code: "IVA",
+      tax_name: "Impuesto al Valor Agregado",
+      tax_rate: 16,
+      tax_amount: 4,
+      total: 29,
     });
   });
 
