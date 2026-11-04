@@ -195,8 +195,9 @@ function createStockRepository(
 
     /**
      * Aggregates the located stock of one product per item state. Only lots
-     * with `location_status = 'located'` are sellable; pending or in-progress
-     * lots never contribute to this map.
+     * with `location_status = 'located'` and a non-expired `expiration_date`
+     * are sellable; pending, in-progress or expired lots never contribute to
+     * this map, even before the daily job changes their state.
      * @param {number} productId - Product id.
      * @returns {Promise<Map<number, number>>} Item state id to located units.
      */
@@ -206,7 +207,11 @@ function createStockRepository(
           "item_state_id",
           [Sequelize.fn("SUM", Sequelize.col("stock")), "total"],
         ],
-        where: { product_id: productId, location_status: "located" },
+        where: {
+          product_id: productId,
+          location_status: "located",
+          expiration_date: { [Op.gte]: Sequelize.literal("CURRENT_DATE") },
+        },
         group: ["item_state_id"],
         raw: true,
       });

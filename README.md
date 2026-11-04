@@ -2957,8 +2957,10 @@ Protegido para `admin`, `seller` y `manager_warehouse`. Requiere
 `?product_id=` y devuelve solo las filas con `quantity > 0` cuyo estado tiene
 `is_sellable = true`, ordenadas por `item_state.name`. `quantity` sigue siendo
 el total físico; `located_quantity` suma únicamente `lots.stock` de los lotes
-con `location_status = 'located'` y es **la única cantidad vendible**. El stock
-`pending` o `in_progress` nunca se cuenta como disponible. Cada fila incluye el
+con `location_status = 'located'` y `expiration_date >= CURRENT_DATE`, y es
+**la única cantidad vendible**. El stock `pending`, `in_progress` o vencido
+nunca se cuenta como disponible, incluso antes de que el job de vencimiento lo
+mueva a `expired`. Cada fila incluye el
 costo vigente de `costs` para la misma combinación o `cost: null` si no existe;
 también incluye `currency_id` y `currency` del costo, o ambos en `null` cuando
 no hay costo. La fila **no se oculta** para que el faltante sea visible. La
@@ -3823,7 +3825,11 @@ Reglas de negocio:
   responde `422`. Estas comprobaciones y la escritura ocurren en una
   transacción.
 - Las respuestas nunca incluyen `createdAt` ni `updatedAt`.
-- `lots` no sincroniza automáticamente el agregado `stocks` de HU-20.
+- `POST /lots` y `PUT /lots/:id` no sincronizan el agregado `stocks` de HU-20;
+  el job diario de vencimiento (HU-50) recalcula solo los pares afectados.
+- Los lotes con `expiration_date < CURRENT_DATE` no cuentan como vendibles ni
+  pueden reservarse, aunque su estado siga siendo vendible hasta la próxima
+  ejecución del job.
 
 Roles:
 
@@ -3977,6 +3983,117 @@ Respuesta `202` con el `reserved` conservado y `available = stock - reserved`.
 Elimina un lote y responde `204` sin cuerpo. Solo se permite cuando
 `stock = 0` y `reserved = 0`; en caso contrario responde `409 Lot has stock or
 reservations` y no borra nada.
+
+## Job diario de vencimiento de lotes — HU-50
+
+El job recorre los lotes con `expiration_date < CURRENT_DATE` que todavía
+tienen un estado vendible (`item_states.is_sellable = true`) y los pasa al
+estado `expired`. La fecha de vencimiento es el último día válido: un lote que
+vence hoy sigue siendo vendible hasta el día siguiente. El estado destino se
+busca por `item_states.name = 'expired'`; si no existe, el job falla sin
+modificar nada.
+
+Reglas de operación:
+
+- Si `lots.reserved = 0`, el lote cambia a `expired`. Si tiene reservas
+  (`reserved > 0`), no se toca y se reporta en `skipped_reserved`; se volverá a
+  evaluar en la siguiente ejecución cuando el pedido libere la reserva.
+- El job no modifica `lots.stock`, `lots.reserved` ni la ubicación física del
+  lote. Tampoco cancela pedidos ni libera reservas.
+- Tras mover los lotes, recalcula únicamente los pares
+  `(product_id, item_state_id)` afectados: el estado vendible anterior y el
+  estado `expired`. `stocks.quantity` queda como `SUM(lots.stock)` de todos los
+  lotes de ese par. La fila de `stocks` del estado `expired` se crea con
+  `findOrCreate` si no existe y la fila vendible se conserva aunque quede en
+  `0`.
+- Todo ocurre en una sola transacción: si falla un cambio de estado o el
+  recálculo, se revierte el lote y sus filas de `stocks`.
+- Al inicio de la transacción se adquiere el advisory lock de PostgreSQL
+  `pg_try_advisory_xact_lock(49050)`. Si otra instancia, un cron solapado o una
+  ejecución manual ya lo tiene, la ejecución termina con `locked: false` y no
+  procesa nada. El lock se libera al terminar o revertir la transacción.
+- La venta y la reserva también están blindadas: `GET /stocks/available` y
+  `GET /stocks/available/:product_id` ignoran lotes vencidos, y la reserva de
+  pedidos (`findLotsForUpdate`) exige `expiration_date >= CURRENT_DATE`.
+  Aunque el job aún no haya corrido, una unidad vencida no cuenta como
+  vendible ni puede reservarse.
+- El job es idempotente: una segunda ejecución el mismo día no vuelve a mover
+  lotes ni reescribe cantidades.
+- No expone endpoints HTTP ni aparece en Swagger; se opera por el planificador
+  interno o por el comando manual.
+
+### Planificador interno
+
+La API arranca el planificador desde `src/index.js` (nunca desde `src/app.js`,
+para que las pruebas no inicien timers) y lo detiene al recibir `SIGINT` o
+`SIGTERM`. Por defecto corre todos los días a las `04:00 UTC` (00:00 en
+`America/Caracas`). No usa `setInterval`: calcula la próxima ocurrencia después
+de cada ejecución, usa `unref()` para no impedir que el proceso termine y omite
+con un `warn` una ejecución si la anterior sigue en curso. En `NODE_ENV=test`
+no arranca. Si el job falla, registra el error con su stack y programa la
+siguiente ejecución sin tumbar la API.
+
+Variables de entorno:
+
+| Variable                     | Tipo    | Defecto | Regla                                                          |
+| ---------------------------- | ------- | ------- | -------------------------------------------------------------- |
+| `LOTS_EXPIRY_JOB_ENABLED`    | boolean | `true`  | `false` desactiva el planificador interno.                    |
+| `LOTS_EXPIRY_JOB_HOUR_UTC`   | integer | `4`     | `0`–`23`; un valor inválido usa el defecto y registra `warn`.  |
+| `LOTS_EXPIRY_JOB_MINUTE_UTC` | integer | `0`     | `0`–`59`; un valor inválido usa el defecto y registra `warn`.  |
+| `LOTS_EXPIRY_JOB_BATCH_SIZE` | integer | `500`   | `1`–`5000`; un valor inválido usa el defecto y registra `warn`. |
+
+### Comando manual y cron externo
+
+Cualquier instancia puede ejecutar el mismo job una sola vez:
+
+```bash
+npm run jobs:expire-lots
+```
+
+El comando imprime el resumen en JSON y termina con código `0` si todo fue bien
+o `1` si hubo un error. Para calcular el plan sin persistir cambios usa
+`--dry-run`; la transacción se revierte al final y el resumen devuelve
+`dry_run: true` (con `stock_rows_updated: 0` porque no se escribe nada):
+
+```bash
+npm run jobs:expire-lots -- --dry-run
+```
+
+Ejemplo de salida:
+
+```json
+{
+  "started_at": "2026-11-03T04:00:00.000Z",
+  "finished_at": "2026-11-03T04:00:01.240Z",
+  "duration_ms": 1240,
+  "candidates": 3,
+  "moved": 2,
+  "skipped_reserved": [
+    {
+      "lot_id": 42,
+      "number": "LOTE-9",
+      "expiration_date": "2026-10-31",
+      "reserved": 20
+    }
+  ],
+  "affected_products": 2,
+  "stock_rows_updated": 4,
+  "expired_item_state_id": 3,
+  "locked": true,
+  "dry_run": false,
+  "errors": []
+}
+```
+
+Para delegar la programación a un cron externo, se recomienda desactivar el
+planificador interno con `LOTS_EXPIRY_JOB_ENABLED=false` y agendar el comando:
+
+```cron
+4 4 * * * cd /app && /usr/bin/node scripts/expire-lots.js >> /var/log/farmamad/expire-lots.log 2>&1
+```
+
+Aun si ambas formas quedan activas, el advisory lock `49050` impide que dos
+ejecuciones procesen los mismos lotes a la vez.
 
 ## Bandeja de almacén (warehouse-inbox)
 

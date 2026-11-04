@@ -140,6 +140,26 @@ describe("stockRepository", () => {
     expect(options.include[1].on).toBeDefined();
   });
 
+  it("aggregates only located lots that have not expired", async () => {
+    Lot.findAll.mockResolvedValue([{ item_state_id: 1, total: "4" }]);
+
+    await expect(repository.getLocatedQuantities(15)).resolves.toEqual(
+      new Map([[1, 4]]),
+    );
+
+    const [options] = Lot.findAll.mock.calls[0];
+
+    expect(options.where).toEqual({
+      product_id: 15,
+      location_status: "located",
+      expiration_date: {
+        [Op.gte]: expect.objectContaining({ val: "CURRENT_DATE" }),
+      },
+    });
+    expect(options.group).toEqual(["item_state_id"]);
+    expect(options.raw).toBe(true);
+  });
+
   it("delegates the transactional purchase increment to the service", async () => {
     const items = [{ product_id: 1, item_state_id: 2, quantity: 3 }];
     const transaction = { id: "tx" };
