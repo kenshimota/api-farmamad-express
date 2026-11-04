@@ -148,9 +148,21 @@ const orderSchemas = {
         nullable: true,
         allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
       },
-      subtotal: { type: "number", description: "Pre-tax subtotal", example: 25.0 },
-      tax_amount: { type: "number", description: "Sum of line taxes", example: 4.0 },
-      total: { type: "number", description: "subtotal + tax_amount", example: 29.0 },
+      subtotal: {
+        type: "number",
+        description: "Pre-tax subtotal",
+        example: 25.0,
+      },
+      tax_amount: {
+        type: "number",
+        description: "Sum of line taxes",
+        example: 4.0,
+      },
+      total: {
+        type: "number",
+        description: "subtotal + tax_amount",
+        example: 29.0,
+      },
       delivery_address: {
         type: "string",
         example: "Av. Monseñor Rivero 123",
@@ -184,9 +196,21 @@ const orderSchemas = {
         nullable: true,
         allOf: [{ $ref: "#/components/schemas/PaymentTermSummary" }],
       },
-      subtotal: { type: "number", description: "Pre-tax subtotal", example: 25.0 },
-      tax_amount: { type: "number", description: "Sum of line taxes", example: 4.0 },
-      total: { type: "number", description: "subtotal + tax_amount", example: 29.0 },
+      subtotal: {
+        type: "number",
+        description: "Pre-tax subtotal",
+        example: 25.0,
+      },
+      tax_amount: {
+        type: "number",
+        description: "Sum of line taxes",
+        example: 4.0,
+      },
+      total: {
+        type: "number",
+        description: "subtotal + tax_amount",
+        example: 29.0,
+      },
       delivery_address: {
         type: "string",
         example: "Av. Monseñor Rivero 123",

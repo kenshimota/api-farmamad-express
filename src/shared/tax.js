@@ -1,4 +1,5 @@
 const { round2, toCents } = require("../purchases/money");
+const { readField } = require("./serializer");
 
 /**
  * Calculates the tax amount of a pre-tax subtotal using a percentage rate.
@@ -26,7 +27,11 @@ function calculateTaxAmount(subtotal, rate) {
  * @param {number|string} [line.tax_rate] - Percentage rate.
  * @returns {{ subtotal: number, tax_amount: number, total: number }} Amounts.
  */
-function calculateLineAmounts({ quantity, unit_price: unitPrice, tax_rate: rate = 0 }) {
+function calculateLineAmounts({
+  quantity,
+  unit_price: unitPrice,
+  tax_rate: rate = 0,
+}) {
   const subtotal = (Number(quantity) * toCents(unitPrice)) / 100;
   const taxAmount = calculateTaxAmount(subtotal, rate);
 
@@ -71,29 +76,11 @@ function toTaxSnapshot(tax) {
   }
 
   return {
-    tax_id: readValue(tax, "id"),
-    tax_code: readValue(tax, "code"),
-    tax_name: readValue(tax, "name"),
-    tax_rate: round2(readValue(tax, "rate") ?? 0),
+    tax_id: readField(tax, "id"),
+    tax_code: readField(tax, "code"),
+    tax_name: readField(tax, "name"),
+    tax_rate: round2(readField(tax, "rate") ?? 0),
   };
-}
-
-/**
- * Reads a field from a Sequelize instance, a plain object or a getter.
- * @param {object} record - Source record.
- * @param {string} field - Field name.
- * @returns {unknown} The raw value.
- */
-function readValue(record, field) {
-  if (!record) {
-    return undefined;
-  }
-
-  if (typeof record.get === "function") {
-    return record.get(field);
-  }
-
-  return record[field];
 }
 
 module.exports = {

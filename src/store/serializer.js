@@ -36,6 +36,23 @@ function toStoreTax(tax) {
 }
 
 /**
+ * Builds the public tax fields and amounts shared by every store variant.
+ * @param {number} price - Resolved pre-tax price.
+ * @param {object|null} tax - Product tax.
+ * @returns {{ tax: object|null, tax_amount: number, total: number }} Tax data.
+ */
+function toStoreVariantTax(price, tax) {
+  const publicTax = toStoreTax(tax);
+  const taxAmount = publicTax ? calculateTaxAmount(price, publicTax.rate) : 0;
+
+  return {
+    tax: publicTax,
+    tax_amount: round2(taxAmount),
+    total: round2(Number(price) + taxAmount),
+  };
+}
+
+/**
  * Builds the compact currency exposed by the store catalog.
  * @param {object} currency - Currency instance or plain object.
  * @returns {{ id: number, code: string, name: string, symbol: string }}
@@ -106,10 +123,6 @@ function toStoreListVariant({
   available,
 }) {
   const fields = toStoreProduct(product);
-  const publicTax = toStoreTax(tax);
-  const taxAmount = publicTax
-    ? calculateTaxAmount(price, publicTax.rate)
-    : 0;
 
   return {
     id: fields.id,
@@ -120,9 +133,7 @@ function toStoreListVariant({
     image_id: fields.image_id,
     item_state: toStoreItemState(itemState),
     price: toDecimalNumber(price, 2),
-    tax: publicTax,
-    tax_amount: round2(taxAmount),
-    total: round2(Number(price) + taxAmount),
+    ...toStoreVariantTax(price, tax),
     currency_id: readField(currency, "id"),
     currency: toStoreCurrency(currency),
     available: Boolean(available),
@@ -141,24 +152,11 @@ function toStoreListVariant({
  * @param {boolean} params.available - Availability flag.
  * @returns {object} Public detail variant.
  */
-function toStoreDetailVariant({
-  itemState,
-  price,
-  tax,
-  currency,
-  available,
-}) {
-  const publicTax = toStoreTax(tax);
-  const taxAmount = publicTax
-    ? calculateTaxAmount(price, publicTax.rate)
-    : 0;
-
+function toStoreDetailVariant({ itemState, price, tax, currency, available }) {
   return {
     item_state: toStoreItemState(itemState),
     price: toDecimalNumber(price, 2),
-    tax: publicTax,
-    tax_amount: round2(taxAmount),
-    total: round2(Number(price) + taxAmount),
+    ...toStoreVariantTax(price, tax),
     currency_id: readField(currency, "id"),
     currency: toStoreCurrency(currency),
     available: Boolean(available),

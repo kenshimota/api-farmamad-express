@@ -1,8 +1,5 @@
 const { round2, toCents, toDecimal } = require("../purchases/money");
-const {
-  calculateLineAmounts,
-  sumLineAmounts,
-} = require("../shared/tax");
+const { calculateLineAmounts, sumLineAmounts } = require("../shared/tax");
 
 /**
  * Calculates the historical subtotal of one order line.

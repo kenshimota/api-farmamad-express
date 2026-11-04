@@ -7,8 +7,9 @@ const Tax = require("../models/tax");
 const { resolveDefaultTransactionCurrency } = require("../currencies/default");
 const { createHttpError } = require("../shared/http-error");
 const { readField } = require("../shared/serializer");
-const { toTaxSnapshot } = require("../shared/tax");
 const { MAX_MONEY, round2 } = require("../purchases/money");
+const { isUsableCurrency } = require("./currency");
+const { resolveProductTax } = require("./tax");
 
 const CUSTOMER_PRICE_LIST_MESSAGE = "Customer price list is not assigned";
 const INVALID_ITEM_STATE_MESSAGE = "Invalid item state";
@@ -28,26 +29,6 @@ const DEFAULT_TRANSACTION_MESSAGE =
  */
 function valueOf(record, field) {
   return readField(record, field);
-}
-
-/**
- * Tells whether a currency can be used in the calculation: it must exist, be
- * active (when the flag is present) and have a positive rate.
- * @param {object|null|undefined} currency - Currency instance or plain object.
- * @returns {boolean} True when the currency is usable.
- */
-function isUsableCurrency(currency) {
-  if (!currency) {
-    return false;
-  }
-
-  const rate = Number(valueOf(currency, "rate"));
-
-  return (
-    valueOf(currency, "is_active") !== false &&
-    Number.isFinite(rate) &&
-    rate > 0
-  );
 }
 
 /**
@@ -263,17 +244,7 @@ function createPriceResolver({
       });
     }
 
-    const product = await productModel.findByPk(productId, {
-      include: [
-        {
-          model: taxModel,
-          as: "tax",
-          attributes: ["id", "code", "name", "rate"],
-          required: false,
-        },
-      ],
-    });
-    const tax = product ? readField(product, "tax") : null;
+    const tax = await resolveProductTax(productId, { productModel, taxModel });
 
     return {
       product_id: productId,
@@ -281,7 +252,7 @@ function createPriceResolver({
       price_list_id: priceListId,
       price,
       currency,
-      tax: toTaxSnapshot(tax),
+      tax,
     };
   };
 }

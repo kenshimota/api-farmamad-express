@@ -4,6 +4,7 @@ const {
   calculateDueDate,
   calculateItemSubtotal,
   normalizeItems,
+  resolveInvoiceTotals,
   round2,
   sumLineAmounts,
 } = require("./values");
@@ -199,22 +200,7 @@ function createInvoiceService({
 
       const paymentTerm = await resolvePaymentTerm(input, transaction);
       const items = normalizeItems(input.items ?? []);
-      const itemTotals = sumLineAmounts(items);
-      const subtotal =
-        input.subtotal === undefined
-          ? itemTotals.subtotal
-          : round2(input.subtotal);
-      const taxMismatch =
-        input.tax_amount !== undefined &&
-        round2(input.tax_amount) !== itemTotals.tax_amount;
-      const taxAmount =
-        items.length > 0 && (input.tax_amount === undefined || taxMismatch)
-          ? itemTotals.tax_amount
-          : round2(input.tax_amount ?? 0);
-      const total =
-        input.total === undefined || taxMismatch
-          ? round2(subtotal + taxAmount)
-          : round2(input.total);
+      const { subtotal, taxAmount, total } = resolveInvoiceTotals(input, items);
       const issuedAt = input.issued_at ? new Date(input.issued_at) : clock();
       const number = await repository.nextNumber(transaction);
       const invoice = await repository.create(

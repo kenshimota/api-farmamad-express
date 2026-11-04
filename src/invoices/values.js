@@ -1,7 +1,4 @@
-const {
-  calculateTaxAmount,
-  sumLineAmounts,
-} = require("../shared/tax");
+const { calculateTaxAmount, sumLineAmounts } = require("../shared/tax");
 
 const STATUS_PENDING = "pending";
 
@@ -77,6 +74,33 @@ function normalizeItems(items) {
 }
 
 /**
+ * Resolves the invoice header totals from its snapshot and normalized lines.
+ * Missing values come from the lines; a tax amount that differs from the line
+ * sum is recalculated so the header always matches its lines.
+ * @param {object} input - Validated invoice snapshot.
+ * @param {object[]} items - Normalized lines.
+ * @returns {{ subtotal: number, taxAmount: number, total: number }} Totals.
+ */
+function resolveInvoiceTotals(input, items) {
+  const itemTotals = sumLineAmounts(items);
+  const subtotal =
+    input.subtotal === undefined ? itemTotals.subtotal : round2(input.subtotal);
+  const taxMismatch =
+    input.tax_amount !== undefined &&
+    round2(input.tax_amount) !== itemTotals.tax_amount;
+  const taxAmount =
+    items.length > 0 && (input.tax_amount === undefined || taxMismatch)
+      ? itemTotals.tax_amount
+      : round2(input.tax_amount ?? 0);
+  const total =
+    input.total === undefined || taxMismatch
+      ? round2(subtotal + taxAmount)
+      : round2(input.total);
+
+  return { subtotal, taxAmount, total };
+}
+
+/**
  * Builds the persisted invoice header from the order snapshot.
  * @param {object} input - Validated invoice snapshot.
  * @param {object} context - Calculated context.
@@ -117,6 +141,7 @@ module.exports = {
   calculateDueDate,
   calculateItemSubtotal,
   normalizeItems,
+  resolveInvoiceTotals,
   round2,
   sumLineAmounts,
 };

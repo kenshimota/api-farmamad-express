@@ -123,14 +123,12 @@ describe("createPriceResolver", () => {
   it("uses the cost currency loaded from the currency model when it is not nested", async () => {
     const deps = dependencies({
       costModel: {
-        findOne: jest
-          .fn()
-          .mockResolvedValue({
-            product_id: 15,
-            item_state_id: 2,
-            cost: "10.00",
-            currency_id: 3,
-          }),
+        findOne: jest.fn().mockResolvedValue({
+          product_id: 15,
+          item_state_id: 2,
+          cost: "10.00",
+          currency_id: 3,
+        }),
       },
       currencyModel: {
         findByPk: jest
