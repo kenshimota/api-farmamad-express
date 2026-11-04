@@ -42,6 +42,11 @@ const Order = sequelize.define(
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
     },
+    tax_amount: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
     total: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,

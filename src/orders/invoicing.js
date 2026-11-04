@@ -31,6 +31,7 @@ function createOrderInvoicingService({
       currency_id: readField(order, "currency_id"),
       payment_term_id: readField(order, "payment_term_id"),
       subtotal: Number(readField(order, "subtotal")),
+      tax_amount: Number(readField(order, "tax_amount")),
       total: Number(readField(order, "total")),
       notes: null,
       items: order.items.map((item) => ({
@@ -43,6 +44,12 @@ function createOrderInvoicingService({
         quantity: readField(item, "quantity"),
         unit_price: Number(readField(item, "unit_price")),
         subtotal: Number(readField(item, "subtotal")),
+        tax_id: readField(item, "tax_id"),
+        tax_code: readField(item, "tax_code"),
+        tax_name: readField(item, "tax_name"),
+        tax_rate: Number(readField(item, "tax_rate")),
+        tax_amount: Number(readField(item, "tax_amount")),
+        total: Number(readField(item, "total")),
       })),
     };
   }

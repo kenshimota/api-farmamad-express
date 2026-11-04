@@ -3,6 +3,7 @@ const sequelize = require("../database");
 const Order = require("./order");
 const Product = require("./product");
 const ItemState = require("./item-state");
+const Tax = require("./tax");
 
 /**
  * Sequelize model that represents one line of an order. `unit_price` and
@@ -38,6 +39,33 @@ const OrderItem = sequelize.define(
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
     },
+    tax_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    tax_code: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    tax_name: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    tax_rate: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    tax_amount: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    total: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     tableName: "order_items",
@@ -58,5 +86,8 @@ OrderItem.belongsTo(ItemState, {
   foreignKey: "item_state_id",
   as: "item_state",
 });
+
+OrderItem.belongsTo(Tax, { foreignKey: "tax_id", as: "tax" });
+Tax.hasMany(OrderItem, { foreignKey: "tax_id", as: "order_items" });
 
 module.exports = OrderItem;
