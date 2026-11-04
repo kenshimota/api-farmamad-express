@@ -6343,6 +6343,235 @@ para pedidos de contado (`payment_terms.days = 0`). Si
 `409 { "message": "Insufficient wallet balance" }` sin reservar lotes ni
 cambiar el estado del pedido. Los pedidos a crédito no validan saldo.
 
+## Vista equivalente de pedido y factura — HU-52
+
+Permite consultar, **sin modificar el registro**, cuánto equivale un pedido o
+una factura en VES u otra moneda activa usando la tasa vigente. Sirve para el
+flujo de una factura de contado: se crea el pedido de contado, se consulta su
+equivalente en VES, se le indica el monto al cliente y luego se factura y se
+aplica el pago.
+
+La respuesta separa `source` (moneda e importes guardados en el documento) y
+`target` (misma información convertida). La conversión es
+`exchange_rate = round6(source.currency.rate ÷ target.currency.rate)`,
+`target = round2(source × exchange_rate)`. La tasa es siempre la **vigente** en
+`currencies.rate`, no una tasa histórica del pedido o de la factura. Estos
+endpoints no guardan la moneda de visualización, no reservan stock, no aplican
+pagos, no debitan la billetera y no exponen costos, lotes, ubicaciones ni saldos
+de billetera.
+
+### Roles
+
+| Endpoint                        | `customer`  | `admin` | `seller` | Otros roles |
+| ------------------------------- | ----------- | ------- | -------- | ----------- |
+| `GET /orders/:id/equivalence`   | Solo propio | Sí      | Sí       | `403`       |
+| `GET /invoices/:id/equivalence` | Solo propio | Sí      | Sí       | `403`       |
+
+Sin token, o con token inválido/expirado, responde `401 Unauthorized`. Un
+usuario bloqueado responde `403 User is blocked`. Un `customer` sin
+`users.customer_id` responde `403 Customer profile is not linked`. Un pedido o
+factura de otro cliente responde `404 Order not found` o
+`404 Invoice not found`.
+
+### `GET /orders/:id/equivalence`
+
+Parámetro opcional `currency_id`. Si se omite, el destino es la moneda base
+(`is_base = true`, normalmente `VES`). Un `id` no entero positivo responde
+`422 { "errors": { "id": "Invalid order id" } }`. Si se envía `currency_id`,
+debe ser un entero positivo (`422 Invalid currency_id`), existir
+(`404 Currency not found`) y estar activa (`422 Invalid currency`).
+
+```bash
+curl "http://localhost:3001/orders/10/equivalence" \
+  -H "Authorization: Bearer <jwt>"
+
+curl "http://localhost:3001/orders/10/equivalence?currency_id=1" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200` (extracto):
+
+```json
+{
+  "resource": "order",
+  "order": {
+    "id": 10,
+    "number": 10,
+    "status": "generate",
+    "customer_id": 8,
+    "created_at": "2026-11-02T14:30:00.000Z"
+  },
+  "payment_term": { "id": 1, "code": "cash", "name": "Contado", "days": 0 },
+  "source": {
+    "currency": {
+      "id": 3,
+      "code": "USD_BCV",
+      "name": "Dólar BCV",
+      "symbol": "$",
+      "rate": 889.89,
+      "is_base": false
+    },
+    "subtotal": 10,
+    "total": 10
+  },
+  "target": {
+    "currency": {
+      "id": 1,
+      "code": "VES",
+      "name": "Bolívar",
+      "symbol": "Bs",
+      "rate": 1,
+      "is_base": true
+    },
+    "subtotal": 8898.9,
+    "total": 8898.9
+  },
+  "exchange_rate": 889.89,
+  "rounding_adjustment": 0,
+  "rate_source": "currencies.rate",
+  "rates_updated_at": {
+    "source": "2026-11-02T12:00:00.000Z",
+    "target": null
+  },
+  "calculated_at": "2026-11-03T15:00:00.000Z",
+  "payment": {
+    "is_cash": true,
+    "amount_due_source": 10,
+    "amount_due_target": 8898.9
+  },
+  "lines": [
+    {
+      "order_item_id": 20,
+      "product_id": 15,
+      "product_name": "Producto demo",
+      "product_reference": "REF-015",
+      "item_state_id": 1,
+      "item_state_name": "Vendible",
+      "quantity": 1,
+      "unit_price_source": 10,
+      "subtotal_source": 10,
+      "unit_price_target": 8898.9,
+      "subtotal_target": 8898.9
+    }
+  ]
+}
+```
+
+- `payment.amount_due_source` es `orders.total`; si el pedido no tiene término,
+  `payment_term` y `payment.is_cash` son `null`.
+- `payment.is_cash` es `true` cuando `payment_terms.days = 0` y `false` cuando
+  es mayor que cero.
+- `rounding_adjustment = round2(target.subtotal − Σ lines[].subtotal_target)`.
+- Las líneas se ordenan por `order_item_id` ascendente.
+
+### `GET /invoices/:id/equivalence`
+
+Mismos parámetros y validaciones de `currency_id`. Un `id` inválido responde
+`422 { "errors": { "id": "Invalid invoice id" } }`. La factura usa los
+snapshots de `invoice_items`: nombre, referencia y estado no se recalculan del
+catálogo. `payment.amount_due_source` es el saldo (`total − paid_amount`), no
+el total.
+
+```bash
+curl "http://localhost:3001/invoices/7/equivalence?currency_id=1" \
+  -H "Authorization: Bearer <jwt>"
+```
+
+Respuesta `200` (extracto):
+
+```json
+{
+  "resource": "invoice",
+  "invoice": {
+    "id": 7,
+    "number": 7,
+    "order_id": 10,
+    "order_number": 10,
+    "payment_status": "partial",
+    "issued_at": "2026-11-02T15:00:00.000Z",
+    "due_date": "2026-11-02"
+  },
+  "payment_term": { "id": 1, "code": "cash", "name": "Contado", "days": 0 },
+  "source": {
+    "currency": {
+      "id": 3,
+      "code": "USD_BCV",
+      "name": "Dólar BCV",
+      "symbol": "$",
+      "rate": 889.89,
+      "is_base": false
+    },
+    "subtotal": 10,
+    "tax_amount": 0,
+    "total": 10,
+    "paid_amount": 4,
+    "balance_due": 6
+  },
+  "target": {
+    "currency": {
+      "id": 1,
+      "code": "VES",
+      "name": "Bolívar",
+      "symbol": "Bs",
+      "rate": 1,
+      "is_base": true
+    },
+    "subtotal": 8898.9,
+    "tax_amount": 0,
+    "total": 8898.9,
+    "paid_amount": 3559.56,
+    "balance_due": 5339.34
+  },
+  "exchange_rate": 889.89,
+  "rounding_adjustment": 0,
+  "rate_source": "currencies.rate",
+  "rates_updated_at": {
+    "source": "2026-11-02T12:00:00.000Z",
+    "target": null
+  },
+  "calculated_at": "2026-11-03T15:00:00.000Z",
+  "payment": {
+    "is_cash": true,
+    "amount_due_source": 6,
+    "amount_due_target": 5339.34
+  },
+  "lines": [
+    {
+      "order_item_id": 20,
+      "product_id": 15,
+      "product_name": "Producto demo",
+      "product_reference": "REF-015",
+      "item_state_id": 1,
+      "item_state_name": "Vendible",
+      "quantity": 1,
+      "unit_price_source": 10,
+      "subtotal_source": 10,
+      "unit_price_target": 8898.9,
+      "subtotal_target": 8898.9
+    }
+  ]
+}
+```
+
+- `rounding_adjustment = round2(target.total − Σ lines[].subtotal_target)`.
+- `invoice.due_date` se devuelve como `YYYY-MM-DD`.
+- El historial de pagos no se incluye aquí; para eso existe
+  `GET /invoices/:id/payments`.
+- Si el destino es la misma moneda del documento, `exchange_rate = 1`, los
+  montos no cambian y `rounding_adjustment = 0`.
+
+### Errores
+
+| Código | Situación                                                   | Cuerpo esperado                                                      |
+| ------ | ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| `401`  | Token ausente, inválido o expirado                          | `{ "message": "Unauthorized" }`                                      |
+| `403`  | Rol sin permiso, usuario bloqueado o cliente sin vínculo    | Mensaje específico                                                   |
+| `404`  | Pedido, factura o moneda inexistente; recurso ajeno         | `{ "message": "Order not found" }`, `Invoice not found` o `Currency not found` |
+| `422`  | Id inválido, `currency_id` inválido o moneda inactiva       | `{ "errors": { ... } }`                                              |
+| `503`  | Falta la moneda base o una tasa es inexistente/inválida     | `{ "message": "Currency configuration is incomplete" }`              |
+| `500`  | Error interno                                               | Manejador global existente                                           |
+
+
 ## Tienda (catálogo del cliente) — HU-33
 
 El módulo `store` expone el catálogo que consume un cliente autenticado y la
