@@ -5710,6 +5710,156 @@ columnas de auditoría.
 | `422`  | Término requerido o inválido        | `{ "errors": { "payment_term_id": "..." } }`      |
 | `500`  | Error interno                       | Manejador global existente                        |
 
+## Documentos PDF de pedidos y facturas — HU-51
+
+Dos endpoints de solo lectura generan documentos PDF en memoria, sin escribir
+archivos ni persistir el documento:
+
+- `GET /orders/:id/quotation` — cotización informativa de un pedido, en su
+  moneda o convertida a otra moneda activa con `?currency_id=`.
+- `GET /invoices/:id/pdf` — PDF de una factura emitida, en su moneda
+  registrada y **sin conversión**.
+
+Los documentos **no son fiscales**: no incluyen RIF del cliente, número de
+control, XML ni firma digital. El número de factura es interno (secuencia
+`invoices_number_seq`). La cotización no reserva stock, no cambia el estado del
+pedido y no modifica `orders` ni `order_items`.
+
+### Variables de entorno del emisor
+
+| Variable              | Obligatoria | Descripción                                      |
+| --------------------- | ----------- | ------------------------------------------------ |
+| `APP_NAME`            | No          | Nombre visible; si está vacío se usa `Farmamed`. |
+| `COMPANY_TAX_ID`      | Sí          | RIF del emisor.                                  |
+| `COMPANY_ADDRESS`     | Sí          | Dirección del emisor.                            |
+| `COMPANY_PHONE`       | No          | Teléfono del emisor.                             |
+| `COMPANY_EMAIL`       | No          | Correo del emisor.                               |
+| `COMPANY_LOGO_PATH`   | No          | Ruta local a un logo (imagen).                   |
+
+Si falta `COMPANY_TAX_ID` o `COMPANY_ADDRESS`, ambos endpoints responden `503`
+con `{ "message": "Company profile is not configured" }`. Si
+`COMPANY_LOGO_PATH` no existe o no se puede leer, el PDF se genera sin logo y
+se registra una advertencia; la petición no falla. No se inventan datos del
+emisor ni se guardan en la base de datos.
+
+### Flujo pedido → cotización → factura
+
+1. El pedido está en `generate` (también se permite cotizar en `draft` y
+   `request`).
+2. Se descarga la cotización en bolívares o en otra moneda activa.
+3. Si el cliente acepta, el pedido pasa a `invoiced` y se emite la factura.
+4. La factura se descarga con `GET /invoices/:id/pdf`.
+
+```bash
+# 1) Cotización en VES (moneda base)
+curl "http://localhost:3001/orders/10/quotation?currency_id=1" \
+  -H "Authorization: Bearer <jwt>" \
+  -o cotizacion-pedido-10-VES.pdf
+
+# 2) Factura emitida, forzando descarga
+curl "http://localhost:3001/invoices/7/pdf?download=true" \
+  -H "Authorization: Bearer <jwt>" \
+  -o factura-7.pdf
+```
+
+### Conversión de la cotización
+
+La tasa se toma de `currencies.rate` (cantidad de VES por unidad de la moneda)
+al momento de generar el PDF:
+
+```text
+exchange_rate        = round6(source.rate / target.rate)
+unit_price_target    = round2(unit_price_source * exchange_rate)
+subtotal_target      = round2(quantity * unit_price_target)
+subtotal_target_sum  = Σ subtotal_target
+total_target         = round2(total_source * exchange_rate)
+rounding_adjustment  = round2(total_target - subtotal_target_sum)
+```
+
+Con la moneda base (`VES`, `rate = 1`) el total equivale a
+`round2(total_source * source.rate)`. Si `currency_id` es igual a la moneda del
+pedido, `exchange_rate = 1` y el PDF no muestra aviso de conversión. La
+conversión es solo de lectura y no modifica el pedido.
+
+Reglas de la cotización:
+
+- Roles: `admin`, `seller` y el `customer` dueño del pedido. Un pedido ajeno
+  responde `404`; `manager_warehouse`, `dispatcher` y `support` responden
+  `403`.
+- Estados cotizables: `draft`, `request` y `generate`. Un pedido `invoiced`
+  responde `409 { "message": "Order is already invoiced" }`; uno `cancelled`
+  responde `409 { "message": "Order is cancelled" }`.
+- Un pedido sin líneas responde `422` con
+  `{ "errors": { "items": "Order has no items" } }`.
+- La moneda destino debe existir (`404`) y estar activa (`422`).
+- Si falta la moneda base o la tasa de alguna moneda, responde `503` con
+  `{ "message": "Currency configuration is incomplete" }`.
+- El PDF muestra moneda original, moneda convertida, tasa usada, fecha del
+  último cambio de tasa y el ajuste por redondeo cuando no es cero.
+
+Si `?currency_id` no se envía, la cotización sale en la moneda del pedido. La
+cotización no aplica impuestos, descuentos ni envío porque los pedidos actuales
+no los calculan.
+
+### `GET /orders/:id/quotation`
+
+Parámetros: `currency_id` (opcional) y `download` (`true`/`false`, opcional).
+Un id no entero positivo responde `422` con
+`{ "errors": { "id": "Invalid order id" } }`; un `download` distinto de
+`true`/`false` responde `422` con
+`{ "errors": { "download": "Invalid download" } }`.
+
+Respuesta `200`:
+
+```http
+Content-Type: application/pdf
+Content-Disposition: inline; filename="cotizacion-pedido-10-VES.pdf"
+Cache-Control: no-store
+X-Content-Type-Options: nosniff
+```
+
+Con `?download=true` el `Content-Disposition` cambia a `attachment`.
+
+### `GET /invoices/:id/pdf`
+
+Roles: `admin`, `seller` y el `customer` dueño. Una factura ajena responde
+`404` con `{ "message": "Invoice not found" }`. No acepta `currency_id`: la
+factura conserva la moneda y los importes snapshot registrados.
+
+El PDF incluye número de factura, número de pedido, fechas de emisión y
+vencimiento, cliente, término de pago, líneas snapshot, subtotal, impuesto,
+total, pagado, saldo (`round2(total - paid_amount)`), estado de pago en
+español y el historial resumido de pagos aplicados (fecha, monto, moneda,
+monto aplicado y método) cuando existe. No expone costos, márgenes, lotes,
+ubicaciones, saldos de billetera ni usuarios internos.
+
+```http
+Content-Type: application/pdf
+Content-Disposition: inline; filename="factura-7.pdf"
+Cache-Control: no-store
+X-Content-Type-Options: nosniff
+```
+
+### Errores comunes
+
+| Código | Situación                                            | Cuerpo                                                     |
+| ------ | ---------------------------------------------------- | ---------------------------------------------------------- |
+| `401`  | Token ausente, inválido o expirado                   | `{ "message": "Unauthorized" }`                            |
+| `403`  | Rol sin permiso, usuario bloqueado o cliente sin link | `{ "message": "Forbidden" }` o mensaje específico          |
+| `404`  | Pedido, factura o moneda inexistente; recurso ajeno  | `{ "message": "Order not found" }` / `"Invoice not found"` |
+| `409`  | Pedido ya facturado o cancelado                      | `{ "message": "Order is already invoiced" }`               |
+| `422`  | Id, moneda, `download` inválido o pedido sin líneas  | `{ "errors": { ... } }`                                    |
+| `503`  | Falta perfil del emisor o configuración de monedas   | `{ "message": "Company profile is not configured" }`       |
+| `500`  | Error interno                                        | Manejador global existente                                 |
+
+### Librería PDF
+
+Se usa `pdfkit` (fijado en `package.json`) porque genera PDF del lado servidor,
+en memoria, con texto seleccionable, sin navegador headless ni servicio
+externo. Las páginas son tamaño carta vertical; cuando hay más de una se
+numeran. Los caracteres no soportados por la tipografía estándar se reemplazan
+por `?`.
+
 ## Billetera del cliente y pagos recibidos (HU-42, modificado por HU-47)
 
 Registro de los depósitos que recibe la empresa y del saldo disponible de cada

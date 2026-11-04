@@ -56,6 +56,10 @@ jobs:
           JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
           GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
           GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
+          COMPANY_TAX_ID: ${{ secrets.COMPANY_TAX_ID }}
+          COMPANY_ADDRESS: ${{ secrets.COMPANY_ADDRESS }}
+          COMPANY_PHONE: ${{ secrets.COMPANY_PHONE }}
+          COMPANY_EMAIL: ${{ secrets.COMPANY_EMAIL }}
         run: |
           set -euo pipefail
           umask 077
@@ -73,6 +77,10 @@ jobs:
             printf 'JWT_EXPIRES_IN=%s\n' "$JWT_EXPIRES_IN"
             printf 'GMAIL_USERNAME=%s\n' "$GMAIL_USERNAME"
             printf 'GMAIL_TOKEN=%s\n' "$GMAIL_TOKEN"
+            printf 'COMPANY_TAX_ID=%s\n' "$COMPANY_TAX_ID"
+            printf 'COMPANY_ADDRESS=%s\n' "$COMPANY_ADDRESS"
+            printf 'COMPANY_PHONE=%s\n' "$COMPANY_PHONE"
+            printf 'COMPANY_EMAIL=%s\n' "$COMPANY_EMAIL"
             printf 'UPLOAD_DIR=%s\n' "/app/uploads"
             printf 'PUBLIC_BASE_URL=%s\n' "https://farmamed.strixcryptoapp.site/api/v1"
           } > "$RUNNER_TEMP/farmamad.env"
