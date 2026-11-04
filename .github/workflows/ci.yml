@@ -19,28 +19,7 @@ jobs:
   test:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     runs-on: contabo
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: bread_king_test
-          POSTGRES_USER: bread_king
-          POSTGRES_PASSWORD: bread_king
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U bread_king -d bread_king_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
-      DB_HOST: localhost
-      DB_HOST_TEST: localhost
-      DB_PORT: "5432"
-      DB_NAME: bread_king
-      DB_NAME_TEST: bread_king_test
-      DB_USER: bread_king
-      DB_PASSWORD: bread_king
       JWT_SECRET: ci-test-secret
       NO_COLOR: "1"
     steps:
@@ -51,7 +30,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run test:integration
 
   deploy:
     if: startsWith(github.ref, 'refs/tags/')

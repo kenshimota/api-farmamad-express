@@ -6289,7 +6289,7 @@ El pipeline vive en `.github/workflows/ci.yml` y tiene tres jobs:
 
 | Job      | Cuándo corre         | Qué hace                                                              |
 | -------- | -------------------- | --------------------------------------------------------------------- |
-| `test`   | Push y pull request  | `npm test` y `npm run test:integration` contra un servicio Postgres.  |
+| `test`   | Push y pull request  | `npm test` (unitarios).                                               |
 | `build`  | Solo tags (`v1.2.3`) | Construye y publica en Docker Hub la imagen con el tag y `latest`.    |
 | `deploy` | Solo tags            | Despliega en la VM, corre migraciones/seeders y valida el contenedor. |
 
