@@ -133,7 +133,8 @@ function createBaseOrderRepository({
 
     /**
      * Loads and locks the lots of one product/state pair with availability,
-     * ordered FEFO.
+     * ordered FEFO. Lots whose expiration date already passed are excluded so
+     * they cannot be reserved for a new order before the daily job moves them.
      * @param {number} productId - Product id.
      * @param {number} itemStateId - Item state id.
      * @param {object} transaction - Open transaction.
@@ -145,6 +146,7 @@ function createBaseOrderRepository({
           product_id: productId,
           item_state_id: itemStateId,
           location_status: "located",
+          expiration_date: { [Op.gte]: Sequelize.literal("CURRENT_DATE") },
           stock: { [Op.gt]: Sequelize.col("reserved") },
         },
         order: [

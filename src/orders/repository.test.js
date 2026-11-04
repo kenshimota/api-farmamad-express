@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const { createOrderRepository } = require("./repository");
 
 /**
@@ -120,6 +121,9 @@ describe("order repository", () => {
         product_id: 15,
         item_state_id: 1,
         location_status: "located",
+        expiration_date: {
+          [Op.gte]: expect.objectContaining({ val: "CURRENT_DATE" }),
+        },
         stock: { [Symbol.for("gt")]: expect.anything() },
       },
       order: [

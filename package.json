@@ -17,6 +17,7 @@
     "db:migrate": "sequelize-cli db:migrate",
     "db:rollback": "sequelize-cli db:migrate:undo",
     "db:seed": "sequelize-cli db:seed:all",
+    "jobs:expire-lots": "node scripts/expire-lots.js",
     "seed:scrape": "node scripts/scrape-farmatodo.js",
     "seed:demo": "sequelize-cli db:seed --seed seeders/20260910000008-demo-catalog.js",
     "seed:demo:undo": "node scripts/remove-demo-catalog.js"
