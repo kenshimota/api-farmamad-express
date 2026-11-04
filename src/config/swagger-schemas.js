@@ -12,6 +12,7 @@ const paymentSchemas = require("./swagger-payment-schemas");
 const invoiceSchemas = require("./swagger-invoice-schemas");
 const invoicePaymentSchemas = require("./swagger-invoice-payment-schemas");
 const orderSchemas = require("./swagger-order-schemas");
+const pickingSchemas = require("./swagger-picking-schemas");
 const orderStatusSchemas = require("./swagger-order-status-schemas");
 const customerSchemas = require("./swagger-customer-schemas");
 const priceListSchemas = require("./swagger-price-list-schemas");
@@ -37,6 +38,7 @@ const schemas = {
   ...invoiceSchemas,
   ...invoicePaymentSchemas,
   ...orderSchemas,
+  ...pickingSchemas,
   ...orderStatusSchemas,
   ...paymentTermSchemas,
   ...productSchemas,
