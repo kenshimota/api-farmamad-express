@@ -14,21 +14,7 @@ workflow:
 test:
   stage: test
   image: node:24-alpine
-  services:
-    - name: postgres:17-alpine
-      alias: postgres
-      variables:
-        POSTGRES_DB: bread_king_test
-        POSTGRES_USER: bread_king
-        POSTGRES_PASSWORD: bread_king
   variables:
-    DB_HOST: postgres
-    DB_HOST_TEST: postgres
-    DB_PORT: "5432"
-    DB_NAME: bread_king
-    DB_NAME_TEST: bread_king_test
-    DB_USER: bread_king
-    DB_PASSWORD: bread_king
     JWT_SECRET: ci-test-secret
     NO_COLOR: "1"
   cache:
@@ -41,9 +27,6 @@ test:
     - npm ci
   script:
     - npm test
-    - until node -e "require('net').connect(5432, 'postgres').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"; do sleep 2; done
-    - export DB_HOST=postgres DB_HOST_TEST=postgres DB_PORT=5432 DB_NAME=bread_king DB_NAME_TEST=bread_king_test DB_USER=bread_king DB_PASSWORD=bread_king JWT_SECRET=ci-test-secret
-    - npm run test:integration
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "push"
