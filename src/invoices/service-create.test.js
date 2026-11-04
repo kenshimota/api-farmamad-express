@@ -115,6 +115,26 @@ describe("createInvoice", () => {
     );
   });
 
+  it("recalculates tax_amount and total from the lines when they differ", async () => {
+    const { repository, service } = buildService();
+
+    await service.createInvoice({
+      ...INPUT,
+      tax_amount: 0,
+      total: 25,
+      items: [{ ...ITEM, tax_rate: 16, tax_amount: 0, total: 25 }],
+    });
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ subtotal: 25, tax_amount: 4, total: 29 }),
+      { transaction: TRANSACTION },
+    );
+    expect(repository.createItems).toHaveBeenCalledWith(
+      [expect.objectContaining({ tax_rate: 16, tax_amount: 4, total: 29 })],
+      { transaction: TRANSACTION },
+    );
+  });
+
   it("uses an explicit due_date and defaults the notes to null", async () => {
     const { repository, service } = buildService();
 

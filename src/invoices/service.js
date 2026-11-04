@@ -204,12 +204,15 @@ function createInvoiceService({
         input.subtotal === undefined
           ? itemTotals.subtotal
           : round2(input.subtotal);
+      const taxMismatch =
+        input.tax_amount !== undefined &&
+        round2(input.tax_amount) !== itemTotals.tax_amount;
       const taxAmount =
-        input.tax_amount === undefined
+        items.length > 0 && (input.tax_amount === undefined || taxMismatch)
           ? itemTotals.tax_amount
-          : round2(input.tax_amount);
+          : round2(input.tax_amount ?? 0);
       const total =
-        input.total === undefined
+        input.total === undefined || taxMismatch
           ? round2(subtotal + taxAmount)
           : round2(input.total);
       const issuedAt = input.issued_at ? new Date(input.issued_at) : clock();
