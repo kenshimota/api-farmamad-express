@@ -16,6 +16,28 @@ const INVOICE_ITEM = {
     quantity: { type: "integer", minimum: 1, example: 2 },
     unit_price: { type: "number", example: 12.5 },
     subtotal: { type: "number", example: 25.0 },
+    tax_id: { type: "integer", nullable: true, example: 2 },
+    tax_code: { type: "string", nullable: true, example: "IVA" },
+    tax_name: {
+      type: "string",
+      nullable: true,
+      example: "Impuesto al Valor Agregado",
+    },
+    tax_rate: {
+      type: "number",
+      description: "Snapshot percentage, 16 means 16 %",
+      example: 16,
+    },
+    tax_amount: {
+      type: "number",
+      description: "subtotal × tax_rate ÷ 100",
+      example: 4.0,
+    },
+    total: {
+      type: "number",
+      description: "subtotal + tax_amount",
+      example: 29.0,
+    },
   },
 };
 
@@ -69,10 +91,14 @@ const INVOICE_BASE = {
     subtotal: { type: "number", example: 25.0 },
     tax_amount: {
       type: "number",
-      description: "Always 0 in this HU (no fiscal invoicing)",
-      example: 0,
+      description: "Sum of the snapshot line taxes",
+      example: 4.0,
     },
-    total: { type: "number", example: 25.0 },
+    total: {
+      type: "number",
+      description: "subtotal + tax_amount",
+      example: 29.0,
+    },
     paid_amount: {
       type: "number",
       description:

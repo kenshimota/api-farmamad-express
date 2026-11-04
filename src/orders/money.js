@@ -1,4 +1,8 @@
 const { round2, toCents, toDecimal } = require("../purchases/money");
+const {
+  calculateLineAmounts,
+  sumLineAmounts,
+} = require("../shared/tax");
 
 /**
  * Calculates the historical subtotal of one order line.
@@ -11,45 +15,71 @@ function calculateLineSubtotal(quantity, unitPrice) {
 }
 
 /**
- * Adds the order lines in integer cents. In this HU the total equals the
- * subtotal because there are no taxes, discounts or shipping.
- * @param {Array<{ quantity: number, unit_price: number|string }>} lines -
- *   Priced lines.
- * @returns {{ subtotal: number, total: number }} The calculated totals.
+ * Calculates the totals of an order from its lines, including tax.
+ * @param {Array<{ quantity: number, unit_price: number|string,
+ *   tax_rate?: number|string }>} lines - Priced lines.
+ * @returns {{ subtotal: number, tax_amount: number, total: number }} Totals.
  */
 function calculateOrderTotals(lines) {
-  const subtotalCents = lines.reduce(
-    (sum, line) => sum + line.quantity * toCents(line.unit_price),
-    0,
+  const amounts = lines.map((line) =>
+    calculateLineAmounts({
+      quantity: line.quantity,
+      unit_price: line.unit_price,
+      tax_rate: line.tax_rate ?? 0,
+    }),
   );
-  const subtotal = round2(subtotalCents / 100);
 
-  return { subtotal, total: subtotal };
+  return sumLineAmounts(amounts);
 }
 
 /**
- * Formats the persisted monetary attributes of an order line.
+ * Formats the persisted monetary and tax attributes of an order line.
  * @param {object} line - Priced line.
  * @param {number} line.quantity - Positive integer quantity.
  * @param {number|string} line.unit_price - Unit price in the order currency.
- * @returns {{ unit_price: string, subtotal: string }} Values for
- *   DECIMAL(12,2) columns.
+ * @param {number|string} [line.tax_rate] - Percentage tax rate.
+ * @param {number|null} [line.tax_id] - Tax catalog id snapshot.
+ * @param {string|null} [line.tax_code] - Tax code snapshot.
+ * @param {string|null} [line.tax_name] - Tax name snapshot.
+ * @returns {object} Values for the DECIMAL and snapshot columns.
  */
-function toLineAmounts({ quantity, unit_price: unitPrice }) {
+function toLineAmounts({
+  quantity,
+  unit_price: unitPrice,
+  tax_rate: taxRate = 0,
+  tax_id: taxId = null,
+  tax_code: taxCode = null,
+  tax_name: taxName = null,
+}) {
+  const amounts = calculateLineAmounts({
+    quantity,
+    unit_price: unitPrice,
+    tax_rate: taxRate,
+  });
+
   return {
     unit_price: toDecimal(unitPrice),
-    subtotal: toDecimal(calculateLineSubtotal(quantity, unitPrice)),
+    subtotal: toDecimal(amounts.subtotal),
+    tax_id: taxId,
+    tax_code: taxCode,
+    tax_name: taxName,
+    tax_rate: toDecimal(taxRate),
+    tax_amount: toDecimal(amounts.tax_amount),
+    total: toDecimal(amounts.total),
   };
 }
 
 /**
- * Formats the calculated order totals for DECIMAL(12,2) columns.
- * @param {{ subtotal: number, total: number }} totals - Calculated totals.
- * @returns {{ subtotal: string, total: string }} Values for the header.
+ * Formats the calculated order totals for the header.
+ * @param {{ subtotal: number, tax_amount: number, total: number }} totals -
+ *   Calculated totals.
+ * @returns {{ subtotal: string, tax_amount: string, total: string }} Values
+ *   ready for DECIMAL(12,2) columns.
  */
-function toOrderAmounts({ subtotal, total }) {
+function toOrderAmounts({ subtotal, tax_amount: taxAmount, total }) {
   return {
     subtotal: toDecimal(subtotal),
+    tax_amount: toDecimal(taxAmount),
     total: toDecimal(total),
   };
 }
@@ -57,6 +87,7 @@ function toOrderAmounts({ subtotal, total }) {
 module.exports = {
   calculateLineSubtotal,
   calculateOrderTotals,
+  round2,
   toLineAmounts,
   toOrderAmounts,
 };

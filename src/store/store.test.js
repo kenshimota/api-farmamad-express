@@ -130,6 +130,9 @@ describe("store serializer", () => {
       image_id: 7,
       item_state: { id: 1, name: "sellable", label: "Vendible" },
       price: 14.29,
+      tax: null,
+      tax_amount: 0,
+      total: 14.29,
       currency_id: 3,
       currency: {
         id: 3,
@@ -158,6 +161,9 @@ describe("store serializer", () => {
     expect(variant).toEqual({
       item_state: { id: 1, name: "sellable", label: "Vendible" },
       price: 14.29,
+      tax: null,
+      tax_amount: 0,
+      total: 14.29,
       currency_id: 3,
       currency: {
         id: 3,
@@ -182,6 +188,26 @@ describe("store serializer", () => {
 
     expect(variant.category).toBeNull();
     expect(variant.image).toBeNull();
+  });
+
+  it("calculates the tax amount and final total of a variant", () => {
+    const variant = toStoreListVariant({
+      product: PRODUCT,
+      itemState: ITEM_STATE,
+      price: 14.29,
+      tax: { id: 2, code: "IVA", name: "IVA", rate: "16.00" },
+      currency: CURRENCY,
+      available: true,
+    });
+
+    expect(variant.tax).toEqual({
+      id: 2,
+      code: "IVA",
+      name: "IVA",
+      rate: 16,
+    });
+    expect(variant.tax_amount).toBe(2.29);
+    expect(variant.total).toBe(16.58);
   });
 });
 

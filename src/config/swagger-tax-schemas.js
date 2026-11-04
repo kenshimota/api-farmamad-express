@@ -1,4 +1,20 @@
 const schemas = {
+  TaxSummary: {
+    type: "object",
+    description: "Tax applied to a store variant or document line",
+    properties: {
+      id: { type: "integer", example: 2 },
+      code: { type: "string", example: "IVA" },
+      name: { type: "string", example: "Impuesto al Valor Agregado" },
+      rate: {
+        type: "number",
+        format: "double",
+        minimum: 0,
+        maximum: 100,
+        example: 16,
+      },
+    },
+  },
   Tax: {
     type: "object",
     properties: {

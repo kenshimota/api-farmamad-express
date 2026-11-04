@@ -64,6 +64,7 @@ function createOrderItemService({ repository, access, pricing, history }) {
       items.map((item) => ({
         quantity: readField(item, "quantity"),
         unit_price: readField(item, "unit_price"),
+        tax_rate: readField(item, "tax_rate"),
       })),
     );
 

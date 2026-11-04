@@ -28,8 +28,22 @@ const storeSchemas = {
         type: "number",
         format: "double",
         description:
-          "Resolved price for the customer price list, rounded to two decimals",
+          "Resolved pre-tax price for the customer price list, rounded to two decimals",
         example: 14.29,
+      },
+      tax: {
+        nullable: true,
+        allOf: [{ $ref: "#/components/schemas/TaxSummary" }],
+      },
+      tax_amount: {
+        type: "number",
+        description: "price × tax.rate ÷ 100",
+        example: 2.29,
+      },
+      total: {
+        type: "number",
+        description: "price + tax_amount",
+        example: 16.58,
       },
       currency_id: { type: "integer", example: 3 },
       currency: { $ref: "#/components/schemas/StoreCurrency" },
@@ -55,7 +69,22 @@ const storeSchemas = {
       category_id: { type: "integer", example: 2 },
       image_id: { type: "integer", example: 7 },
       item_state: { $ref: "#/components/schemas/StoreItemState" },
-      price: { type: "number", format: "double", example: 14.29 },
+      price: {
+        type: "number",
+        format: "double",
+        description: "Pre-tax resolved price",
+        example: 14.29,
+      },
+      tax: {
+        nullable: true,
+        allOf: [{ $ref: "#/components/schemas/TaxSummary" }],
+      },
+      tax_amount: { type: "number", example: 2.29 },
+      total: {
+        type: "number",
+        description: "price + tax_amount",
+        example: 16.58,
+      },
       currency_id: { type: "integer", example: 3 },
       currency: { $ref: "#/components/schemas/StoreCurrency" },
       available: { type: "boolean", example: true },

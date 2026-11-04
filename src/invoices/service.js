@@ -1,11 +1,11 @@
 const { readField } = require("../shared/serializer");
 const {
-  TAX_AMOUNT,
   buildInvoiceValues,
   calculateDueDate,
   calculateItemSubtotal,
   normalizeItems,
   round2,
+  sumLineAmounts,
 } = require("./values");
 const { invoiceRepository } = require("./repository");
 const {
@@ -199,11 +199,19 @@ function createInvoiceService({
 
       const paymentTerm = await resolvePaymentTerm(input, transaction);
       const items = normalizeItems(input.items ?? []);
+      const itemTotals = sumLineAmounts(items);
       const subtotal =
         input.subtotal === undefined
-          ? round2(items.reduce((sum, item) => sum + item.subtotal, 0))
+          ? itemTotals.subtotal
           : round2(input.subtotal);
-      const total = input.total === undefined ? subtotal : round2(input.total);
+      const taxAmount =
+        input.tax_amount === undefined
+          ? itemTotals.tax_amount
+          : round2(input.tax_amount);
+      const total =
+        input.total === undefined
+          ? round2(subtotal + taxAmount)
+          : round2(input.total);
       const issuedAt = input.issued_at ? new Date(input.issued_at) : clock();
       const number = await repository.nextNumber(transaction);
       const invoice = await repository.create(
@@ -211,6 +219,7 @@ function createInvoiceService({
           number,
           issuedAt,
           subtotal,
+          taxAmount,
           total,
           paymentTermDays: Number(readField(paymentTerm, "days")),
         }),
@@ -230,6 +239,12 @@ function createInvoiceService({
             quantity: item.quantity,
             unit_price: item.unit_price,
             subtotal: item.subtotal,
+            tax_id: item.tax_id,
+            tax_code: item.tax_code,
+            tax_name: item.tax_name,
+            tax_rate: item.tax_rate,
+            tax_amount: item.tax_amount,
+            total: item.total,
           })),
           { transaction },
         );
@@ -248,7 +263,6 @@ const invoiceService = createInvoiceService();
 
 module.exports = {
   ADMIN_ROLES,
-  TAX_AMOUNT,
   buildInvoiceValues,
   calculateDueDate,
   calculateItemSubtotal,
@@ -256,4 +270,5 @@ module.exports = {
   invoiceService,
   normalizeItems,
   round2,
+  sumLineAmounts,
 };

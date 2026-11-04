@@ -10,6 +10,7 @@ const Lot = require("../models/lot");
 const PriceList = require("../models/price-list");
 const Product = require("../models/product");
 const Stock = require("../models/stock");
+const Tax = require("../models/tax");
 const { CURRENCY_SUMMARY_ATTRIBUTES } = require("../currencies/attributes");
 const { resolveDefaultTransactionCurrency } = require("../currencies/default");
 const {
@@ -20,6 +21,7 @@ const {
   ITEM_STATE_ATTRIBUTES,
   ORDER,
   PRODUCT_ATTRIBUTES,
+  TAX_ATTRIBUTES,
   buildOrder,
   variantKey,
 } = require("./attributes");
@@ -55,6 +57,7 @@ function createStoreRepository({
   categoryModel = Category,
   imageModel = Image,
   stockModel = Stock,
+  taxModel = Tax,
   resolveTransactionCurrency = resolveDefaultTransactionCurrency,
 } = {}) {
   const productInclude = {
@@ -72,6 +75,12 @@ function createStoreRepository({
         model: imageModel,
         as: "image",
         attributes: [...IMAGE_ATTRIBUTES],
+      },
+      {
+        model: taxModel,
+        as: "tax",
+        attributes: [...TAX_ATTRIBUTES],
+        required: false,
       },
     ],
   };

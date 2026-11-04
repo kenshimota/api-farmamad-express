@@ -29,6 +29,18 @@ function dependencies(overrides = {}) {
     priceListModel: {
       findByPk: jest.fn().mockResolvedValue({ id: 1, percentage: "30.00" }),
     },
+    productModel: {
+      findByPk: jest.fn().mockResolvedValue({
+        id: 15,
+        tax: {
+          id: 2,
+          code: "IVA",
+          name: "Impuesto al Valor Agregado",
+          rate: "16.00",
+        },
+      }),
+    },
+    taxModel: {},
     currencyModel: { findByPk: jest.fn() },
     resolveTransactionCurrency: jest
       .fn()
@@ -65,6 +77,12 @@ describe("createPriceResolver", () => {
       price_list_id: 1,
       price: 14.29,
       currency: { id: 2, rate: "1.000000", is_active: true },
+      tax: {
+        tax_id: 2,
+        tax_code: "IVA",
+        tax_name: "Impuesto al Valor Agregado",
+        tax_rate: 16,
+      },
     });
   });
 

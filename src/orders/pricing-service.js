@@ -76,7 +76,11 @@ function createOrderPricingService({
           transactionCurrency: currency,
         });
 
-        priced.push({ ...line, unit_price: resolved.price });
+        priced.push({
+          ...line,
+          unit_price: resolved.price,
+          ...resolved.tax,
+        });
       } catch (error) {
         throw translatePricingError(error);
       }
@@ -118,12 +122,14 @@ function createOrderPricingService({
       const amounts = toLineAmounts({
         quantity: readField(item, "quantity"),
         unit_price: resolved.price,
+        ...resolved.tax,
       });
 
       await repository.updateOrderItem(item, amounts, { transaction });
       priced.push({
         quantity: readField(item, "quantity"),
         unit_price: resolved.price,
+        tax_rate: resolved.tax.tax_rate,
       });
     }
 

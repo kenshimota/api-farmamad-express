@@ -1,5 +1,7 @@
 const { toPublicImage } = require("../images/serializer");
 const { readField, toDecimalNumber } = require("../shared/serializer");
+const { calculateTaxAmount } = require("../shared/tax");
+const { round2 } = require("../purchases/money");
 
 /**
  * Builds the compact item state exposed by the store catalog.
@@ -11,6 +13,25 @@ function toStoreItemState(itemState) {
     id: readField(itemState, "id"),
     name: readField(itemState, "name"),
     label: readField(itemState, "label"),
+  };
+}
+
+/**
+ * Builds the compact tax exposed by the store catalog.
+ * @param {object|null} tax - Tax instance or plain object.
+ * @returns {{ id: number, code: string, name: string, rate: number }|null}
+ *   Public tax or null.
+ */
+function toStoreTax(tax) {
+  if (!tax) {
+    return null;
+  }
+
+  return {
+    id: readField(tax, "id"),
+    code: readField(tax, "code"),
+    name: readField(tax, "name"),
+    rate: toDecimalNumber(readField(tax, "rate"), 2),
   };
 }
 
@@ -70,7 +91,8 @@ function toStoreProduct(product) {
  * @param {object} params - Variant data.
  * @param {object} params.product - Product instance or plain object.
  * @param {object} params.itemState - Item state instance or plain object.
- * @param {number} params.price - Resolved price.
+ * @param {number} params.price - Resolved pre-tax price.
+ * @param {object|null} params.tax - Product tax.
  * @param {object} params.currency - Transaction currency.
  * @param {boolean} params.available - Availability flag.
  * @returns {object} Public listing entry.
@@ -79,10 +101,15 @@ function toStoreListVariant({
   product,
   itemState,
   price,
+  tax,
   currency,
   available,
 }) {
   const fields = toStoreProduct(product);
+  const publicTax = toStoreTax(tax);
+  const taxAmount = publicTax
+    ? calculateTaxAmount(price, publicTax.rate)
+    : 0;
 
   return {
     id: fields.id,
@@ -93,6 +120,9 @@ function toStoreListVariant({
     image_id: fields.image_id,
     item_state: toStoreItemState(itemState),
     price: toDecimalNumber(price, 2),
+    tax: publicTax,
+    tax_amount: round2(taxAmount),
+    total: round2(Number(price) + taxAmount),
     currency_id: readField(currency, "id"),
     currency: toStoreCurrency(currency),
     available: Boolean(available),
@@ -105,15 +135,30 @@ function toStoreListVariant({
  * Builds one variant of the product detail.
  * @param {object} params - Variant data.
  * @param {object} params.itemState - Item state instance or plain object.
- * @param {number} params.price - Resolved price.
+ * @param {number} params.price - Resolved pre-tax price.
+ * @param {object|null} params.tax - Product tax.
  * @param {object} params.currency - Transaction currency.
  * @param {boolean} params.available - Availability flag.
  * @returns {object} Public detail variant.
  */
-function toStoreDetailVariant({ itemState, price, currency, available }) {
+function toStoreDetailVariant({
+  itemState,
+  price,
+  tax,
+  currency,
+  available,
+}) {
+  const publicTax = toStoreTax(tax);
+  const taxAmount = publicTax
+    ? calculateTaxAmount(price, publicTax.rate)
+    : 0;
+
   return {
     item_state: toStoreItemState(itemState),
     price: toDecimalNumber(price, 2),
+    tax: publicTax,
+    tax_amount: round2(taxAmount),
+    total: round2(Number(price) + taxAmount),
     currency_id: readField(currency, "id"),
     currency: toStoreCurrency(currency),
     available: Boolean(available),
@@ -141,4 +186,5 @@ module.exports = {
   toStoreListVariant,
   toStoreProduct,
   toStoreProductDetail,
+  toStoreTax,
 };
